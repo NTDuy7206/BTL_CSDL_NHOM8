@@ -1,25 +1,18 @@
-package com.ntd.btlcsdl.entity;
+package com.ntd.btlcsdl.dto;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
-
-@Entity
-@Getter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+public class UserDTO {
     private Long id;
-    @Column(unique = true)
     private String username;
     private String password;
     private String full_name;
-    @Column(unique = true)
     private String email;
     private String phone;
     private String address;

@@ -1,21 +1,16 @@
-package com.ntd.btlcsdl.entity;
+package com.ntd.btlcsdl.dto;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
-@AllArgsConstructor
-@NoArgsConstructor
 @Data
-@Entity
-public class Coupon {
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+@NoArgsConstructor
+@AllArgsConstructor
+public class CouponDTO {
     private Long id;
-    @Column(unique = true)
     private String code;
     private String description;
     private String discountType;

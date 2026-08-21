@@ -1,19 +1,14 @@
-package com.ntd.btlcsdl.entity;
+package com.ntd.btlcsdl.dto;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
-
-@AllArgsConstructor
-@NoArgsConstructor
 @Data
-@Entity
-public class Supplier {
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+@NoArgsConstructor
+@AllArgsConstructor
+public class SuperlierDTO {
     private Long id;
     private String name;
     private String email;

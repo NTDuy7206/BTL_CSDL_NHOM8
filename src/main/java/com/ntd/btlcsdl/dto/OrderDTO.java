@@ -1,24 +1,18 @@
-package com.ntd.btlcsdl.entity;
+package com.ntd.btlcsdl.dto;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
-@AllArgsConstructor
-@NoArgsConstructor
 @Data
-@Entity
-public class Order {
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+@NoArgsConstructor
+@AllArgsConstructor
+public class OrderDTO {
     private  Long id;
     private Long userId;
-    @Column(nullable = false)
     private Long couponId;
-    @Column(unique = true)
     private String orderCode;
     private double totalAmount;
     private double discountAmount;
