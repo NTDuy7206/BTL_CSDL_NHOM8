@@ -1,3 +1,16 @@
 spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
   application:
     name: CSDL
+  datasource:
+    url: "jdbc:mysql://localhost:3306/btl_csdl"
+    username: root
+    password: root
+  jpa:
+    hibernate:
+      ddl-auto: update
+server:
+  port: 8080

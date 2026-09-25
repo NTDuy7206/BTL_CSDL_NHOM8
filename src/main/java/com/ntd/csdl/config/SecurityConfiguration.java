@@ -1,6 +1,6 @@
 package com.ntd.csdl.config;
 
-import com.ntd.task.security.JwtAuthenticationFilter;
+import com.ntd.csdl.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

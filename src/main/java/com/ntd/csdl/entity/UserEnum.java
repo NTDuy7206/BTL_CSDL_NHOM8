@@ -1,4 +1,4 @@
-package com.ntd.task.entity;
+package com.ntd.csdl.entity;
 
 public enum UserEnum {
     USER , ADMIN
