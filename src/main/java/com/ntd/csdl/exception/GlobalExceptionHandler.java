@@ -1,6 +1,6 @@
-package com.ntd.csdl.config;
+package com.ntd.csdl.exception;
 
-import com.ntd.csdl.exception.UserException;
+import org.apache.coyote.BadRequestException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -25,9 +25,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ex.getMessage());
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<String> handleBadRequest(
+            BadRequestException ex
+    ) {
+        return ResponseEntity
+                .badRequest()
+                .body(ex.getMessage());
+    }
+
     @ExceptionHandler(RuntimeException.class)
-    public  ResponseEntity<String> handleRuntimeException(RuntimeException ex) {
-        return  ResponseEntity.badRequest().body(ex.getMessage());
+    public ResponseEntity<String> handleRuntimeException(
+            RuntimeException ex
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Đã xảy ra lỗi hệ thống");
     }
 
 }

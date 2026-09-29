@@ -5,6 +5,8 @@ import com.ntd.csdl.entity.Invoice;
 import com.ntd.csdl.repo.ContractRepository;
 import com.ntd.csdl.repo.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -18,6 +20,15 @@ public class InvoiceService {
     private final ContractRepository contractRepository;
 
     // CREATE INVOICE
+    @CacheEvict(
+            value = {
+                    "invoices",
+                    "invoiceById",
+                    "invoicesByContract",
+                    "totalRevenue"
+            },
+            allEntries = true
+    )
     public Invoice create(
             String contractId,
             Invoice invoice
@@ -65,11 +76,14 @@ public class InvoiceService {
                 : value;
     }
 
-    // READ
+    // READ - lấy tất cả hóa đơn
+    @Cacheable(value = "invoices")
     public List<Invoice> getAll() {
         return invoiceRepository.findAll();
     }
 
+    // READ - lấy hóa đơn theo ID
+    @Cacheable(value = "invoiceById", key = "#id")
     public Invoice getById(String id) {
 
         return invoiceRepository.findById(id)
@@ -80,6 +94,15 @@ public class InvoiceService {
     }
 
     // DELETE
+    @CacheEvict(
+            value = {
+                    "invoices",
+                    "invoiceById",
+                    "invoicesByContract",
+                    "totalRevenue"
+            },
+            allEntries = true
+    )
     public void delete(String id) {
 
         if (!invoiceRepository.existsById(id)) {
@@ -92,6 +115,10 @@ public class InvoiceService {
     }
 
     // Hóa đơn theo hợp đồng
+    @Cacheable(
+            value = "invoicesByContract",
+            key = "#contractId"
+    )
     public List<Invoice> getByContract(
             String contractId
     ) {
@@ -101,6 +128,7 @@ public class InvoiceService {
     }
 
     // Tổng doanh thu
+    @Cacheable(value = "totalRevenue")
     public BigDecimal getTotalRevenue() {
 
         BigDecimal total =
