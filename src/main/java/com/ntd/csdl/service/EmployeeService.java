@@ -1,5 +1,6 @@
 package com.ntd.csdl.service;
 
+import com.ntd.csdl.dto.EmployeeDTO;
 import com.ntd.csdl.entity.Employee;
 import com.ntd.csdl.repo.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,23 +14,33 @@ public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
 
-    public Employee create(Employee employee) {
+    public Employee create(EmployeeDTO dto) {
 
-        if (employee.getEmployeeId() == null ||
-                employee.getEmployeeId().isBlank()) {
+        if (dto.getEmployeeId() == null ||
+                dto.getEmployeeId().isBlank()) {
 
             throw new RuntimeException(
                     "Employee ID không được để trống"
             );
         }
 
-        if (employeeRepository.existsById(
-                employee.getEmployeeId())) {
+        if (employeeRepository.existsById(dto.getEmployeeId())) {
 
             throw new RuntimeException(
                     "Nhân viên đã tồn tại"
             );
         }
+
+        Employee employee = new Employee();
+
+        employee.setEmployeeId(dto.getEmployeeId());
+        employee.setCccd(dto.getCccd());
+        employee.setFullName(dto.getFullName());
+        employee.setPosition(dto.getPosition());
+        employee.setBaseSalary(dto.getBaseSalary());
+        employee.setSeniority(dto.getSeniority());
+        employee.setDateOfBirth(dto.getDateOfBirth());
+        employee.setPhoneNumber(dto.getPhoneNumber());
 
         return employeeRepository.save(employee);
     }
@@ -62,5 +73,24 @@ public class EmployeeService {
         }
 
         employeeRepository.deleteById(id);
+    }
+
+    public Employee update(String id, EmployeeDTO dto) {
+
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Không tìm thấy nhân viên"
+                        ));
+
+        employee.setCccd(dto.getCccd());
+        employee.setFullName(dto.getFullName());
+        employee.setPosition(dto.getPosition());
+        employee.setBaseSalary(dto.getBaseSalary());
+        employee.setSeniority(dto.getSeniority());
+        employee.setDateOfBirth(dto.getDateOfBirth());
+        employee.setPhoneNumber(dto.getPhoneNumber());
+
+        return employeeRepository.save(employee);
     }
 }

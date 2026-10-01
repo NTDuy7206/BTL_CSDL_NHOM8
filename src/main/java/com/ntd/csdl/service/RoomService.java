@@ -1,5 +1,6 @@
 package com.ntd.csdl.service;
 
+import com.ntd.csdl.dto.RoomDTO;
 import com.ntd.csdl.entity.Room;
 import com.ntd.csdl.repo.RoomRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,29 +31,39 @@ public class RoomService {
             },
             allEntries = true
     )
-    public Room create(Room room) {
+    public Room create(RoomDTO dto) {
 
-        if (room.getRoomId() == null ||
-                room.getRoomId().isBlank()) {
+        if (dto.getRoomId() == null ||
+                dto.getRoomId().isBlank()) {
 
             throw new RuntimeException(
                     "Room ID không được để trống"
             );
         }
 
-        if (room.getBasePrice() != null &&
-                room.getBasePrice().compareTo(BigDecimal.ZERO) < 0) {
+        if (dto.getBasePrice() != null &&
+                dto.getBasePrice().compareTo(BigDecimal.ZERO) < 0) {
 
             throw new RuntimeException(
                     "Giá phòng không được âm"
             );
         }
 
-        if (roomRepository.existsById(room.getRoomId())) {
+        if (roomRepository.existsById(dto.getRoomId())) {
+
             throw new RuntimeException(
                     "Phòng đã tồn tại"
             );
         }
+
+        Room room = new Room();
+
+        room.setRoomId(dto.getRoomId());
+        room.setFloor(dto.getFloor());
+        room.setArea(dto.getArea());
+        room.setRoomType(dto.getRoomType());
+        room.setStatus(dto.getStatus());
+        room.setBasePrice(dto.getBasePrice());
 
         return roomRepository.save(room);
     }
@@ -93,23 +104,23 @@ public class RoomService {
             },
             allEntries = true
     )
-    public Room update(String id, Room room) {
+    public Room update(String id, RoomDTO dto) {
 
         Room existing = getById(id);
 
-        if (room.getBasePrice() != null &&
-                room.getBasePrice().compareTo(BigDecimal.ZERO) < 0) {
+        if (dto.getBasePrice() != null &&
+                dto.getBasePrice().compareTo(BigDecimal.ZERO) < 0) {
 
             throw new RuntimeException(
                     "Giá phòng không được âm"
             );
         }
 
-        existing.setFloor(room.getFloor());
-        existing.setArea(room.getArea());
-        existing.setRoomType(room.getRoomType());
-        existing.setStatus(room.getStatus());
-        existing.setBasePrice(room.getBasePrice());
+        existing.setFloor(dto.getFloor());
+        existing.setArea(dto.getArea());
+        existing.setRoomType(dto.getRoomType());
+        existing.setStatus(dto.getStatus());
+        existing.setBasePrice(dto.getBasePrice());
 
         return roomRepository.save(existing);
     }
@@ -131,6 +142,7 @@ public class RoomService {
     public void delete(String id) {
 
         if (!roomRepository.existsById(id)) {
+
             throw new RuntimeException(
                     "Phòng không tồn tại"
             );
@@ -164,6 +176,7 @@ public class RoomService {
             key = "#price"
     )
     public List<Room> findByMaxPrice(BigDecimal price) {
-        return roomRepository.findByBasePriceLessThanEqual(price);
+        return roomRepository
+                .findByBasePriceLessThanEqual(price);
     }
 }
