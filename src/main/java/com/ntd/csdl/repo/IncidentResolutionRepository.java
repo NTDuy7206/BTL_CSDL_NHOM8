@@ -17,11 +17,7 @@ public interface IncidentResolutionRepository
     List<IncidentResolution> findByIsCompleted(String isCompleted);
 
     // JPQL
-    @Query("""
-        SELECT r
-        FROM IncidentResolution r
-        WHERE r.isCompleted = 'NO'
-    """)
+    @Query("SELECT r FROM IncidentResolution r WHERE r.isCompleted = false")
     List<IncidentResolution> findUncompletedResolutions();
 
     // Truy vấn nhiều bảng
