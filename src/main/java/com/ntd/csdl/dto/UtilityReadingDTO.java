@@ -11,19 +11,23 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class UtilityReadingDTO {
 
-    private Long readingId;
+    private String readingId;
 
     private Integer month;
+
     private Integer year;
 
     private BigDecimal electricityPrice;
+
     private BigDecimal waterPrice;
 
-    private BigDecimal electricityStartIndex;
-    private BigDecimal electricityEndIndex;
+    private Integer electricityStartIndex;
 
-    private BigDecimal waterStartIndex;
-    private BigDecimal waterEndIndex;
+    private Integer electricityEndIndex;
 
-    private Long roomId;
+    private Integer waterStartIndex;
+
+    private Integer waterEndIndex;
+
+    private String roomId;
 }

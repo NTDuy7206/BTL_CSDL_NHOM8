@@ -14,11 +14,6 @@ public interface IncidentRepository extends JpaRepository<Incident, String> {
 
     List<Incident> findByStatus(String status);
 
-    List<Incident> findByReportDateBetween(
-            LocalDate startDate,
-            LocalDate endDate
-    );
-
     // JPQL
     @Query("""
         SELECT i

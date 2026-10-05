@@ -24,7 +24,7 @@ public class CleaningSupport {
     private String taskContent;
 
     @Column(name = "is_completed", length = 10)
-    private String isCompleted;
+    private Boolean isCompleted;
 
     // FK -> rooms.room_id
     @ManyToOne

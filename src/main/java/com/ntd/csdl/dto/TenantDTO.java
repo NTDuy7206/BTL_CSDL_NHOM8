@@ -11,10 +11,15 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class TenantDTO {
 
-    private Long tenantId;
+    private String tenantId;
+
     private String cccd;
+
     private String fullName;
+
     private LocalDate dateOfBirth;
+
     private String permanentAddress;
+
     private String phoneNumber;
 }

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -11,11 +12,15 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class IncidentResolutionDTO {
 
-    private Long resolutionId;
-    private LocalDateTime resolutionDate;
+    private String resolutionId;
+
+    private LocalDate resolutionDate;
+
     private String result;
+
     private Boolean isCompleted;
 
-    private Long incidentId;
-    private Long employeeId;
+    private String incidentId;
+
+    private String employeeId;
 }

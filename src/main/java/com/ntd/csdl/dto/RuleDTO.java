@@ -11,8 +11,11 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class RuleDTO {
 
-    private Long ruleId;
+    private String ruleId;
+
     private String violationName;
+
     private String description;
+
     private BigDecimal prescribedFine;
 }

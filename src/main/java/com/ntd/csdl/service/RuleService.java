@@ -1,5 +1,6 @@
 package com.ntd.csdl.service;
 
+import com.ntd.csdl.dto.RuleDTO;
 import com.ntd.csdl.entity.Rule;
 import com.ntd.csdl.repo.RuleRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,18 +25,24 @@ public class RuleService {
             },
             allEntries = true
     )
-    public Rule create(Rule rule) {
+    public Rule create(RuleDTO dto) {
 
-        if (rule.getRuleId() == null ||
-                rule.getRuleId().isBlank()) {
+        if (dto.getRuleId() == null ||
+                dto.getRuleId().isBlank()) {
 
             throw new RuntimeException(
                     "Rule ID không được để trống"
             );
         }
 
-        if (rule.getPrescribedFine() != null &&
-                rule.getPrescribedFine()
+        if (ruleRepository.existsById(dto.getRuleId())) {
+            throw new RuntimeException(
+                    "Quy định đã tồn tại"
+            );
+        }
+
+        if (dto.getPrescribedFine() != null &&
+                dto.getPrescribedFine()
                         .compareTo(BigDecimal.ZERO) < 0) {
 
             throw new RuntimeException(
@@ -43,16 +50,23 @@ public class RuleService {
             );
         }
 
+        Rule rule = new Rule();
+
+        rule.setRuleId(dto.getRuleId());
+        rule.setViolationName(dto.getViolationName());
+        rule.setDescription(dto.getDescription());
+        rule.setPrescribedFine(dto.getPrescribedFine());
+
         return ruleRepository.save(rule);
     }
 
-    // READ - lấy tất cả quy định
+    // READ
     @Cacheable(value = "rules")
     public List<Rule> getAll() {
         return ruleRepository.findAll();
     }
 
-    // READ - lấy quy định theo ID
+    // READ BY ID
     @Cacheable(value = "ruleById", key = "#id")
     public Rule getById(String id) {
 
@@ -60,7 +74,8 @@ public class RuleService {
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Không tìm thấy quy định"
-                        ));
+                        )
+                );
     }
 
     // UPDATE
@@ -71,12 +86,12 @@ public class RuleService {
             },
             allEntries = true
     )
-    public Rule update(String id, Rule rule) {
+    public Rule update(String id, RuleDTO dto) {
 
         Rule existing = getById(id);
 
-        if (rule.getPrescribedFine() != null &&
-                rule.getPrescribedFine()
+        if (dto.getPrescribedFine() != null &&
+                dto.getPrescribedFine()
                         .compareTo(BigDecimal.ZERO) < 0) {
 
             throw new RuntimeException(
@@ -84,9 +99,9 @@ public class RuleService {
             );
         }
 
-        existing.setViolationName(rule.getViolationName());
-        existing.setDescription(rule.getDescription());
-        existing.setPrescribedFine(rule.getPrescribedFine());
+        existing.setViolationName(dto.getViolationName());
+        existing.setDescription(dto.getDescription());
+        existing.setPrescribedFine(dto.getPrescribedFine());
 
         return ruleRepository.save(existing);
     }

@@ -1,5 +1,6 @@
 package com.ntd.csdl.service;
 
+import com.ntd.csdl.dto.InvoiceDTO;
 import com.ntd.csdl.entity.Contract;
 import com.ntd.csdl.entity.Invoice;
 import com.ntd.csdl.repo.ContractRepository;
@@ -19,7 +20,7 @@ public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final ContractRepository contractRepository;
 
-    // CREATE INVOICE
+    // CREATE
     @CacheEvict(
             value = {
                     "invoices",
@@ -29,34 +30,64 @@ public class InvoiceService {
             },
             allEntries = true
     )
-    public Invoice create(
-            String contractId,
-            Invoice invoice
-    ) {
+    public Invoice create(InvoiceDTO dto) {
+
+        if (dto.getInvoiceId() == null ||
+                dto.getInvoiceId().isBlank()) {
+
+            throw new RuntimeException(
+                    "Invoice ID không được để trống"
+            );
+        }
+
+        if (invoiceRepository.existsById(
+                dto.getInvoiceId())) {
+
+            throw new RuntimeException(
+                    "Hóa đơn đã tồn tại"
+            );
+        }
 
         Contract contract = contractRepository
-                .findById(contractId)
+                .findById(dto.getContractId())
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Không tìm thấy hợp đồng"
-                        ));
+                        )
+                );
+
+        Invoice invoice = new Invoice();
+
+        invoice.setInvoiceId(dto.getInvoiceId());
+        invoice.setMonth(dto.getMonth());
+        invoice.setYear(dto.getYear());
+        invoice.setRentAmount(dto.getRentAmount());
+        invoice.setElectricityAmount(
+                dto.getElectricityAmount()
+        );
+        invoice.setWaterAmount(
+                dto.getWaterAmount()
+        );
+        invoice.setFineAmount(
+                dto.getFineAmount()
+        );
 
         invoice.setContract(contract);
 
         BigDecimal rent = valueOrZero(
-                invoice.getRentAmount()
+                dto.getRentAmount()
         );
 
         BigDecimal electricity = valueOrZero(
-                invoice.getElectricityAmount()
+                dto.getElectricityAmount()
         );
 
         BigDecimal water = valueOrZero(
-                invoice.getWaterAmount()
+                dto.getWaterAmount()
         );
 
         BigDecimal fine = valueOrZero(
-                invoice.getFineAmount()
+                dto.getFineAmount()
         );
 
         BigDecimal total = rent
@@ -76,13 +107,13 @@ public class InvoiceService {
                 : value;
     }
 
-    // READ - lấy tất cả hóa đơn
+    // READ ALL
     @Cacheable(value = "invoices")
     public List<Invoice> getAll() {
         return invoiceRepository.findAll();
     }
 
-    // READ - lấy hóa đơn theo ID
+    // READ BY ID
     @Cacheable(value = "invoiceById", key = "#id")
     public Invoice getById(String id) {
 
@@ -90,7 +121,74 @@ public class InvoiceService {
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Không tìm thấy hóa đơn"
-                        ));
+                        )
+                );
+    }
+
+    // UPDATE
+    @CacheEvict(
+            value = {
+                    "invoices",
+                    "invoiceById",
+                    "invoicesByContract",
+                    "totalRevenue"
+            },
+            allEntries = true
+    )
+    public Invoice update(
+            String id,
+            InvoiceDTO dto
+    ) {
+
+        Invoice existing = getById(id);
+
+        Contract contract = contractRepository
+                .findById(dto.getContractId())
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Không tìm thấy hợp đồng"
+                        )
+                );
+
+        existing.setMonth(dto.getMonth());
+        existing.setYear(dto.getYear());
+        existing.setRentAmount(dto.getRentAmount());
+        existing.setElectricityAmount(
+                dto.getElectricityAmount()
+        );
+        existing.setWaterAmount(
+                dto.getWaterAmount()
+        );
+        existing.setFineAmount(
+                dto.getFineAmount()
+        );
+
+        existing.setContract(contract);
+
+        BigDecimal rent = valueOrZero(
+                dto.getRentAmount()
+        );
+
+        BigDecimal electricity = valueOrZero(
+                dto.getElectricityAmount()
+        );
+
+        BigDecimal water = valueOrZero(
+                dto.getWaterAmount()
+        );
+
+        BigDecimal fine = valueOrZero(
+                dto.getFineAmount()
+        );
+
+        BigDecimal total = rent
+                .add(electricity)
+                .add(water)
+                .add(fine);
+
+        existing.setTotalAmount(total);
+
+        return invoiceRepository.save(existing);
     }
 
     // DELETE
@@ -114,7 +212,7 @@ public class InvoiceService {
         invoiceRepository.deleteById(id);
     }
 
-    // Hóa đơn theo hợp đồng
+    // GET INVOICES BY CONTRACT
     @Cacheable(
             value = "invoicesByContract",
             key = "#contractId"
@@ -127,7 +225,7 @@ public class InvoiceService {
                 .findByContractContractId(contractId);
     }
 
-    // Tổng doanh thu
+    // TOTAL REVENUE
     @Cacheable(value = "totalRevenue")
     public BigDecimal getTotalRevenue() {
 

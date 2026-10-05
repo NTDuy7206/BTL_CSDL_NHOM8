@@ -1,5 +1,6 @@
 package com.ntd.csdl.service;
 
+import com.ntd.csdl.dto.TenantDTO;
 import com.ntd.csdl.entity.Tenant;
 import com.ntd.csdl.repo.TenantRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,38 +25,50 @@ public class TenantService {
             },
             allEntries = true
     )
-    public Tenant create(Tenant tenant) {
+    public Tenant create(TenantDTO dto) {
 
-        if (tenant.getTenantId() == null ||
-                tenant.getTenantId().isBlank()) {
+        if (dto.getTenantId() == null ||
+                dto.getTenantId().isBlank()) {
+
             throw new RuntimeException(
                     "Tenant ID không được để trống"
             );
         }
 
-        if (tenantRepository.existsById(tenant.getTenantId())) {
+        if (tenantRepository.existsById(dto.getTenantId())) {
             throw new RuntimeException(
                     "Tenant đã tồn tại"
             );
         }
 
+        Tenant tenant = new Tenant();
+
+        tenant.setTenantId(dto.getTenantId());
+        tenant.setCccd(dto.getCccd());
+        tenant.setFullName(dto.getFullName());
+        tenant.setDateOfBirth(dto.getDateOfBirth());
+        tenant.setPermanentAddress(dto.getPermanentAddress());
+        tenant.setPhoneNumber(dto.getPhoneNumber());
+
         return tenantRepository.save(tenant);
     }
 
-    // READ - lấy tất cả tenant
+    // GET ALL
     @Cacheable(value = "tenants")
     public List<Tenant> getAll() {
         return tenantRepository.findAll();
     }
 
-    // READ - lấy tenant theo ID
+    // GET BY ID
     @Cacheable(value = "tenantById", key = "#id")
     public Tenant getById(String id) {
+
         return tenantRepository.findById(id)
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Không tìm thấy tenant"
-                        ));
+                        )
+                );
     }
 
     // UPDATE
@@ -67,19 +80,20 @@ public class TenantService {
             },
             allEntries = true
     )
-    public Tenant update(String id, Tenant tenant) {
+    public Tenant update(String id, TenantDTO dto) {
 
-        Tenant existing = getById(id);
+        Tenant existing = tenantRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Không tìm thấy tenant"
+                        )
+                );
 
-        existing.setCccd(tenant.getCccd());
-        existing.setFullName(tenant.getFullName());
-        existing.setDateOfBirth(tenant.getDateOfBirth());
-        existing.setPermanentAddress(
-                tenant.getPermanentAddress()
-        );
-        existing.setPhoneNumber(
-                tenant.getPhoneNumber()
-        );
+        existing.setCccd(dto.getCccd());
+        existing.setFullName(dto.getFullName());
+        existing.setDateOfBirth(dto.getDateOfBirth());
+        existing.setPermanentAddress(dto.getPermanentAddress());
+        existing.setPhoneNumber(dto.getPhoneNumber());
 
         return tenantRepository.save(existing);
     }
@@ -104,9 +118,10 @@ public class TenantService {
         tenantRepository.deleteById(id);
     }
 
-    // SEARCH - tìm theo tên
+    // SEARCH
     @Cacheable(value = "tenantsByName", key = "#name")
     public List<Tenant> searchByName(String name) {
+
         return tenantRepository
                 .findByFullNameContainingIgnoreCase(name);
     }

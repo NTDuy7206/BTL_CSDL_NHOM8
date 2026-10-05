@@ -24,7 +24,7 @@ public class IncidentResolution {
     private String result;
 
     @Column(name = "is_completed", length = 10)
-    private String isCompleted;
+    private Boolean isCompleted;
 
     // FK -> incidents.incident_id
     @ManyToOne

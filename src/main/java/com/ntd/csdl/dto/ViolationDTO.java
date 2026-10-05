@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -12,13 +13,17 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ViolationDTO {
 
-    private Long violationId;
-    private String violationName;
-    private LocalDateTime violationDate;
+    private String violationId;
 
-    private Long roomId;
-    private Long ruleId;
+    private String violationName;
+
+    private LocalDate violationDate;
+
+    private String roomId;
+
+    private String ruleId;
 
     private String detailedDescription;
+
     private BigDecimal actualFine;
 }

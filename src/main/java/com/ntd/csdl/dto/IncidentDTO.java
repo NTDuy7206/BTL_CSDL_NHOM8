@@ -4,17 +4,20 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class IncidentDTO {
 
-    private Long incidentId;
+    private String incidentId;
+
     private String incidentContent;
-    private LocalDateTime reportDate;
+
+    private LocalDate reportDate;
+
     private String status;
 
-    private Long roomId;
+    private String roomId;
 }

@@ -15,9 +15,7 @@ public interface CleaningSupportRepository
 
     List<CleaningSupport> findByEmployeeEmployeeId(String employeeId);
 
-    List<CleaningSupport> findByIsCompleted(String isCompleted);
-
-    List<CleaningSupport> findBySupportDate(LocalDate date);
+    List<CleaningSupport> findByIsCompleted(Boolean isCompleted);
 
     // JPQL
     @Query("""

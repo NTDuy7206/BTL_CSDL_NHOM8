@@ -1,5 +1,6 @@
 package com.ntd.csdl.service;
 
+import com.ntd.csdl.dto.IncidentResolutionDTO;
 import com.ntd.csdl.entity.Employee;
 import com.ntd.csdl.entity.Incident;
 import com.ntd.csdl.entity.IncidentResolution;
@@ -22,42 +23,107 @@ public class IncidentResolutionService {
 
     // CREATE
     public IncidentResolution create(
-            String incidentId,
-            String employeeId,
-            IncidentResolution resolution
+            IncidentResolutionDTO dto
     ) {
 
-        // Kiểm tra sự cố
+        if (resolutionRepository
+                .existsById(dto.getResolutionId())) {
+
+            throw new RuntimeException(
+                    "Bản ghi xử lý sự cố đã tồn tại"
+            );
+        }
+
         Incident incident = incidentRepository
-                .findById(incidentId)
+                .findById(dto.getIncidentId())
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Không tìm thấy sự cố"
-                        ));
+                        )
+                );
 
-        // Kiểm tra nhân viên
         Employee employee = employeeRepository
-                .findById(employeeId)
+                .findById(dto.getEmployeeId())
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Không tìm thấy nhân viên"
-                        ));
+                        )
+                );
 
-        // Gán quan hệ
+        IncidentResolution resolution =
+                new IncidentResolution();
+
+        resolution.setResolutionId(
+                dto.getResolutionId()
+        );
+
+        resolution.setResolutionDate(
+                dto.getResolutionDate()
+        );
+
+        resolution.setResult(dto.getResult());
+
+        resolution.setIsCompleted(
+                dto.getIsCompleted()
+        );
+
         resolution.setIncident(incident);
         resolution.setEmployee(employee);
 
-        // Nếu chưa nhập ngày xử lý
-        if (resolution.getResolutionDate() == null) {
-            resolution.setResolutionDate(LocalDate.now());
-        }
+        return resolutionRepository.save(
+                resolution
+        );
+    }
 
-        // Nếu chưa nhập trạng thái
-        if (resolution.getIsCompleted() == null) {
-            resolution.setIsCompleted("NO");
-        }
 
-        return resolutionRepository.save(resolution);
+    public IncidentResolution update(
+            String id,
+            IncidentResolutionDTO dto
+    ) {
+
+        IncidentResolution existing =
+                resolutionRepository
+                        .findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Không tìm thấy bản ghi xử lý"
+                                )
+                        );
+
+        Incident incident =
+                incidentRepository.findById(
+                        dto.getIncidentId()
+                ).orElseThrow(() ->
+                        new RuntimeException(
+                                "Không tìm thấy sự cố"
+                        )
+                );
+
+        Employee employee =
+                employeeRepository.findById(
+                        dto.getEmployeeId()
+                ).orElseThrow(() ->
+                        new RuntimeException(
+                                "Không tìm thấy nhân viên"
+                        )
+                );
+
+        existing.setResolutionDate(
+                dto.getResolutionDate()
+        );
+
+        existing.setResult(dto.getResult());
+
+        existing.setIsCompleted(
+                dto.getIsCompleted()
+        );
+
+        existing.setIncident(incident);
+        existing.setEmployee(employee);
+
+        return resolutionRepository.save(
+                existing
+        );
     }
 
     // READ ALL
@@ -129,7 +195,7 @@ public class IncidentResolutionService {
 
         IncidentResolution resolution = getById(id);
 
-        resolution.setIsCompleted("YES");
+        resolution.setIsCompleted(true);
 
         if (resolution.getResolutionDate() == null) {
             resolution.setResolutionDate(LocalDate.now());

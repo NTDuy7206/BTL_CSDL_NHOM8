@@ -12,11 +12,15 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class ContractDTO {
 
-    private Long contractId;
+    private String contractId;
+
     private LocalDate startDate;
+
     private LocalDate endDate;
+
     private BigDecimal deposit;
 
-    private Long roomId;
-    private Long tenantId;
+    private String roomId;
+
+    private String tenantId;
 }

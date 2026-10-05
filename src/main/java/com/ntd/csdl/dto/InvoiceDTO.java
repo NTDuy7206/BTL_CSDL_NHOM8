@@ -11,16 +11,21 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class InvoiceDTO {
 
-    private Long invoiceId;
+    private String invoiceId;
 
     private Integer month;
+
     private Integer year;
 
     private BigDecimal rentAmount;
+
     private BigDecimal electricityAmount;
+
     private BigDecimal waterAmount;
+
     private BigDecimal fineAmount;
+
     private BigDecimal totalAmount;
 
-    private Long contractId;
+    private String contractId;
 }

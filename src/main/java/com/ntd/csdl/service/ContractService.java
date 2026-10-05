@@ -1,5 +1,6 @@
 package com.ntd.csdl.service;
 
+import com.ntd.csdl.dto.ContractDTO;
 import com.ntd.csdl.entity.Contract;
 import com.ntd.csdl.entity.Room;
 import com.ntd.csdl.entity.Tenant;
@@ -9,7 +10,6 @@ import com.ntd.csdl.repo.TenantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -22,65 +22,31 @@ public class ContractService {
     private final TenantRepository tenantRepository;
 
     // CREATE CONTRACT
-    public Contract create(
-            String roomId,
-            String tenantId,
-            Contract contract
-    ) {
+    public Contract create(ContractDTO dto) {
 
-        // Kiểm tra phòng
-        Room room = roomRepository.findById(roomId)
+        if (contractRepository.existsById(dto.getContractId())) {
+            throw new RuntimeException("Hợp đồng đã tồn tại");
+        }
+
+        Room room = roomRepository.findById(dto.getRoomId())
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Không tìm thấy phòng"
-                        ));
+                        new RuntimeException("Không tìm thấy phòng"));
 
-        // Kiểm tra người thuê
-        Tenant tenant = tenantRepository.findById(tenantId)
+        Tenant tenant = tenantRepository.findById(dto.getTenantId())
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Không tìm thấy người thuê"
-                        ));
+                        new RuntimeException("Không tìm thấy tenant"));
 
-        // Kiểm tra phòng
-        if (!"AVAILABLE".equalsIgnoreCase(room.getStatus())) {
-            throw new RuntimeException(
-                    "Phòng hiện không còn trống"
-            );
-        }
+        Contract contract = new Contract();
 
-        // Kiểm tra ngày
-        if (contract.getStartDate() != null &&
-                contract.getEndDate() != null &&
-                contract.getEndDate()
-                        .isBefore(contract.getStartDate())) {
-
-            throw new RuntimeException(
-                    "Ngày kết thúc phải sau ngày bắt đầu"
-            );
-        }
-
-        // Kiểm tra tiền cọc
-        if (contract.getDeposit() != null &&
-                contract.getDeposit()
-                        .compareTo(BigDecimal.ZERO) < 0) {
-
-            throw new RuntimeException(
-                    "Tiền cọc không được âm"
-            );
-        }
+        contract.setContractId(dto.getContractId());
+        contract.setStartDate(dto.getStartDate());
+        contract.setEndDate(dto.getEndDate());
+        contract.setDeposit(dto.getDeposit());
 
         contract.setRoom(room);
         contract.setTenant(tenant);
 
-        Contract saved = contractRepository.save(contract);
-
-        // Sau khi tạo hợp đồng
-        // phòng chuyển sang OCCUPIED
-        room.setStatus("OCCUPIED");
-        roomRepository.save(room);
-
-        return saved;
+        return contractRepository.save(contract);
     }
 
     // READ
@@ -94,6 +60,34 @@ public class ContractService {
                         new RuntimeException(
                                 "Không tìm thấy hợp đồng"
                         ));
+    }
+
+
+    //UpDate
+
+
+    public Contract update(String id, ContractDTO dto) {
+
+        Contract existing = contractRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Không tìm thấy hợp đồng"));
+
+        Room room = roomRepository.findById(dto.getRoomId())
+                .orElseThrow(() ->
+                        new RuntimeException("Không tìm thấy phòng"));
+
+        Tenant tenant = tenantRepository.findById(dto.getTenantId())
+                .orElseThrow(() ->
+                        new RuntimeException("Không tìm thấy tenant"));
+
+        existing.setStartDate(dto.getStartDate());
+        existing.setEndDate(dto.getEndDate());
+        existing.setDeposit(dto.getDeposit());
+
+        existing.setRoom(room);
+        existing.setTenant(tenant);
+
+        return contractRepository.save(existing);
     }
 
     // DELETE

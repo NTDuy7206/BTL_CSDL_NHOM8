@@ -1,5 +1,6 @@
 package com.ntd.csdl.service;
 
+import com.ntd.csdl.dto.CleaningSupportDTO;
 import com.ntd.csdl.entity.CleaningSupport;
 import com.ntd.csdl.entity.Employee;
 import com.ntd.csdl.entity.Room;
@@ -9,7 +10,6 @@ import com.ntd.csdl.repo.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -20,121 +20,156 @@ public class CleaningSupportService {
     private final RoomRepository roomRepository;
     private final EmployeeRepository employeeRepository;
 
+    // =========================
     // CREATE
-    public CleaningSupport create(
-            String roomId,
-            String employeeId,
-            CleaningSupport support
-    ) {
+    // =========================
+    public CleaningSupport create(CleaningSupportDTO dto) {
 
-        // Kiểm tra phòng
-        Room room = roomRepository
-                .findById(roomId)
+        if (dto.getSupportId() == null) {
+            throw new RuntimeException(
+                    "Support ID không được để trống"
+            );
+        }
+
+        if (cleaningSupportRepository.existsById(dto.getSupportId())) {
+            throw new RuntimeException(
+                    "Bản ghi hỗ trợ đã tồn tại"
+            );
+        }
+
+        Room room = roomRepository.findById(dto.getRoomId())
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Không tìm thấy phòng"
-                        ));
+                        )
+                );
 
-        // Kiểm tra nhân viên
-        Employee employee = employeeRepository
-                .findById(employeeId)
+        Employee employee = employeeRepository.findById(dto.getEmployeeId())
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Không tìm thấy nhân viên"
-                        ));
+                        )
+                );
 
-        // Gán quan hệ
+        CleaningSupport support = new CleaningSupport();
+
+        support.setSupportId(dto.getSupportId());
+        support.setSupportDate(dto.getSupportDate());
+        support.setTaskContent(dto.getTaskContent());
+        support.setIsCompleted(dto.getIsCompleted());
+
         support.setRoom(room);
         support.setEmployee(employee);
-
-        // Ngày hỗ trợ mặc định là ngày hiện tại
-        if (support.getSupportDate() == null) {
-            support.setSupportDate(LocalDate.now());
-        }
-
-        // Mặc định chưa hoàn thành
-        if (support.getIsCompleted() == null) {
-            support.setIsCompleted("NO");
-        }
 
         return cleaningSupportRepository.save(support);
     }
 
-    // READ ALL
+    // =========================
+    // GET ALL
+    // =========================
     public List<CleaningSupport> getAll() {
 
         return cleaningSupportRepository.findAll();
     }
 
-    // READ BY ID
+    // =========================
+    // GET BY ID
+    // =========================
     public CleaningSupport getById(String id) {
 
         return cleaningSupportRepository.findById(id)
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Không tìm thấy yêu cầu hỗ trợ vệ sinh"
-                        ));
+                        )
+                );
     }
 
-    // Lấy công việc theo phòng
-    public List<CleaningSupport> getByRoom(
-            String roomId
-    ) {
+    // =========================
+    // GET BY ROOM
+    // =========================
+    public List<CleaningSupport> getByRoom(String roomId) {
 
         return cleaningSupportRepository
                 .findByRoomRoomId(roomId);
     }
 
-    // Lấy công việc theo nhân viên
+    // =========================
+    // GET BY EMPLOYEE
+    // =========================
     public List<CleaningSupport> getByEmployee(
-            String employeeId
-    ) {
+            String employeeId) {
 
         return cleaningSupportRepository
                 .findByEmployeeEmployeeId(employeeId);
     }
 
-    // Lấy công việc chưa hoàn thành
+    // =========================
+    // GET UNCOMPLETED
+    // =========================
     public List<CleaningSupport> getUncompleted() {
 
         return cleaningSupportRepository
-                .findByIsCompleted("NO");
+                .findByIsCompleted(false);
     }
 
+    // =========================
     // UPDATE
+    // =========================
     public CleaningSupport update(
             String id,
-            CleaningSupport support
-    ) {
+            CleaningSupportDTO dto) {
 
         CleaningSupport existing = getById(id);
 
+        Room room = roomRepository.findById(dto.getRoomId())
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Không tìm thấy phòng"
+                        )
+                );
+
+        Employee employee = employeeRepository.findById(
+                dto.getEmployeeId()
+        ).orElseThrow(() ->
+                new RuntimeException(
+                        "Không tìm thấy nhân viên"
+                )
+        );
+
         existing.setSupportDate(
-                support.getSupportDate()
+                dto.getSupportDate()
         );
 
         existing.setTaskContent(
-                support.getTaskContent()
+                dto.getTaskContent()
         );
 
         existing.setIsCompleted(
-                support.getIsCompleted()
+                dto.getIsCompleted()
         );
+
+        existing.setRoom(room);
+        existing.setEmployee(employee);
 
         return cleaningSupportRepository.save(existing);
     }
 
-    // Đánh dấu đã hoàn thành
+    // =========================
+    // COMPLETE
+    // =========================
     public CleaningSupport complete(String id) {
 
         CleaningSupport support = getById(id);
 
-        support.setIsCompleted("YES");
+        support.setIsCompleted(true);
 
         return cleaningSupportRepository.save(support);
     }
 
+    // =========================
     // DELETE
+    // =========================
     public void delete(String id) {
 
         if (!cleaningSupportRepository.existsById(id)) {
