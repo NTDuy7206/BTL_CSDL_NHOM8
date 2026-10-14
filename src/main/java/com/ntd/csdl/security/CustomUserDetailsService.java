@@ -20,7 +20,8 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserRepository userRepository;
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findAllByUsername(username).stream()
+                .findFirst()
                 .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy user"));
         List<GrantedAuthority> authorities = Collections.singletonList(
                 new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
@@ -30,6 +31,17 @@ public class CustomUserDetailsService implements UserDetailsService {
                 user.getUsername(),
                 user.getPassword(),
                 authorities
+        );
+    }
+
+    public UserDetails loadUserById(long id) throws UsernameNotFoundException {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy user"));
+        List<GrantedAuthority> authorities = Collections.singletonList(
+                new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
+        );
+        return new org.springframework.security.core.userdetails.User(
+                user.getUsername(), user.getPassword(), authorities
         );
     }
 }

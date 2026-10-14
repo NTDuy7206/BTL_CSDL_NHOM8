@@ -32,6 +32,19 @@ public class JwtService {
         return generateToken(new HashMap<>(), userDetails);
     }
 
+    public String generateToken(long userId, UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId);
+        return generateToken(claims, userDetails);
+    }
+
+    public long extractUserId(String token) {
+        Object value = extractClaim(token, claims -> claims.get("userId"));
+        if (value instanceof Number number) return number.longValue();
+        if (value instanceof String text) return Long.parseLong(text);
+        throw new IllegalArgumentException("Token không chứa userId");
+    }
+
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return Jwts.builder()
                 .claims(extraClaims)

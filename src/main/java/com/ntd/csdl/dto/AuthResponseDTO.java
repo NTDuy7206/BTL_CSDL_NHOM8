@@ -1,13 +1,11 @@
 package com.ntd.csdl.dto;
 
-import com.ntd.csdl.entity.User;
-
 public class AuthResponseDTO {
     private String accessToken;
     private String tokenType = "Bearer";
-    private User user;
+    private UserResponseDTO user;
 
-    public AuthResponseDTO(String accessToken, User user) {
+    public AuthResponseDTO(String accessToken, UserResponseDTO user) {
         this.accessToken = accessToken;
         this.user = user;
     }
@@ -28,11 +26,11 @@ public class AuthResponseDTO {
         this.tokenType = tokenType;
     }
 
-    public User getUser() {
+    public UserResponseDTO getUser() {
         return user;
     }
 
-    public void setUser(User user) {
+    public void setUser(UserResponseDTO user) {
         this.user = user;
     }
 }

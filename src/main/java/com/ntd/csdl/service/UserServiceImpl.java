@@ -13,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.query.FluentQuery;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,24 +33,28 @@ public class UserServiceImpl implements  UserService
 
     @Override
     public User login(UserDTO usersDTO) {
-        User userFromDB = userRepository.findByUsername(usersDTO.getUsername())
+        return userRepository.findAllByUsername(usersDTO.getUsername()).stream()
+                .filter(user -> passwordEncoder.matches(usersDTO.getPassword(), user.getPassword()))
+                .findFirst()
                 .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Sai tên đăng nhập hoặc mật khẩu"));
-
-        boolean isMatch = passwordEncoder.matches(usersDTO.getPassword(), userFromDB.getPassword());
-        if (!isMatch) {
-            throw new org.springframework.security.authentication.BadCredentialsException("Sai tên đăng nhập hoặc mật khẩu");
-        }
-        return userFromDB;
     }
 
     @Override
     public User register(UserDTO usersDTO) {
+        if (userRepository.existsByUsername(usersDTO.getUsername())) {
+            throw new com.ntd.csdl.exception.UserException("Tên đăng nhập đã tồn tại");
+        }
         User users=new User();
         users.setUsername(usersDTO.getUsername());
         String encodedPassword = passwordEncoder.encode(usersDTO.getPassword());
         users.setPassword(encodedPassword);
         users.setRole(UserEnum.USER);
-        return userRepository.save(users);
+        try {
+            return userRepository.save(users);
+        } catch (DataIntegrityViolationException ex) {
+            // The database constraint also protects against two simultaneous registrations.
+            throw new com.ntd.csdl.exception.UserException("Tên đăng nhập đã tồn tại");
+        }
     }
 
     @Override
