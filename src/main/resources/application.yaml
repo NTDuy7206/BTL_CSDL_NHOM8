@@ -1,16 +1,33 @@
 spring:
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
   application:
     name: CSDL
   datasource:
-    url: "jdbc:mysql://localhost:3306/btl_csdl"
-    username: root
-    password:
+    url: "${DB_URL:jdbc:mysql://localhost:3306/btl_csdl}"
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+  sql:
+    init:
+      mode: always
   jpa:
     hibernate:
       ddl-auto: validate
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
 server:
-  port: 8080
+  port: ${PORT:8080}
+app:
+  jwt:
+    secret: ${JWT_SECRET:VGhpc0lzT25seUZvckxvY2FsRGV2ZWxvcG1lbnRPbmx5}
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    public-endpoint: ${MINIO_PUBLIC_ENDPOINT:${MINIO_ENDPOINT:http://localhost:9000}}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket: ${MINIO_BUCKET:homebase-avatars}

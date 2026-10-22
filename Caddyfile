@@ -1,0 +1,8 @@
+{$APP_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy app:8080
+}
+
+{$MINIO_DOMAIN} {
+    reverse_proxy minio:9000
+}
