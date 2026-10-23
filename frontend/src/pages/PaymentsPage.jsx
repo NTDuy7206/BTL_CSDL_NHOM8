@@ -1,0 +1,65 @@
+import { useCallback, useEffect, useState } from 'react'
+import Icon from '../components/Icon.jsx'
+
+function money(value) { return `${Number(value || 0).toLocaleString('vi-VN')} ₫` }
+function date(value) { return value ? new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'short'}).format(new Date(value)) : '—' }
+function statusLabel(value) { return value === 'PAID' ? 'Đã xác nhận' : value === 'REJECTED' ? 'Cần kiểm tra lại' : 'Chờ chủ nhà xác nhận' }
+
+export default function PaymentsPage({ request, role, notify }) {
+  const isTenant = role === 'TENANT'
+  const [invoices, setInvoices] = useState([])
+  const [reports, setReports] = useState([])
+  const [invoiceId, setInvoiceId] = useState('')
+  const [reference, setReference] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    setError('')
+    try {
+      const [reportRows, invoiceRows] = await Promise.all([
+        request('/api/payment-reports'),
+        isTenant ? request('/api/invoices') : Promise.resolve([]),
+      ])
+      setReports(Array.isArray(reportRows) ? reportRows : [])
+      setInvoices(Array.isArray(invoiceRows) ? invoiceRows : [])
+    } catch (err) { setError(err.message || 'Không tải được dữ liệu thanh toán.') }
+  }, [request, isTenant])
+
+  useEffect(() => { load() }, [load])
+
+  const settledInvoiceIds = new Set(reports.filter(row => row.status === 'PENDING' || row.status === 'PAID').map(row => row.invoiceId))
+  const payableInvoices = invoices.filter(invoice => !settledInvoiceIds.has(invoice.invoiceId))
+  const selectedInvoice = invoices.find(invoice => invoice.invoiceId === invoiceId)
+
+  async function submit(event) {
+    event.preventDefault(); setBusy(true); setError('')
+    try {
+      await request('/api/payment-reports', { method: 'POST', body: JSON.stringify({ invoiceId, transactionReference: reference }) })
+      setReference(''); notify('Đã gửi thông tin báo thanh toán để chủ nhà đối soát.')
+      await load()
+    } catch (err) { setError(err.message || 'Không gửi được báo cáo thanh toán.') }
+    finally { setBusy(false) }
+  }
+
+  async function review(report, status) {
+    setBusy(true); setError('')
+    try {
+      await request(`/api/payment-reports/${report.paymentReportId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
+      notify(status === 'PAID' ? 'Đã xác nhận thanh toán.' : 'Đã yêu cầu kiểm tra lại thông tin thanh toán.')
+      await load()
+    } catch (err) { setError(err.message || 'Không cập nhật được trạng thái.') }
+    finally { setBusy(false) }
+  }
+
+  return <div className="page-stack">
+    <div className="page-intro"><div className="page-intro-icon"><Icon name="invoice" size={21}/></div><div><h2>Thanh toán</h2><p>{isTenant?'Xem hóa đơn và gửi thông tin chuyển khoản để chủ nhà xác nhận.':'Theo dõi các báo cáo thanh toán do khách thuê gửi.'}</p></div><span className="intro-spacer"/><button className="icon-button refresh-button" onClick={load} title="Tải lại"><Icon name="refresh"/></button></div>
+    {isTenant&&<section className="content-card workflow-card"><div className="workflow-heading"><span className="workflow-icon"><Icon name="invoice"/></span><div><h2>Báo đã thanh toán hóa đơn</h2><p>Thanh toán thực hiện ngoài ứng dụng. Gửi mã giao dịch hoặc nội dung chuyển khoản để chủ nhà đối soát.</p></div></div>
+      <form className="workflow-form" onSubmit={submit}><label className="form-field"><span>Hóa đơn cần thanh toán</span><select required value={invoiceId} onChange={event=>setInvoiceId(event.target.value)}><option value="">Chọn hóa đơn</option>{payableInvoices.map(invoice=><option key={invoice.invoiceId} value={invoice.invoiceId}>{invoice.invoiceId} · Tháng {invoice.month}/{invoice.year} · {money(invoice.totalAmount)}</option>)}</select></label>{selectedInvoice&&<div className="payment-amount"><span>Số tiền hóa đơn</span><b>{money(selectedInvoice.totalAmount)}</b></div>}<label className="form-field workflow-message"><span>Mã giao dịch / nội dung chuyển khoản</span><input required maxLength="100" value={reference} onChange={event=>setReference(event.target.value)} placeholder="Nhập mã giao dịch hoặc nội dung chuyển khoản"/></label><button className="button button-primary" disabled={busy || !invoiceId}><Icon name="check" size={16}/>{busy?'Đang gửi…':'Gửi thông tin thanh toán'}</button>{payableInvoices.length===0&&<small className="workflow-help">Không có hóa đơn mới để báo. Hóa đơn đang chờ xác nhận sẽ xuất hiện trong danh sách bên dưới.</small>}</form><p className="payment-disclaimer">Đây là bước ghi nhận và đối soát thủ công; ứng dụng hiện chưa kết nối ngân hàng hoặc cổng thanh toán trực tuyến.</p>
+    </section>}
+    {error&&<div className="alert alert-error"><Icon name="incident" size={16}/>{error}</div>}
+    <section className="content-card workflow-card"><div className="card-heading"><div><h2>{isTenant?'Lịch sử báo thanh toán':'Báo cáo cần đối soát'}</h2><p>{reports.length} báo cáo thanh toán</p></div><span className="module-count">{reports.filter(row=>row.status==='PENDING').length} đang chờ</span></div>
+      {reports.length ? <div className="payment-table-wrap"><table className="payment-table"><thead><tr><th>Hóa đơn</th>{!isTenant&&<th>Tài khoản</th>}<th>Số tiền</th><th>Mã giao dịch</th><th>Gửi lúc</th><th>Trạng thái</th>{!isTenant&&<th>Đối soát</th>}</tr></thead><tbody>{reports.map(row=><tr key={row.paymentReportId}><td><b>{row.invoiceId}</b></td>{!isTenant&&<td>{row.username}</td>}<td>{money(row.amount)}</td><td>{row.transactionReference}</td><td>{date(row.createdAt)}</td><td><span className={`status-pill status-${String(row.status).toLowerCase()}`}>{statusLabel(row.status)}</span></td>{!isTenant&&<td>{row.status==='PENDING'&&<div className="workflow-buttons"><button className="button button-secondary" disabled={busy} onClick={()=>review(row,'REJECTED')}>Kiểm tra lại</button><button className="button button-primary" disabled={busy} onClick={()=>review(row,'PAID')}>Xác nhận đã thu</button></div>}</td>}</tr>)}</tbody></table></div> : <div className="workflow-empty"><Icon name="invoice" size={22}/><span>Chưa có báo cáo thanh toán.</span></div>}
+    </section>
+  </div>
+}

@@ -41,6 +41,21 @@ public class UserServiceImpl implements  UserService
 
     @Override
     public User register(UserDTO usersDTO) {
+        UserEnum requestedRole = UserEnum.USER;
+        if (usersDTO.getRole() != null && !usersDTO.getRole().isBlank()) {
+            try {
+                requestedRole = UserEnum.valueOf(usersDTO.getRole().trim().toUpperCase());
+            } catch (IllegalArgumentException exception) {
+                throw new com.ntd.csdl.exception.UserException("Vai trò không hợp lệ");
+            }
+            if (requestedRole != UserEnum.OWNER && requestedRole != UserEnum.TENANT) {
+                throw new com.ntd.csdl.exception.UserException("Chỉ được đăng ký vai trò chủ nhà hoặc khách thuê");
+            }
+            if (requestedRole == UserEnum.OWNER) {
+                requestedRole = UserEnum.OWNER_PENDING;
+            }
+        }
+
         if (userRepository.existsByUsername(usersDTO.getUsername())) {
             throw new com.ntd.csdl.exception.UserException("Tên đăng nhập đã tồn tại");
         }
@@ -48,7 +63,7 @@ public class UserServiceImpl implements  UserService
         users.setUsername(usersDTO.getUsername());
         String encodedPassword = passwordEncoder.encode(usersDTO.getPassword());
         users.setPassword(encodedPassword);
-        users.setRole(UserEnum.USER);
+        users.setRole(requestedRole);
         try {
             return userRepository.save(users);
         } catch (DataIntegrityViolationException ex) {

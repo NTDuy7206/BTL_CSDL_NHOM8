@@ -1,6 +1,7 @@
 package com.ntd.csdl.entity;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,7 +20,8 @@ public class User {
     @Column(nullable = false, unique = true)
     private String username;
     @Column(nullable = false)
-    private  String password;
+    @JsonIgnore
+    private String password;
     @Column(nullable = false)
     private UserEnum role;
 }

@@ -5,6 +5,10 @@ import Toast from './components/Toast.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import EntityPage from './pages/EntityPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import ContractRequestsPage from './pages/ContractRequestsPage.jsx'
+import PaymentsPage from './pages/PaymentsPage.jsx'
+import AccountApprovalsPage from './pages/AccountApprovalsPage.jsx'
+import PendingApprovalPage from './pages/PendingApprovalPage.jsx'
 import { modules } from './data/modules.js'
 import { request as apiRequest, signIn, signUp } from './api/client.js'
 
@@ -20,6 +24,7 @@ export default function App() {
   const [toast,setToast]=useState(null)
   const [refreshKey,setRefreshKey]=useState(0)
   const [profile,setProfile]=useState(null)
+  const [pendingRequests,setPendingRequests]=useState(0)
   const activeModule=useMemo(()=>modules.find(module=>module.key===page),[page])
   const notify=useCallback((message,type='success')=>{setToast({message,type});window.setTimeout(()=>setToast(null),3600)},[])
   const request=useCallback(async(path,options={})=>{
@@ -34,11 +39,25 @@ export default function App() {
   },[token,request])
   function finishLogin(result){const nextToken=result.accessToken;const nextUser=result.user||{};sessionStorage.setItem('buildingToken',nextToken);sessionStorage.setItem('buildingUser',JSON.stringify(nextUser));setToken(nextToken);setUser(nextUser);setPage('dashboard');notify('Đăng nhập thành công.');}
   async function login(username,password){const result=await signIn(username,password);finishLogin(result)}
-  async function register(username,password){await signUp(username,password);const result=await signIn(username,password);finishLogin(result)}
+  async function register(username,password,role){await signUp(username,password,role);const result=await signIn(username,password);finishLogin(result)}
   function logout(){sessionStorage.removeItem('buildingToken');sessionStorage.removeItem('buildingUser');setToken('');setUser(null);setProfile(null);setPage('dashboard');setMobileNav(false)}
   function navigate(next){setPage(next);setMobileNav(false)}
   const title=page==='profile'?'Thông tin cá nhân':activeModule?.title||'Tổng quan'
+  const role=user?.role||'USER'
+  const canManage=['OWNER','ADMIN'].includes(role)
+
+  useEffect(()=>{
+    if(!canManage){setPendingRequests(0);return}
+    let active=true
+    const refresh=()=>request('/api/contract-requests').then(rows=>{if(active)setPendingRequests(Array.isArray(rows)?rows.filter(row=>row.status==='PENDING').length:0)}).catch(()=>{})
+    refresh()
+    const timer=window.setInterval(refresh,45000)
+    return()=>{active=false;window.clearInterval(timer)}
+  },[request,canManage])
+
+  const pageTitle=page==='rental-requests'?(role==='TENANT'?'Đăng ký thuê phòng':'Yêu cầu thuê'):page==='payments'?'Thanh toán':page==='account-approvals'?'Duyệt chủ nhà':title
 
   if(!token)return <><AuthPage onLogin={login} onRegister={register}/><Toast toast={toast}/></>
-  return <div className="app-frame"><Sidebar page={page} user={user} profile={profile} onNavigate={navigate} onLogout={logout} open={mobileNav} onClose={()=>setMobileNav(false)}/><div className="app-main"><Topbar title={title} onMenu={()=>setMobileNav(v=>!v)} onRefresh={()=>setRefreshKey(v=>v+1)}/><main className="content-area" key={`${page}-${refreshKey}`}>{activeModule?<EntityPage module={activeModule} request={request} notify={notify}/>:page==='profile'?<ProfilePage request={request} profile={profile} user={user} onProfileUpdated={setProfile} notify={notify}/>:<DashboardPage request={request} user={user} onNavigate={navigate}/>}</main><footer className="app-footer"><span>© 2026 HomeBase · Nhóm 8</span><span>Hệ thống quản lý tòa nhà và phòng cho thuê</span></footer></div><Toast toast={toast}/></div>
+  if(role==='OWNER_PENDING')return <><PendingApprovalPage username={user?.username} onLogout={logout}/><Toast toast={toast}/></>
+  return <div className="app-frame"><Sidebar page={page} user={user} profile={profile} onNavigate={navigate} onLogout={logout} open={mobileNav} onClose={()=>setMobileNav(false)} role={role} pendingRequests={pendingRequests}/><div className="app-main"><Topbar title={pageTitle} onMenu={()=>setMobileNav(v=>!v)} onRefresh={()=>setRefreshKey(v=>v+1)}/><main className="content-area" key={`${page}-${refreshKey}`}>{page==='rental-requests'?<ContractRequestsPage request={request} role={role} notify={notify}/>:page==='payments'?<PaymentsPage request={request} role={role} notify={notify}/>:page==='account-approvals'&&role==='ADMIN'?<AccountApprovalsPage request={request} notify={notify}/>:activeModule?<EntityPage module={activeModule} request={request} notify={notify} readOnly={!canManage}/>:page==='profile'?<ProfilePage request={request} profile={profile} user={user} onProfileUpdated={setProfile} notify={notify}/>:<DashboardPage request={request} user={user} onNavigate={navigate}/>}</main><footer className="app-footer"><span>© 2026 HomeBase · Nhóm 8</span><span>Hệ thống quản lý tòa nhà và phòng cho thuê</span></footer></div><Toast toast={toast}/></div>
 }

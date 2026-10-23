@@ -5,6 +5,7 @@ export default function AuthPage({ onLogin, onRegister }) {
   const [mode, setMode] = useState('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState('TENANT')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -12,7 +13,7 @@ export default function AuthPage({ onLogin, onRegister }) {
 
   async function submit(event) {
     event.preventDefault(); setError(''); setBusy(true)
-    try { await (isRegister ? onRegister(username.trim(), password) : onLogin(username.trim(), password)) }
+    try { await (isRegister ? onRegister(username.trim(), password, role) : onLogin(username.trim(), password)) }
     catch (err) { setError(err.message || 'Đã xảy ra lỗi. Vui lòng thử lại.') }
     finally { setBusy(false) }
   }
@@ -36,8 +37,8 @@ export default function AuthPage({ onLogin, onRegister }) {
       </div>
       <span className="eyebrow muted-eyebrow">{isRegister?'BẮT ĐẦU SỬ DỤNG':'CHÀO MỪNG TRỞ LẠI'}</span><h2>{isRegister?'Tạo tài khoản':'Đăng nhập'}</h2><p className="auth-description">{isRegister?'Tạo tài khoản để truy cập hệ thống quản lý tòa nhà.':'Đăng nhập bằng tài khoản của bạn để tiếp tục.'}</p>
       {error&&<div className="alert alert-error"><Icon name="incident" size={16}/><span>{error}</span></div>}
-      <form onSubmit={submit} className="auth-form"><label className="form-field"><span>Tên đăng nhập</span><div className="input-icon"><Icon name="users" size={17}/><input autoComplete="username" required value={username} onChange={e=>setUsername(e.target.value)} placeholder="Nhập tên đăng nhập" /></div></label><label className="form-field"><span>Mật khẩu</span><div className="input-icon"><Icon name="rules" size={17}/><input type={showPassword?'text':'password'} autoComplete={isRegister?'new-password':'current-password'} required value={password} onChange={e=>setPassword(e.target.value)} placeholder="Nhập mật khẩu" /><button type="button" className="password-toggle" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?'Ẩn mật khẩu':'Hiện mật khẩu'}>{showPassword?<Icon name="eyeOff" size={17}/>:<Icon name="eye" size={17}/>}</button></div></label><button className="button button-primary button-wide" disabled={busy}>{busy?<span className="spinner small-spinner"/>:null}{busy?'Đang xử lý…':isRegister?'Tạo tài khoản':'Đăng nhập'}{!busy&&<Icon name="chevron" size={17}/>}</button></form>
-      <div className="auth-note"><Icon name="check" size={15}/><span>Tài khoản mới được cấp quyền <b>USER</b>. Quyền quản trị cần tài khoản ADMIN.</span></div>
+      <form onSubmit={submit} className="auth-form"><label className="form-field"><span>Tên đăng nhập</span><div className="input-icon"><Icon name="users" size={17}/><input autoComplete="username" required value={username} onChange={e=>setUsername(e.target.value)} placeholder="Nhập tên đăng nhập" /></div></label><label className="form-field"><span>Mật khẩu</span><div className="input-icon"><Icon name="rules" size={17}/><input type={showPassword?'text':'password'} autoComplete={isRegister?'new-password':'current-password'} required value={password} onChange={e=>setPassword(e.target.value)} placeholder="Nhập mật khẩu" /><button type="button" className="password-toggle" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?'Ẩn mật khẩu':'Hiện mật khẩu'}>{showPassword?<Icon name="eyeOff" size={17}/>:<Icon name="eye" size={17}/>}</button></div></label>{isRegister&&<label className="form-field"><span>Loại tài khoản</span><div className="input-icon"><Icon name="building" size={17}/><select value={role} onChange={event=>setRole(event.target.value)}><option value="TENANT">Khách thuê</option><option value="OWNER">Chủ nhà</option></select></div></label>}<button className="button button-primary button-wide" disabled={busy}>{busy?<span className="spinner small-spinner"/>:null}{busy?'Đang xử lý…':isRegister?'Tạo tài khoản':'Đăng nhập'}{!busy&&<Icon name="chevron" size={17}/>}</button></form>
+      <div className="auth-note"><Icon name="check" size={15}/><span>{isRegister?(role==='OWNER'?<>Đăng ký chủ nhà cần ADMIN xác minh trước khi được quản lý dữ liệu. ADMIN không thể tự đăng ký.</>:<>Khách thuê được xem dữ liệu, gửi yêu cầu thuê và báo thanh toán; không được sửa dữ liệu quản lý.</>):<>Vai trò được cấp theo tài khoản; quyền quản trị không thể tự đăng ký.</>}</span></div>
     </div><footer className="auth-copyright">© 2026 HomeBase <i/> Quản lý tòa nhà thông minh</footer></section>
   </main>
 }

@@ -57,7 +57,7 @@ docker compose -f compose.minio.yml up -d --build
 
 Lần đầu chạy, Docker dựng MinIO Community từ mã nguồn chính thức; thao tác này cần Internet và có thể mất vài phút. Cách này tránh phụ thuộc vào ảnh dựng sẵn từ registry đã trả lỗi `401 Unauthorized`. MinIO cung cấp API lưu trữ tại `http://localhost:9000` và trang quản trị tại `http://localhost:9001`. Cấu hình phát triển mặc định là `minioadmin` / `minioadmin`. Có thể đổi thông tin này bằng biến môi trường `MINIO_ROOT_USER` và `MINIO_ROOT_PASSWORD`; nếu đổi, đặt thêm `MINIO_ACCESS_KEY` và `MINIO_SECRET_KEY` tương ứng trước khi chạy Spring Boot.
 
-Ứng dụng tạo bảng `user_profiles` từ `src/main/resources/schema.sql` khi khởi động. Ảnh hồ sơ hỗ trợ JPG, PNG và WEBP, tối đa 5 MB. Nếu không dùng MinIO thì phần hồ sơ văn bản vẫn dùng được; chức năng tải ảnh cần dịch vụ MinIO chạy ở cổng 9000.
+Ứng dụng tạo các bảng phụ `user_profiles`, `contract_requests` và `payment_reports` từ `src/main/resources/schema.sql` khi khởi động. Schema nghiệp vụ chính (phòng, hợp đồng, hóa đơn, khách thuê…) vẫn phải được nạp trước. Ảnh hồ sơ hỗ trợ JPG, PNG và WEBP, tối đa 5 MB. Nếu không dùng MinIO thì phần hồ sơ văn bản vẫn dùng được; chức năng tải ảnh cần dịch vụ MinIO chạy ở cổng 9000.
 
 ## 6. Khởi động ứng dụng
 
@@ -82,26 +82,34 @@ Mở `http://localhost:5173`. Vite chuyển tiếp các request `/api` tới Spr
 
 ## 7. Tạo tài khoản và sử dụng giao diện
 
-Sau khi schema được nạp và backend đã chạy, mở giao diện rồi chọn **Đăng ký** để tạo tài khoản:
-- Username: `demo`
-- Password: `Demo@1234`
+Sau khi schema được nạp và backend đã chạy, mở giao diện, chọn **Tạo tài khoản**, nhập username/password và chọn loại tài khoản:
+- **Khách thuê:** được xem dữ liệu, gửi yêu cầu thuê phòng và báo thông tin thanh toán; không được sửa dữ liệu quản lý.
+- **Chủ nhà:** tài khoản mới ở trạng thái chờ; ADMIN phải duyệt trước khi tài khoản được quản lý dữ liệu.
+- **ADMIN:** không thể tự đăng ký; quyền này chỉ được cấp riêng trong cơ sở dữ liệu.
 
-Đây là thông tin mẫu để đăng ký lần đầu, **không phải tài khoản seed có sẵn**. Sau khi đăng ký thành công, giao diện tự đăng nhập và chuyển tới dashboard. Tài khoản mới được cấp vai trò `USER`.
+Đăng ký thành công sẽ tự đăng nhập. Chủ nhà đang chờ duyệt được đưa tới màn hình thông báo trạng thái.
+
+Ví dụ body đăng ký khách thuê qua API:
 
 ```json
 {
   "username": "demo",
-  "password": "Demo@1234"
+  "password": "Demo@1234",
+  "role": "TENANT"
 }
 ```
 
-Sau khi đăng ký, dùng thông tin mẫu ở trên để đăng nhập:
+Đăng ký chủ nhà dùng `"role": "OWNER"`; API lưu trạng thái `OWNER_PENDING` để ADMIN duyệt. Ví dụ trên chỉ là dữ liệu mẫu, không phải tài khoản seed.
+
+Sau khi đăng ký, dùng username và mật khẩu vừa chọn để đăng nhập:
 
 | Username | Password | Vai trò khi đăng ký |
 |---|---|---|
-| `demo` | `Demo@1234` | `USER` |
+| Username đã đăng ký | Mật khẩu đã đặt | `TENANT`, `OWNER_PENDING` hoặc `OWNER` sau khi được duyệt |
 
-Chọn các phân hệ ở thanh bên để xem, tìm kiếm, thêm, sửa, xóa và xuất dữ liệu CSV. Mục **Thông tin cá nhân** cho phép cập nhật tên hiển thị, email, số điện thoại và ảnh đại diện. Giao diện gửi JWT tự động nên không cần Postman cho thao tác thông thường. Nếu username `demo` đã tồn tại, hãy dùng mật khẩu đã đặt hoặc chọn username khác. Endpoint đăng ký chỉ tự gán vai trò `USER`, không tạo tài khoản `ADMIN`.
+Chủ nhà và ADMIN có thể quản lý dữ liệu; khách thuê chỉ xem dữ liệu và không có nút sửa/xóa. Chủ nhà nhận yêu cầu thuê mới trong mục **Yêu cầu thuê**; sau khi chấp thuận, chủ nhà cần lập hợp đồng chính thức ở phân hệ **Hợp đồng**. Mục **Thanh toán** ghi nhận báo cáo chuyển khoản để chủ nhà đối soát thủ công; ứng dụng chưa kết nối ngân hàng/cổng thanh toán và không tự chuyển tiền. Mục **Thông tin cá nhân** cho phép cập nhật hồ sơ của chính tài khoản. Giao diện tự gửi JWT nên không cần Postman cho thao tác thông thường. Nếu username đã tồn tại, hãy dùng mật khẩu đã đặt hoặc chọn username khác. Đăng ký không thể tạo ADMIN. Sau khi ADMIN duyệt chủ nhà hoặc đổi vai trò tài khoản, hãy đăng xuất rồi đăng nhập lại để giao diện tải quyền mới.
+
+Trong schema hiện tại, các chủ nhà dùng chung dữ liệu tòa nhà và hộp thư yêu cầu; CSDL chưa gắn từng phòng với tài khoản chủ nhà. Khách thuê cũng xem dữ liệu dùng chung của hệ thống. Nếu triển khai cho nhiều tòa nhà/chủ nhà độc lập, cần bổ sung liên kết chủ nhà–phòng và khách thuê–hợp đồng để giới hạn dữ liệu theo tài khoản.
 
 ### Đăng nhập và lấy JWT
 
@@ -123,7 +131,7 @@ Response đăng nhập có JWT. Trong Postman, mở Authorization → chọn Bea
 Authorization: Bearer <JWT-nhận-được-từ-login>
 ```
 
-Các API ngoài `/api/auth/**` yêu cầu xác thực theo cấu hình Spring Security. Để gọi API admin, tài khoản cần có authority `ADMIN`; tài khoản đăng ký theo hướng dẫn trên chỉ có vai trò `USER`.
+Các API ngoài `/api/auth/**` yêu cầu xác thực theo cấu hình Spring Security. Vai trò `TENANT` bị chặn với các thao tác ghi thông thường; chỉ được POST yêu cầu thuê và báo thanh toán. Vai trò `OWNER` được quản lý dữ liệu; `OWNER_PENDING` chỉ truy cập hồ sơ cho đến khi ADMIN duyệt. Chỉ tài khoản `ADMIN` được duyệt chủ nhà và truy cập `/api/admin/**`.
 
 ## 8. Gọi API và truy vấn dữ liệu
 
@@ -133,7 +141,7 @@ Quy trình thử API trong Postman:
 
 1. Gọi `/api/auth/login` và lấy token.
 2. Gửi token Bearer cho các API cần đăng nhập.
-3. Gọi `GET` để đọc danh sách/chi tiết; dùng `POST`, `PUT` hoặc `DELETE` theo endpoint được khai báo trong controller.
+3. Gọi `GET` để đọc danh sách/chi tiết; quyền `POST`, `PUT`, `PATCH`, `DELETE` được giới hạn theo vai trò. Khách thuê gửi đề nghị tại `POST /api/contract-requests` và báo thanh toán tại `POST /api/payment-reports`.
 4. Các câu SQL báo cáo có thể chạy trong MySQL Workbench/DBeaver trên database `btl_csdl`; cần import dữ liệu mẫu trước nếu muốn truy vấn có kết quả.
 
 ## 9. Một số lỗi thường gặp
