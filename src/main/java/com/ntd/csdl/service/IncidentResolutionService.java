@@ -191,11 +191,16 @@ public class IncidentResolutionService {
     }
 
     // Đánh dấu đã hoàn thành
+    @org.springframework.transaction.annotation.Transactional
     public IncidentResolution complete(String id) {
 
         IncidentResolution resolution = getById(id);
 
         resolution.setIsCompleted(true);
+        if (resolution.getIncident() != null) {
+            resolution.getIncident().setStatus("COMPLETED");
+            incidentRepository.save(resolution.getIncident());
+        }
 
         if (resolution.getResolutionDate() == null) {
             resolution.setResolutionDate(LocalDate.now());

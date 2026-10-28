@@ -18,6 +18,11 @@ public class IncidentResolutionController {
 
     private final IncidentResolutionService incidentResolutionService;
 
+    @PutMapping("/{id}/complete")
+    public IncidentResolution complete(@PathVariable String id) {
+        return incidentResolutionService.complete(id);
+    }
+
     @GetMapping
     public ResponseEntity<List<IncidentResolution>> getAll() {
         return ResponseEntity.ok(

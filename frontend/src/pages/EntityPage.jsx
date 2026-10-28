@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import DataTable from '../components/DataTable.jsx'
 import RecordDialog from '../components/RecordDialog.jsx'
 import Icon from '../components/Icon.jsx'
+import QueryPanel from '../components/QueryPanel.jsx'
 
 export default function EntityPage({ module, request, notify, readOnly = false, onCreateRental }) {
   const [rows,setRows]=useState([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [editing,setEditing]=useState(undefined)
@@ -10,6 +11,7 @@ export default function EntityPage({ module, request, notify, readOnly = false, 
   async function save(payload){const isEdit=Boolean(editing);const path=isEdit?`${module.path}/${encodeURIComponent(editing[module.id])}`:module.path;await request(path,{method:isEdit?'PUT':'POST',body:JSON.stringify(payload)});notify(isEdit?'Cập nhật thành công.':'Đã thêm bản ghi mới.');await load()}
   async function remove(row){const id=row?.[module.id];if(!id){notify('Không đọc được mã bản ghi.','error');return}if(!window.confirm(`Xóa ${module.singular} “${id}”? Thao tác này không thể hoàn tác.`))return;try{await request(`${module.path}/${encodeURIComponent(id)}`,{method:'DELETE'});notify('Đã xóa bản ghi.');await load()}catch(err){notify(err.message||'Không xóa được bản ghi.','error')}}
   return <div className="page-stack"><div className="page-intro"><div className="page-intro-icon"><Icon name={module.icon} size={21}/></div><div><h2>{module.title}</h2><p>Xem và quản lý thông tin {module.singular} trong cơ sở dữ liệu.</p></div><span className="intro-spacer"/><button className="icon-button refresh-button" onClick={load} title="Tải lại"><Icon name="refresh"/></button></div>
+    <QueryPanel module={module} request={request} readOnly={readOnly} onResults={result=>{setRows(result);setError('');setLoading(false)}}/>
     <DataTable module={module} rows={rows} loading={loading} error={error} onRetry={load} readOnly={readOnly} onCreate={()=>onCreateRental&&['tenants','contracts'].includes(module.key)?onCreateRental():setEditing(null)} onEdit={row=>setEditing(row)} onDelete={remove}/>
     {editing!==undefined&&<RecordDialog key={`${module.key}-${editing?.[module.id]||'new'}`} module={module} record={editing} onClose={()=>setEditing(undefined)} onSave={save}/>}
   </div>

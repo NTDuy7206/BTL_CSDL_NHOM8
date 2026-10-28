@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import StatCard from '../components/StatCard.jsx'
 import Icon from '../components/Icon.jsx'
 import { visibleModules } from '../data/permissions.js'
+import DemoDataNotice from '../components/DemoDataNotice.jsx'
 
 const highlights = [
   { key: 'rooms', label: 'Tổng số phòng', icon: 'building', accent: 'blue', note: 'Phòng & mặt bằng' },
@@ -48,6 +49,7 @@ export default function DashboardPage({ request, user, onNavigate }) {
   const [counts, setCounts] = useState({})
   const [rooms, setRooms] = useState([])
   const [busy, setBusy] = useState(true)
+  const [dataVersion,setDataVersion]=useState(0)
 
   useEffect(() => {
     let mounted = true
@@ -66,7 +68,7 @@ export default function DashboardPage({ request, user, onNavigate }) {
       if (mounted) setBusy(false)
     })
     return () => { mounted = false }
-  }, [request,user?.role])
+  }, [request,user?.role,dataVersion])
 
   const valid = Object.values(counts).filter(value => value !== null).length
   const vacantCount = rooms.filter(room => roomStatusGroup(room.status) === 'vacant').length
@@ -76,6 +78,7 @@ export default function DashboardPage({ request, user, onNavigate }) {
   const values = { ...counts, vacant: counts.rooms === null ? null : vacantCount, rented: counts.rooms === null ? null : rentedCount }
 
   return <div className="page-stack">
+    <DemoDataNotice user={user} request={request} onDone={()=>setDataVersion(v=>v+1)}/>
     <section className="welcome-banner"><div><span className="welcome-tag">TỔNG QUAN HỆ THỐNG</span><h2>Xin chào, {user?.username || 'bạn'} <span>✦</span></h2><p>Theo dõi nhanh hoạt động và dữ liệu của tòa nhà hôm nay.</p></div><div className="welcome-graphic"><div className="graphic-circle circle-one"/><div className="graphic-circle circle-two"/><Icon name="building" size={82} strokeWidth={1.2}/></div></section>
     <div className="section-heading"><div><h2>Chỉ số chính</h2><p>Số liệu được lấy trực tiếp từ các phân hệ</p></div><button className="text-action" onClick={() => onNavigate('rooms')}>Xem phòng <Icon name="chevron" size={15}/></button></div>
     <section className="stat-grid">{highlights.filter(item=>user?.role==='ADMIN'||item.key!=='tenants').map(item => <StatCard key={item.key} {...item} value={busy ? '…' : values[item.key] === null ? '—' : values[item.key] ?? 0}/>)}</section>

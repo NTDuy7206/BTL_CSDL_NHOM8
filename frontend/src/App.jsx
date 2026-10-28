@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AuthPage from './components/AuthPage.jsx'
+import AccountsPage from './pages/AccountsPage.jsx'
 import { Sidebar, Topbar } from './components/AppShell.jsx'
 import Toast from './components/Toast.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
@@ -44,7 +45,7 @@ export default function App() {
   async function register(username,password,role){await signUp(username,password,role);const result=await signIn(username,password);finishLogin(result)}
   function logout(){sessionStorage.removeItem('buildingToken');sessionStorage.removeItem('buildingUser');setToken('');setUser(null);setProfile(null);setPage('dashboard');setMobileNav(false)}
   function navigate(next){setPage(next);setMobileNav(false)}
-  const title=page==='profile'?'Thông tin cá nhân':activeModule?.title||'Tổng quan'
+  const title=page==='accounts'?'Tài khoản':page==='profile'?'Thông tin cá nhân':activeModule?.title||'Tổng quan'
   const role=user?.role||'USER'
   const canManage=role==='ADMIN'
 
@@ -60,5 +61,5 @@ export default function App() {
   const pageTitle=page==='rental-requests'?(role==='USER'?'Đăng ký thuê phòng':'Yêu cầu thuê'):page==='payments'?'Thanh toán':page==='new-rental'?'Thêm khách & hợp đồng':title
 
   if(!token)return <><AuthPage onLogin={login} onRegister={register}/><Toast toast={toast}/></>
-  return <div className="app-frame"><Sidebar page={page} user={user} profile={profile} onNavigate={navigate} onLogout={logout} open={mobileNav} onClose={()=>setMobileNav(false)} role={role} pendingRequests={pendingRequests}/><div className="app-main"><Topbar title={pageTitle} onMenu={()=>setMobileNav(v=>!v)} onRefresh={()=>setRefreshKey(v=>v+1)}/><main className="content-area" key={`${page}-${refreshKey}`}>{page==='rental-requests'?<ContractRequestsPage request={request} role={role} notify={notify}/>:page==='payments'?<PaymentsPage request={request} role={role} notify={notify}/>:page==='new-rental'&&canManage?<RentalForm admin request={request} notify={notify} onSaved={()=>navigate('contracts')}/>:activeModule?.key==='incidents'&&!canManage?<IncidentReportPage module={activeModule} request={request} notify={notify}/>:activeModule?<EntityPage module={activeModule} request={request} notify={notify} readOnly={!canManage} onCreateRental={canManage?()=>navigate('new-rental'):undefined}/>:page==='profile'?<ProfilePage request={request} profile={profile} user={user} onProfileUpdated={setProfile} notify={notify}/>:<DashboardPage request={request} user={user} onNavigate={navigate}/>}</main><footer className="app-footer"><span>© 2026 HomeBase · Nhóm 8</span><span>Hệ thống quản lý tòa nhà và phòng cho thuê</span></footer></div><Toast toast={toast}/></div>
+  return <div className="app-frame"><Sidebar page={page} user={user} profile={profile} onNavigate={navigate} onLogout={logout} open={mobileNav} onClose={()=>setMobileNav(false)} role={role} pendingRequests={pendingRequests}/><div className="app-main"><Topbar title={pageTitle} onMenu={()=>setMobileNav(v=>!v)} onRefresh={()=>setRefreshKey(v=>v+1)}/><main className="content-area" key={`${page}-${refreshKey}`}>{page==='accounts'&&canManage?<AccountsPage request={request}/>:page==='rental-requests'?<ContractRequestsPage request={request} role={role} notify={notify}/>:page==='payments'?<PaymentsPage request={request} role={role} notify={notify}/>:page==='new-rental'&&canManage?<RentalForm admin request={request} notify={notify} onSaved={()=>navigate('contracts')}/>:activeModule?.key==='incidents'&&!canManage?<IncidentReportPage module={activeModule} request={request} notify={notify}/>:activeModule?<EntityPage module={activeModule} request={request} notify={notify} readOnly={!canManage} onCreateRental={canManage?()=>navigate('new-rental'):undefined}/>:page==='profile'?<ProfilePage request={request} profile={profile} user={user} onProfileUpdated={setProfile} notify={notify}/>:<DashboardPage request={request} user={user} onNavigate={navigate}/>}</main><footer className="app-footer"><span>© 2026 HomeBase · Nhóm 8</span><span>Hệ thống quản lý tòa nhà và phòng cho thuê</span></footer></div><Toast toast={toast}/></div>
 }

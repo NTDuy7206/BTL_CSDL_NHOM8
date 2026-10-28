@@ -42,6 +42,11 @@ CREATE TABLE IF NOT EXISTS payment_reports (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Preserve USER=0 and ADMIN=1 while consolidating legacy roles.
+CREATE TABLE IF NOT EXISTS demo_seed_history (
+    seed_key VARCHAR(100) NOT NULL PRIMARY KEY,
+    completed BOOLEAN NOT NULL DEFAULT FALSE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 UPDATE user SET role=1 WHERE role=4;
 UPDATE user SET role=0 WHERE role IN (2,3);
 CREATE TABLE IF NOT EXISTS tenant_accounts (
