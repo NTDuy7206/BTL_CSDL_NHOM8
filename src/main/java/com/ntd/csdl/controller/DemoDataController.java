@@ -1,11 +1,8 @@
 package com.ntd.csdl.controller;
-import com.ntd.csdl.service.DemoDataService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import java.util.Map;
-@RestController @RequiredArgsConstructor @RequestMapping("/api/demo")
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
+@RestController @RequestMapping("/api/demo")
 public class DemoDataController {
- private final DemoDataService demo;
- @PostMapping("/my-rental") public Map<String,Object> myRental(Authentication auth){return demo.myRental(auth.getName());}
+ @PostMapping("/my-rental") public void myRental(){throw new ResponseStatusException(HttpStatus.GONE,"Chức năng tạo hồ sơ mẫu đã bỏ. Hãy chọn chủ nhà và phòng có sẵn trong Đăng ký hợp đồng");}
 }

@@ -31,6 +31,8 @@ public class UserServiceImpl implements  UserService
     @Autowired
     private JwtService jwtService;
 
+    @Autowired private LandlordService landlords;
+
     @Override
     public User login(UserDTO usersDTO) {
         return userRepository.findAllByUsername(usersDTO.getUsername()).stream()
@@ -40,6 +42,7 @@ public class UserServiceImpl implements  UserService
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public User register(UserDTO usersDTO) {
         UserEnum requestedRole = UserEnum.USER;
         if (usersDTO.getRole() != null && !usersDTO.getRole().isBlank()) {
@@ -63,7 +66,9 @@ public class UserServiceImpl implements  UserService
         users.setPassword(encodedPassword);
         users.setRole(requestedRole);
         try {
-            return userRepository.save(users);
+            User saved=userRepository.saveAndFlush(users);
+            if(requestedRole==UserEnum.ADMIN)landlords.setup(saved,usersDTO.getRoomCount(),List.of());
+            return saved;
         } catch (DataIntegrityViolationException ex) {
             // The database constraint also protects against two simultaneous registrations.
             throw new com.ntd.csdl.exception.UserException("Tên đăng nhập đã tồn tại");

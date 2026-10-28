@@ -19,6 +19,7 @@ public class ContractRequestService {
     private final TenantRepository tenants;
     private final RentalWorkflowService rentals;
     private final JdbcTemplate jdbc;
+    private final LandlordService landlords;
     private ContractRequestResponseDTO response(ContractRequest request) {
         ContractRequestResponseDTO dto=new ContractRequestResponseDTO(request);
         jdbc.query("SELECT tenant_id,requested_end_date,contract_id FROM rental_request_details WHERE request_id=?",
@@ -29,7 +30,7 @@ public class ContractRequestService {
     @Transactional(readOnly=true)
     public List<ContractRequestResponseDTO> getForAccount(String username,boolean tenant) {
         var requests=tenant?requestRepository.findByApplicantUsernameOrderByCreatedAtDesc(username):requestRepository.findAllByOrderByCreatedAtDesc();
-        return requests.stream().map(this::response).toList();
+        return requests.stream().filter(r->tenant||Objects.equals(landlords.owner(r.getRoom().getRoomId()),userRepository.findByUsername(username).orElseThrow().getId())).map(this::response).toList();
     }
     @Transactional
     public ContractRequestResponseDTO create(String username,ContractRequestCreateDTO dto) {
@@ -42,6 +43,7 @@ public class ContractRequestService {
         if(requestRepository.findByApplicantUsernameOrderByCreatedAtDesc(username).stream().anyMatch(r->
             r.getStatus()==ContractRequestStatus.PENDING && r.getRoom().getRoomId().equals(dto.getRoomId())))
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Bạn đã có yêu cầu đang chờ cho phòng này");
+        landlords.requireAssigned(dto.getRoomId());
         Room room=roomRepository.findById(dto.getRoomId()).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy phòng"));
         if(!RentalWorkflowService.available(room.getStatus()))
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Phòng không còn trống");
@@ -54,12 +56,13 @@ public class ContractRequestService {
         return response(request);
     }
     @Transactional
-    public ContractRequestResponseDTO updateStatus(Long id,ContractRequestStatusDTO dto) {
+    public ContractRequestResponseDTO updateStatus(Long id,ContractRequestStatusDTO dto,String username) {
         String status=dto.getStatus().trim().toUpperCase(Locale.ROOT);
         if(!Set.of("APPROVED","REJECTED").contains(status))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Chỉ chọn APPROVED hoặc REJECTED");
         jdbc.queryForList("SELECT request_id FROM contract_requests WHERE request_id=? FOR UPDATE",id);
         ContractRequest request=requestRepository.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy yêu cầu"));
+        landlords.requireOwner(username,request.getRoom().getRoomId());
         if(request.getStatus()!=ContractRequestStatus.PENDING)
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Yêu cầu đã được xử lý");
         if(status.equals("APPROVED")) {

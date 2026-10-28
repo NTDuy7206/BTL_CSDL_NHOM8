@@ -64,3 +64,13 @@ CREATE TABLE IF NOT EXISTS rental_request_details (
     CONSTRAINT fk_rr_tenant FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id),
     CONSTRAINT fk_rr_contract FOREIGN KEY(contract_id) REFERENCES contracts(contract_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS landlord_properties (
+ user_id BIGINT NOT NULL PRIMARY KEY, room_limit INT NOT NULL,
+ CONSTRAINT fk_lp_user FOREIGN KEY(user_id) REFERENCES user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS room_landlords (
+ room_id VARCHAR(20) NOT NULL PRIMARY KEY, user_id BIGINT NOT NULL,
+ CONSTRAINT fk_rl_room FOREIGN KEY(room_id) REFERENCES rooms(room_id),
+ CONSTRAINT fk_rl_user FOREIGN KEY(user_id) REFERENCES landlord_properties(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

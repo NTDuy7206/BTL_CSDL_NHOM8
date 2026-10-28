@@ -30,6 +30,6 @@ export async function signIn(username, password) {
   return request('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) })
 }
 
-export async function signUp(username, password, role) {
-  return request('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, password, role }) })
+export async function signUp(username, password, role,roomCount) {
+  return request('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, password, role,roomCount }) })
 }

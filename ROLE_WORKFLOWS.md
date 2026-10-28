@@ -4,13 +4,16 @@ Trang đăng ký có hai lựa chọn: **Khách thuê (USER)** và **Chủ nhà 
 
 | Chức năng | USER – khách thuê | ADMIN – chủ nhà |
 |---|---|---|
-| Nhân viên, phòng, nội quy, vi phạm, danh sách sự cố | Xem | Thêm, sửa, xóa |
+| Nhân viên, nội quy, vi phạm, danh sách sự cố | Xem | Thêm, sửa, xóa |
+| Phòng | Xem; chọn phòng theo chủ nhà khi đăng ký thuê | Khai báo số lượng một lần, sửa các phòng thuộc mình |
 | Báo cáo sự cố | Báo sự cố tại phòng có hợp đồng đang hiệu lực của mình | Quản lý, cập nhật và xử lý |
-| Hợp đồng | Gửi đăng ký; chỉ xem hợp đồng được liên kết với tài khoản mình | Tạo, duyệt, quản lý tất cả |
-| Hóa đơn | Chỉ xem hóa đơn thuộc hợp đồng của mình | Quản lý tất cả |
+| Hợp đồng | Gửi đăng ký; chỉ xem hợp đồng được liên kết với tài khoản mình | Tạo, duyệt, quản lý theo phòng thuộc mình |
+| Hóa đơn | Chỉ xem hóa đơn thuộc hợp đồng của mình | Quản lý theo phòng thuộc mình |
 | Thanh toán | Gửi mã chuyển khoản cho hóa đơn của mình | Đối soát, xác nhận đã thu hoặc từ chối |
 | Khách thuê, chỉ số điện nước, xử lý sự cố, dọn dẹp | Không truy cập API quản lý | Quản lý |
 | Thông tin cá nhân | Xem và cập nhật hồ sơ của mình | Xem và cập nhật hồ sơ của mình |
+
+Chủ nhà mới khai báo thêm số phòng khi đăng ký. Chủ nhà đã có tài khoản vào Phòng / mặt bằng để thiết lập số phòng một lần và liên kết các phòng cũ thực sự thuộc về mình. Xem DEMO_AND_QUERIES.md để biết cách cấu hình. Khách thuê chọn chủ nhà trước khi chọn phòng; gửi yêu cầu và duyệt hợp đồng không tạo phòng mới.
 
 ## Chủ nhà thêm khách và hợp đồng
 

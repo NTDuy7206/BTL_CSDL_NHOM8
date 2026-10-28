@@ -24,13 +24,14 @@ public class PaymentReportService {
     private final InvoiceRepository invoiceRepository;
     private final UserRepository userRepository;
     private final RentalWorkflowService rentals;
+    private final LandlordService landlords;
 
     @Transactional(readOnly = true)
     public List<PaymentReportResponseDTO> getForAccount(String username, boolean tenant) {
         List<PaymentReport> reports = tenant
                 ? reportRepository.findByPayerUsernameOrderByCreatedAtDesc(username)
                 : reportRepository.findAllByOrderByCreatedAtDesc();
-        return reports.stream().map(PaymentReportResponseDTO::new).toList();
+        return reports.stream().filter(r->tenant||landlords.owns(username,r.getInvoice().getContract().getRoom().getRoomId())).map(PaymentReportResponseDTO::new).toList();
     }
 
     @Transactional
@@ -63,7 +64,7 @@ public class PaymentReportService {
     }
 
     @Transactional
-    public PaymentReportResponseDTO updateStatus(Long id, PaymentReportStatusDTO dto) {
+    public PaymentReportResponseDTO updateStatus(Long id, PaymentReportStatusDTO dto,String username) {
         PaymentReportStatus status;
         try {
             status = PaymentReportStatus.valueOf(dto.getStatus().trim().toUpperCase());
@@ -76,6 +77,7 @@ public class PaymentReportService {
 
         PaymentReport report = reportRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy báo cáo thanh toán"));
+        landlords.requireOwner(username,report.getInvoice().getContract().getRoom().getRoomId());
         if (report.getStatus() != PaymentReportStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Báo cáo thanh toán này đã được xử lý");
         }

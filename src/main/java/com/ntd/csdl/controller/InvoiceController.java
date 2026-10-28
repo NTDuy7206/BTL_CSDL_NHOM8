@@ -17,6 +17,8 @@ import java.util.List;
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
+    private final com.ntd.csdl.service.LandlordService landlords;
+    private final com.ntd.csdl.repo.ContractRepository contracts;
     private final com.ntd.csdl.service.RentalWorkflowService rentals;
     private final com.ntd.csdl.repo.InvoiceRepository invoices;
 
@@ -24,7 +26,7 @@ public class InvoiceController {
     public ResponseEntity<List<Invoice>> getAll(org.springframework.security.core.Authentication auth) {
         String tenantId=rentals.tenantId(auth.getName());
         return ResponseEntity.ok(
-                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? invoiceService.getAll() : (tenantId==null ? List.of() : invoices.findByContractTenantTenantId(tenantId))
+                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? invoiceService.getAll().stream().filter(i->landlords.owns(auth.getName(),i.getContract().getRoom().getRoomId())).toList() : (tenantId==null ? List.of() : invoices.findByContractTenantTenantId(tenantId))
         );
     }
 
@@ -32,13 +34,17 @@ public class InvoiceController {
     public ResponseEntity<Invoice> getById(
             @PathVariable String id, org.springframework.security.core.Authentication auth) {
         Invoice invoice=invoiceService.getById(id);
-        if(!com.ntd.csdl.service.RentalWorkflowService.admin(auth)) rentals.requireOwner(auth.getName(),invoice.getContract());
+        if(com.ntd.csdl.service.RentalWorkflowService.admin(auth))landlords.requireOwner(auth.getName(),invoice.getContract().getRoom().getRoomId());
+        else rentals.requireOwner(auth.getName(),invoice.getContract());
         return ResponseEntity.ok(invoice);
     }
 
+    private String ownedId(String id,String name){landlords.requireOwner(name,invoiceService.getById(id).getContract().getRoom().getRoomId());return id;}
+
     @PostMapping
     public ResponseEntity<Invoice> create(
-            @Valid @RequestBody InvoiceDTO dto) {
+            @Valid @RequestBody InvoiceDTO dto,org.springframework.security.core.Authentication auth) {
+        landlords.requireOwner(auth.getName(),contracts.findById(dto.getContractId()).orElseThrow().getRoom().getRoomId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -48,18 +54,18 @@ public class InvoiceController {
     @PutMapping("/{id}")
     public ResponseEntity<Invoice> update(
             @PathVariable String id,
-            @Valid @RequestBody InvoiceDTO dto) {
+            @Valid @RequestBody InvoiceDTO dto,org.springframework.security.core.Authentication auth) {
+        landlords.requireOwner(auth.getName(),contracts.findById(dto.getContractId()).orElseThrow().getRoom().getRoomId());
 
         return ResponseEntity.ok(
-                invoiceService.update(id, dto)
+                invoiceService.update(ownedId(id,auth.getName()), dto)
         );
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
-            @PathVariable String id) {
-
-        invoiceService.delete(id);
+            @PathVariable String id,org.springframework.security.core.Authentication auth) {
+        invoiceService.delete(ownedId(id,auth.getName()));
 
         return ResponseEntity.noContent().build();
     }

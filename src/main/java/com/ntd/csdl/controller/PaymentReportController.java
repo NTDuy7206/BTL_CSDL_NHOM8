@@ -33,7 +33,7 @@ public class PaymentReportController {
     }
 
     @PatchMapping("/{id}/status")
-    public PaymentReportResponseDTO updateStatus(@PathVariable Long id, @Valid @RequestBody PaymentReportStatusDTO dto) {
-        return service.updateStatus(id, dto);
+    public PaymentReportResponseDTO updateStatus(@PathVariable Long id, @Valid @RequestBody PaymentReportStatusDTO dto,Authentication auth) {
+        return service.updateStatus(id, dto,auth.getName());
     }
 }

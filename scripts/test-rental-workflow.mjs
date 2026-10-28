@@ -8,12 +8,13 @@ async function call(path,token='',method='GET',body,expected=200){
  const r=await fetch(base+'/api'+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});const raw=await r.text();let data;try{data=raw?JSON.parse(raw):null}catch{data=raw}
  assert.equal(r.status,expected,method+' '+path+' => '+raw);checks++;return data
 }
-async function account(role,n){const username='test_'+suffix+n;const u=await call('/auth/register','','POST',{username,password,role},201);assert.equal(u.role,role);const l=await call('/auth/login','','POST',{username,password});return{username,token:l.accessToken}}
+async function account(role,n){const username='test_'+suffix+n;const u=await call('/auth/register','','POST',{username,password,role,...(role==='ADMIN'?{roomCount:3}:{})},201);assert.equal(u.role,role);const l=await call('/auth/login','','POST',{username,password});return{username,token:l.accessToken}}
 const admin=await account('ADMIN','a'),user=await account('USER','u'),other=await account('USER','o')
 await call('/auth/register','','POST',{username:admin.username,password,role:'ADMIN'},400)
 await call('/auth/register','','POST',{username:'bad_'+suffix,password,role:'OWNER'},400)
-const room1='R1'+suffix,room2='R2'+suffix
-for(const roomId of [room1,room2])await call('/rooms',admin.token,'POST',{roomId,floor:1,area:30,roomType:'Studio',status:'Trống',basePrice:3000000},201)
+const inventory=await call('/rooms',admin.token);assert.equal(inventory.length,3)
+const [room1,room2,room3]=inventory.map(r=>r.roomId)
+for(const roomId of [room1,room2])await call('/rooms/'+roomId,admin.token,'PUT',{roomId,floor:1,area:30,roomType:'Studio',status:'Trống',basePrice:3000000})
 for(const p of ['/rooms','/employees','/incidents','/rules','/violations','/contracts','/invoices'])await call(p,user.token)
 for(const p of ['/tenants','/utility-readings','/incident-resolutions','/cleaning-supports','/rentals/accounts','/admin/accounts'])await call(p,user.token,'GET',null,403)
 for(const method of ['POST','PUT','DELETE'])await call('/rooms'+(method==='POST'?'':'/'+room1),user.token,method,{roomId:room1},403)
@@ -47,7 +48,7 @@ await call('/payment-reports/'+payment.paymentReportId+'/status',user.token,'PAT
 await call('/payment-reports/'+payment.paymentReportId+'/status',admin.token,'PATCH',{status:'PAID'})
 const before=(await call('/tenants',admin.token)).length
 const tenant2={...person,cccd:'D'+suffix,fullName:'Trần Khách Mới'}
-await call('/rentals',admin.token,'POST',{tenant:tenant2,accountUsername:other.username,roomId:'DOES_NOT_EXIST',startDate:today,endDate:end,deposit:500000},404)
+await call('/rentals',admin.token,'POST',{tenant:tenant2,accountUsername:other.username,roomId:'DOES_NOT_EXIST',startDate:today,endDate:end,deposit:500000},403)
 assert.equal((await call('/tenants',admin.token)).length,before,'Transaction must roll back tenant creation')
 assert.equal(await call('/rentals/me',other.token),null)
 const rental=await call('/rentals',admin.token,'POST',{tenant:tenant2,accountUsername:other.username,roomId:room2,startDate:today,endDate:end,deposit:500000})
@@ -55,8 +56,7 @@ assert.equal(rental.tenant.fullName,tenant2.fullName);assert.equal(rental.room.r
 assert.equal((await call('/contracts',other.token))[0].contractId,rental.contractId)
 await call('/rentals',user.token,'POST',{tenant:tenant2,roomId:room2,startDate:today,endDate:end,deposit:0},403)
 await call('/rentals',admin.token,'POST',{tenant:tenant2,tenantId:rental.tenant.tenantId,accountUsername:other.username,roomId:room2,startDate:today,endDate:end,deposit:0},409)
-const room3='R3'+suffix
-await call('/rooms',admin.token,'POST',{roomId:room3,floor:1,area:30,roomType:'Studio',status:'AVAILABLE',basePrice:3000000},201)
+await call('/rooms/'+room3,admin.token,'PUT',{roomId:room3,floor:1,area:30,roomType:'Studio',status:'AVAILABLE',basePrice:3000000})
 const competing=await Promise.all([[user,person],[other,tenant2]].map(([a,p])=>call('/contract-requests',a.token,'POST',{roomId:room3,requestedStartDate:today,requestedEndDate:end,tenant:p},201)))
 const approvalStatuses=await Promise.all(competing.map(r=>fetch(base+'/api/contract-requests/'+r.requestId+'/status',{method:'PATCH',headers:{Authorization:'Bearer '+admin.token,'Content-Type':'application/json'},body:JSON.stringify({status:'APPROVED'})}).then(r=>r.status)))
 assert.deepEqual(approvalStatuses.sort(),[200,409],'Exactly one concurrent approval may book a room');checks++

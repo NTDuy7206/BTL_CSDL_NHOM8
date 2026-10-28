@@ -43,12 +43,24 @@ Tổng cộng 116 bản ghi giả lập, có liên kết khóa ngoại. Tên, đ
 
 Các nút thêm, sửa, xóa trong bảng và các màn hình đăng ký hợp đồng, xử lý yêu cầu thuê, báo cáo sự cố, thanh toán hóa đơn vẫn sử dụng API tương ứng. Tổng giá trị hóa đơn là tổng số tiền trên hóa đơn, không phải số tiền đã thực thu. Thanh toán hiện là ghi nhận/báo thanh toán trong hệ thống, chưa tích hợp cổng ngân hàng.
 
-Khách thuê chỉ thấy các chức năng được phân quyền. Hợp đồng và hóa đơn chỉ hiển thị hồ sơ của chính tài khoản đăng nhập. Để thử nhanh bằng tài khoản khách chưa có hồ sơ, tại Tổng quan bấm **Tạo hồ sơ thuê mẫu cho tôi**: hệ thống lưu thêm phòng, hồ sơ, hợp đồng và hóa đơn liên kết với tài khoản đó. Bấm lại không tạo thêm hồ sơ. Nếu tài khoản đã có hồ sơ thì dùng dữ liệu hiện có.
+Khách thuê chỉ thấy các chức năng được phân quyền. Hợp đồng và hóa đơn chỉ hiển thị hồ sơ của chính tài khoản đăng nhập. Trong **Đăng ký hợp đồng**, chọn **Thuê của chủ nhà** rồi chọn phòng còn trống của người đó. Yêu cầu thuê chỉ gửi đến chủ nhà sở hữu phòng; khi được duyệt sẽ dùng chính phòng có sẵn.
+
+## Số phòng cố định theo chủ nhà
+
+Khi đăng ký ADMIN, nhập thêm **Số phòng cho thuê cố định** (1–200). Hệ thống tạo đúng số phòng này, ban đầu là UNCONFIGURED. Vào **Phòng / mặt bằng**, sửa diện tích, loại phòng, giá thuê và trạng thái AVAILABLE để mở đăng ký thuê. Mã phòng được tạo riêng cho từng chủ nhà.
+
+Chủ nhà đã có tài khoản trước bản cập nhật: vào **Phòng / mặt bằng** để thiết lập một lần. Nhập tổng số phòng, chọn các phòng cũ thực sự thuộc về mình. Hệ thống giữ nguyên các phòng được chọn, chỉ tạo phòng chờ cấu hình cho số lượng còn thiếu. Phòng đã được liên kết với chủ nhà khác không thể nhận lại. Không tự đoán ai sở hữu các phòng cũ.
+
+Sau khi xác nhận, số phòng cố định. Giao diện cho sửa thông tin từng phòng; API thêm/xóa phòng trực tiếp bị chặn. Việc đăng ký thuê, tạo khách thuê hoặc duyệt hợp đồng không tạo thêm phòng. API cũ POST /api/demo/my-rental trả 410 và không thay đổi dữ liệu. Những phòng/hợp đồng mẫu cá nhân đã được tạo trước bản sửa vẫn được giữ nguyên để tránh mất dữ liệu; chủ nhà có thể xác định lại quyền sở hữu ở bước thiết lập phòng cũ.
+
+Danh sách phòng, hợp đồng, hóa đơn và yêu cầu thuê của chủ nhà được lọc theo phòng thuộc về họ. Các phân hệ dùng chung khác như nhân viên và nội quy vẫn theo phân quyền của dự án hiện tại.
 
 ## Kiểm tra dành cho người phát triển
 
-Các truy vấn lọc dùng `GET /api/queries/{module}/{action}?value=...`. Nút hoàn thành dùng `PUT /api/incident-resolutions/{id}/complete` hoặc `PUT /api/cleaning-supports/{id}/complete`. Tạo hồ sơ cá nhân dùng `POST /api/demo/my-rental` (USER).
+Các truy vấn lọc dùng `GET /api/queries/{module}/{action}?value=...`. Nút hoàn thành dùng `PUT /api/incident-resolutions/{id}/complete` hoặc `PUT /api/cleaning-supports/{id}/complete`. Danh sách chủ nhà/phòng dùng GET /api/landlords và GET /api/landlords/rooms. Thiết lập một lần dùng POST /api/landlords/property (ADMIN).
 
-Chạy `scripts/test-query-workflow.mjs` với Node khi ứng dụng thử chạy tại `http://127.0.0.1:18082`. Script chỉ cho phép địa chỉ local, tạo tài khoản kiểm thử riêng và kiểm tra dữ liệu, tra cứu, phân quyền và hồ sơ cá nhân. Dùng database thử riêng; script có tạo và cập nhật bản ghi.
+Chạy `scripts/test-query-workflow.mjs` với Node khi ứng dụng thử chạy tại `http://127.0.0.1:18082`. Script chỉ cho phép địa chỉ local, tạo tài khoản kiểm thử riêng và kiểm tra số phòng cố định, quyền sở hữu, lựa chọn chủ nhà và đăng ký thuê dùng phòng có sẵn. Dùng database thử riêng; script có tạo và cập nhật bản ghi.
 
 Để thấy thay đổi trên trang công khai, Railway phải triển khai commit mới trên nhánh `main`. Việc cập nhật mã nguồn trên máy không tự thay thế bản đang chạy nếu Railway chưa nhận commit.
+
+Kiểm tra logic tồn kho phòng bằng `./mvnw -Dtest=LandlordInventoryTests test` (Windows dùng mvnw.cmd). Bộ kiểm tra dùng H2 trong bộ nhớ cho giao dịch/khóa ngoại và mô phỏng repository JPA; không thay thế kiểm tra toàn bộ luồng trên MySQL.

@@ -4,8 +4,6 @@ import com.ntd.csdl.dto.RoomDTO;
 import com.ntd.csdl.entity.Room;
 import com.ntd.csdl.repo.RoomRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -21,16 +19,6 @@ public class RoomService {
     // CREATE
     // =========================
 
-    @CacheEvict(
-            value = {
-                    "rooms",
-                    "roomById",
-                    "roomsByStatus",
-                    "roomsByType",
-                    "roomsByMaxPrice"
-            },
-            allEntries = true
-    )
     public Room create(RoomDTO dto) {
 
         if (dto.getRoomId() == null ||
@@ -72,15 +60,10 @@ public class RoomService {
     // READ
     // =========================
 
-    @Cacheable(value = "rooms")
     public List<Room> getAll() {
         return roomRepository.findAll();
     }
 
-    @Cacheable(
-            value = "roomById",
-            key = "#id"
-    )
     public Room getById(String id) {
 
         return roomRepository.findById(id)
@@ -94,16 +77,6 @@ public class RoomService {
     // UPDATE
     // =========================
 
-    @CacheEvict(
-            value = {
-                    "rooms",
-                    "roomById",
-                    "roomsByStatus",
-                    "roomsByType",
-                    "roomsByMaxPrice"
-            },
-            allEntries = true
-    )
     public Room update(String id, RoomDTO dto) {
 
         Room existing = getById(id);
@@ -129,16 +102,6 @@ public class RoomService {
     // DELETE
     // =========================
 
-    @CacheEvict(
-            value = {
-                    "rooms",
-                    "roomById",
-                    "roomsByStatus",
-                    "roomsByType",
-                    "roomsByMaxPrice"
-            },
-            allEntries = true
-    )
     public void delete(String id) {
 
         if (!roomRepository.existsById(id)) {
@@ -155,26 +118,14 @@ public class RoomService {
     // SEARCH
     // =========================
 
-    @Cacheable(
-            value = "roomsByStatus",
-            key = "#status"
-    )
     public List<Room> getByStatus(String status) {
         return roomRepository.findByStatus(status);
     }
 
-    @Cacheable(
-            value = "roomsByType",
-            key = "#type"
-    )
     public List<Room> getByType(String type) {
         return roomRepository.findByRoomType(type);
     }
 
-    @Cacheable(
-            value = "roomsByMaxPrice",
-            key = "#price"
-    )
     public List<Room> findByMaxPrice(BigDecimal price) {
         return roomRepository
                 .findByBasePriceLessThanEqual(price);

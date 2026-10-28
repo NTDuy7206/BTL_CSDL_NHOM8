@@ -33,7 +33,7 @@ public class ContractRequestController {
     }
 
     @PatchMapping("/{id}/status")
-    public ContractRequestResponseDTO updateStatus(@PathVariable Long id, @Valid @RequestBody ContractRequestStatusDTO dto) {
-        return service.updateStatus(id, dto);
+    public ContractRequestResponseDTO updateStatus(@PathVariable Long id, @Valid @RequestBody ContractRequestStatusDTO dto,Authentication auth) {
+        return service.updateStatus(id, dto,auth.getName());
     }
 }

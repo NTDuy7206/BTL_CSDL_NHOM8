@@ -15,6 +15,7 @@ public class UserDTO {
     @NotBlank(message = "Password không được để trống")
     private  String password;
     private String role;
+    private Integer roomCount;
 
     public String getRole() {
         return role;

@@ -42,7 +42,7 @@ export default function App() {
   },[token,request])
   function finishLogin(result){const nextToken=result.accessToken;const nextUser=result.user||{};sessionStorage.setItem('buildingToken',nextToken);sessionStorage.setItem('buildingUser',JSON.stringify(nextUser));setToken(nextToken);setUser(nextUser);setPage('dashboard');notify('Đăng nhập thành công.');}
   async function login(username,password){const result=await signIn(username,password);finishLogin(result)}
-  async function register(username,password,role){await signUp(username,password,role);const result=await signIn(username,password);finishLogin(result)}
+  async function register(username,password,role,roomCount){await signUp(username,password,role,roomCount);const result=await signIn(username,password);finishLogin(result)}
   function logout(){sessionStorage.removeItem('buildingToken');sessionStorage.removeItem('buildingUser');setToken('');setUser(null);setProfile(null);setPage('dashboard');setMobileNav(false)}
   function navigate(next){setPage(next);setMobileNav(false)}
   const title=page==='accounts'?'Tài khoản':page==='profile'?'Thông tin cá nhân':activeModule?.title||'Tổng quan'

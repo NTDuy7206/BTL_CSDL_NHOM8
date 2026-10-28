@@ -17,20 +17,23 @@ import java.util.List;
 public class RoomController {
 
     private final RoomService roomService;
+    private final com.ntd.csdl.service.LandlordService landlords;
 
     @GetMapping
-    public ResponseEntity<List<Room>> getAll() {
-        return ResponseEntity.ok(roomService.getAll());
+    public ResponseEntity<List<Room>> getAll(org.springframework.security.core.Authentication auth) {
+        return ResponseEntity.ok(com.ntd.csdl.service.RentalWorkflowService.admin(auth)?landlords.mine(auth.getName()):roomService.getAll());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Room> getById(
-            @PathVariable String id) {
-
+            @PathVariable String id,org.springframework.security.core.Authentication auth) {
+        if(com.ntd.csdl.service.RentalWorkflowService.admin(auth))landlords.requireOwner(auth.getName(),id);
         return ResponseEntity.ok(
                 roomService.getById(id)
         );
     }
+
+    private Room blockInventory(){throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,"Khai báo số phòng tại thiết lập chủ nhà; không thêm phòng khi tạo hồ sơ thuê");}
 
     @PostMapping
     public ResponseEntity<Room> create(
@@ -38,14 +41,14 @@ public class RoomController {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(roomService.create(dto));
+                .body(blockInventory());
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Room> update(
             @PathVariable String id,
-            @Valid @RequestBody RoomDTO dto) {
-
+            @Valid @RequestBody RoomDTO dto, org.springframework.security.core.Authentication auth) {
+        landlords.requireOwner(auth.getName(),id);
         return ResponseEntity.ok(
                 roomService.update(id, dto)
         );
@@ -55,8 +58,8 @@ public class RoomController {
     public ResponseEntity<Void> delete(
             @PathVariable String id) {
 
-        roomService.delete(id);
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,"Số phòng đã cố định; chỉ được sửa thông tin phòng");
 
-        return ResponseEntity.noContent().build();
+
     }
 }

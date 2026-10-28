@@ -98,7 +98,7 @@ Ví dụ body đăng ký khách thuê qua API:
 }
 ```
 
-Đăng ký chủ nhà dùng `"role": "ADMIN"`. Chỉ có hai lựa chọn USER và ADMIN. Ví dụ trên là dữ liệu mẫu, không phải tài khoản có sẵn.
+Đăng ký chủ nhà dùng `"role": "ADMIN"` và `"roomCount": 10` (thay 10 bằng số phòng thực tế, từ 1 đến 200). Số phòng được khai báo một lần; sửa thông tin từng phòng tại Phòng / mặt bằng để mở cho thuê. Chỉ có hai lựa chọn USER và ADMIN. Ví dụ trên là dữ liệu mẫu, không phải tài khoản có sẵn.
 
 Sau khi đăng ký, dùng username và mật khẩu vừa chọn để đăng nhập:
 

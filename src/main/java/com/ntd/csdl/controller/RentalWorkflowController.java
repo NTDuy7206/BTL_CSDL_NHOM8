@@ -12,7 +12,8 @@ import java.util.*;
 @RequestMapping("/api/rentals")
 public class RentalWorkflowController {
     private final RentalWorkflowService rentals;
-    @PostMapping public Contract create(@Valid @RequestBody RentalDTO dto){ return rentals.create(dto); }
+    private final com.ntd.csdl.service.LandlordService landlords;
+    @PostMapping public Contract create(@Valid @RequestBody RentalDTO dto,Authentication auth){landlords.requireOwner(auth.getName(),dto.getRoomId());return rentals.create(dto); }
     @GetMapping("/accounts") public List<Map<String,Object>> accounts(){return rentals.accounts();}
     @GetMapping("/me") public Tenant me(Authentication auth){return rentals.myTenant(auth.getName());}
 }

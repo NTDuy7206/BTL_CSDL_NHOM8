@@ -17,12 +17,13 @@ import java.util.List;
 public class ContractController {
 
     private final ContractService contractService;
+    private final com.ntd.csdl.service.LandlordService landlords;
     private final com.ntd.csdl.service.RentalWorkflowService rentals;
 
     @GetMapping
     public ResponseEntity<List<Contract>> getAll(org.springframework.security.core.Authentication auth) {
         return ResponseEntity.ok(
-                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? contractService.getAll() : rentals.mine(auth.getName())
+                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? contractService.getAll().stream().filter(c->landlords.owns(auth.getName(),c.getRoom().getRoomId())).toList() : rentals.mine(auth.getName())
         );
     }
 
@@ -30,13 +31,17 @@ public class ContractController {
     public ResponseEntity<Contract> getById(
             @PathVariable String id, org.springframework.security.core.Authentication auth) {
         Contract contract=contractService.getById(id);
-        if(!com.ntd.csdl.service.RentalWorkflowService.admin(auth)) rentals.requireOwner(auth.getName(),contract);
+        if(com.ntd.csdl.service.RentalWorkflowService.admin(auth))landlords.requireOwner(auth.getName(),contract.getRoom().getRoomId());
+        else rentals.requireOwner(auth.getName(),contract);
         return ResponseEntity.ok(contract);
     }
 
+    private String ownedId(String id,String name){landlords.requireOwner(name,contractService.getById(id).getRoom().getRoomId());return id;}
+
     @PostMapping
     public ResponseEntity<Contract> create(
-            @Valid @RequestBody ContractDTO dto) {
+            @Valid @RequestBody ContractDTO dto,org.springframework.security.core.Authentication auth) {
+        landlords.requireOwner(auth.getName(),dto.getRoomId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -46,18 +51,18 @@ public class ContractController {
     @PutMapping("/{id}")
     public ResponseEntity<Contract> update(
             @PathVariable String id,
-            @Valid @RequestBody ContractDTO dto) {
+            @Valid @RequestBody ContractDTO dto,org.springframework.security.core.Authentication auth) {
+        landlords.requireOwner(auth.getName(),dto.getRoomId());
 
         return ResponseEntity.ok(
-                contractService.update(id, dto)
+                contractService.update(ownedId(id,auth.getName()), dto)
         );
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
-            @PathVariable String id) {
-
-        contractService.delete(id);
+            @PathVariable String id,org.springframework.security.core.Authentication auth) {
+        contractService.delete(ownedId(id,auth.getName()));
 
         return ResponseEntity.noContent().build();
     }
