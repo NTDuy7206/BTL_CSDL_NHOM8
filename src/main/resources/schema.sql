@@ -40,3 +40,22 @@ CREATE TABLE IF NOT EXISTS payment_reports (
     CONSTRAINT fk_payment_reports_user FOREIGN KEY (payer_user_id) REFERENCES `user` (id) ON DELETE CASCADE,
     CONSTRAINT fk_payment_reports_invoice FOREIGN KEY (invoice_id) REFERENCES invoices (invoice_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Preserve USER=0 and ADMIN=1 while consolidating legacy roles.
+UPDATE user SET role=1 WHERE role=4;
+UPDATE user SET role=0 WHERE role IN (2,3);
+CREATE TABLE IF NOT EXISTS tenant_accounts (
+    user_id BIGINT NOT NULL PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL UNIQUE,
+    CONSTRAINT fk_ta_user FOREIGN KEY(user_id) REFERENCES user(id),
+    CONSTRAINT fk_ta_tenant FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS rental_request_details (
+    request_id BIGINT NOT NULL PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL,
+    requested_end_date DATE NOT NULL,
+    contract_id VARCHAR(20) NULL,
+    CONSTRAINT fk_rr_request FOREIGN KEY(request_id) REFERENCES contract_requests(request_id) ON DELETE CASCADE,
+    CONSTRAINT fk_rr_tenant FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id),
+    CONSTRAINT fk_rr_contract FOREIGN KEY(contract_id) REFERENCES contracts(contract_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

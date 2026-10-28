@@ -151,3 +151,16 @@
 .pending-approval-note svg{flex:none;margin-top:1px}
 @media(max-width:850px){.workflow-card{padding:19px}.workflow-row{align-items:flex-start;flex-wrap:wrap}.workflow-buttons{width:100%;padding-left:56px}.payment-table .workflow-buttons{padding-left:0}}
 @media(max-width:620px){.workflow-form{grid-template-columns:1fr}.workflow-message{grid-column:auto}.workflow-form .button{width:100%;justify-content:center}.workflow-row>.status-pill{margin-left:56px}.workflow-buttons{padding-left:0}.pending-approval-card{padding:27px}}
+
+.rental-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-top:24px}
+.rental-form .form-field small{color:#62708a;line-height:1.6}
+.rental-form input,.rental-form select,.rental-form textarea{width:100%;min-height:44px;padding:11px 13px;border:1px solid #dce3ef;border-radius:9px;background:#fff;color:#26364f;font:inherit;font-size:14px;box-sizing:border-box;outline:none}
+.rental-form textarea{min-height:90px;resize:vertical}
+.rental-form input:focus,.rental-form select:focus,.rental-form textarea:focus{border-color:#5879ed;box-shadow:0 0 0 3px #5879ed18}
+.rental-form>.button{justify-self:start;min-height:44px;padding:12px 20px}
+.rental-preview{grid-column:1/-1;padding:24px;background:#f1f5ff;border:1px solid #dce5ff;border-radius:14px}
+.rental-preview h3{margin:0 0 18px;color:#23387a}
+.rental-preview dl{display:grid;grid-template-columns:170px 1fr;gap:12px;margin:0}
+.rental-preview dt{color:#67748c}.rental-preview dd{margin:0;color:#17284c;font-weight:600;overflow-wrap:anywhere}
+.workflow-row .workflow-main span{line-height:1.8}
+@media(max-width:680px){.rental-form{grid-template-columns:1fr}.rental-preview dl{grid-template-columns:1fr;gap:8px}.rental-preview dd{margin-bottom:8px}}

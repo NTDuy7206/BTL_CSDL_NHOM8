@@ -31,25 +31,26 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/", "/index.html", "/login", "/register", "/assets/**", "/favicon.ico", "/favicon.svg").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/contract-requests").hasAnyRole("TENANT", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/contract-requests").hasAnyRole("TENANT", "OWNER", "ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/contract-requests/*/status").hasAnyRole("OWNER", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/payment-reports").hasAnyRole("TENANT", "OWNER", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/payment-reports").hasRole("TENANT")
-                        .requestMatchers(HttpMethod.PATCH, "/api/payment-reports/*/status").hasAnyRole("OWNER", "ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/profile").hasAnyRole("USER", "OWNER_PENDING", "TENANT", "OWNER", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/profile/avatar").hasAnyRole("USER", "OWNER_PENDING", "TENANT", "OWNER", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/profile").hasAnyRole("USER", "OWNER_PENDING", "TENANT", "OWNER", "ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole("USER", "TENANT", "OWNER", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/**").hasAnyRole("OWNER", "ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/**").hasAnyRole("OWNER", "ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/**").hasAnyRole("OWNER", "ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/**").hasAnyRole("OWNER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/employees/**", "/api/rooms/**", "/api/incidents/**", "/api/rules/**", "/api/violations/**", "/api/contracts", "/api/contracts/*", "/api/invoices", "/api/invoices/*", "/api/contract-requests", "/api/payment-reports", "/api/rentals/me", "/api/profile").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/incidents", "/api/profile/avatar").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/contract-requests", "/api/payment-reports").hasRole("USER")
+                        .requestMatchers(HttpMethod.PUT, "/api/profile").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.disable())
                 .httpBasic(Customizer.withDefaults())
+                .exceptionHandling(errors -> errors
+                    .authenticationEntryPoint((request, response, ex) -> {
+                        response.setStatus(401);
+                        response.setContentType("text/plain;charset=UTF-8");
+                        response.getWriter().write("Vui lòng đăng nhập để tiếp tục");
+                    })
+                    .accessDeniedHandler((request, response, ex) -> {
+                        response.setStatus(403);
+                        response.setContentType("text/plain;charset=UTF-8");
+                        response.getWriter().write("Tài khoản không có quyền thực hiện thao tác này");
+                    }))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -17,21 +17,21 @@ import java.util.List;
 public class ContractController {
 
     private final ContractService contractService;
+    private final com.ntd.csdl.service.RentalWorkflowService rentals;
 
     @GetMapping
-    public ResponseEntity<List<Contract>> getAll() {
+    public ResponseEntity<List<Contract>> getAll(org.springframework.security.core.Authentication auth) {
         return ResponseEntity.ok(
-                contractService.getAll()
+                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? contractService.getAll() : rentals.mine(auth.getName())
         );
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Contract> getById(
-            @PathVariable String id) {
-
-        return ResponseEntity.ok(
-                contractService.getById(id)
-        );
+            @PathVariable String id, org.springframework.security.core.Authentication auth) {
+        Contract contract=contractService.getById(id);
+        if(!com.ntd.csdl.service.RentalWorkflowService.admin(auth)) rentals.requireOwner(auth.getName(),contract);
+        return ResponseEntity.ok(contract);
     }
 
     @PostMapping

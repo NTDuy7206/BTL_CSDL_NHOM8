@@ -7,8 +7,10 @@ import EntityPage from './pages/EntityPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import ContractRequestsPage from './pages/ContractRequestsPage.jsx'
 import PaymentsPage from './pages/PaymentsPage.jsx'
-import AccountApprovalsPage from './pages/AccountApprovalsPage.jsx'
-import PendingApprovalPage from './pages/PendingApprovalPage.jsx'
+
+import RentalForm from './components/RentalForm.jsx'
+import IncidentReportPage from './pages/IncidentReportPage.jsx'
+import {visibleModules} from './data/permissions.js'
 import { modules } from './data/modules.js'
 import { request as apiRequest, signIn, signUp } from './api/client.js'
 
@@ -25,7 +27,7 @@ export default function App() {
   const [refreshKey,setRefreshKey]=useState(0)
   const [profile,setProfile]=useState(null)
   const [pendingRequests,setPendingRequests]=useState(0)
-  const activeModule=useMemo(()=>modules.find(module=>module.key===page),[page])
+  const activeModule=useMemo(()=>visibleModules(user?.role).find(module=>module.key===page),[page,user?.role])
   const notify=useCallback((message,type='success')=>{setToast({message,type});window.setTimeout(()=>setToast(null),3600)},[])
   const request=useCallback(async(path,options={})=>{
     try{return await apiRequest(path,{...options,token})}
@@ -44,7 +46,7 @@ export default function App() {
   function navigate(next){setPage(next);setMobileNav(false)}
   const title=page==='profile'?'Thông tin cá nhân':activeModule?.title||'Tổng quan'
   const role=user?.role||'USER'
-  const canManage=['OWNER','ADMIN'].includes(role)
+  const canManage=role==='ADMIN'
 
   useEffect(()=>{
     if(!canManage){setPendingRequests(0);return}
@@ -55,9 +57,8 @@ export default function App() {
     return()=>{active=false;window.clearInterval(timer)}
   },[request,canManage])
 
-  const pageTitle=page==='rental-requests'?(role==='TENANT'?'Đăng ký thuê phòng':'Yêu cầu thuê'):page==='payments'?'Thanh toán':page==='account-approvals'?'Duyệt chủ nhà':title
+  const pageTitle=page==='rental-requests'?(role==='USER'?'Đăng ký thuê phòng':'Yêu cầu thuê'):page==='payments'?'Thanh toán':page==='new-rental'?'Thêm khách & hợp đồng':title
 
   if(!token)return <><AuthPage onLogin={login} onRegister={register}/><Toast toast={toast}/></>
-  if(role==='OWNER_PENDING')return <><PendingApprovalPage username={user?.username} onLogout={logout}/><Toast toast={toast}/></>
-  return <div className="app-frame"><Sidebar page={page} user={user} profile={profile} onNavigate={navigate} onLogout={logout} open={mobileNav} onClose={()=>setMobileNav(false)} role={role} pendingRequests={pendingRequests}/><div className="app-main"><Topbar title={pageTitle} onMenu={()=>setMobileNav(v=>!v)} onRefresh={()=>setRefreshKey(v=>v+1)}/><main className="content-area" key={`${page}-${refreshKey}`}>{page==='rental-requests'?<ContractRequestsPage request={request} role={role} notify={notify}/>:page==='payments'?<PaymentsPage request={request} role={role} notify={notify}/>:page==='account-approvals'&&role==='ADMIN'?<AccountApprovalsPage request={request} notify={notify}/>:activeModule?<EntityPage module={activeModule} request={request} notify={notify} readOnly={!canManage}/>:page==='profile'?<ProfilePage request={request} profile={profile} user={user} onProfileUpdated={setProfile} notify={notify}/>:<DashboardPage request={request} user={user} onNavigate={navigate}/>}</main><footer className="app-footer"><span>© 2026 HomeBase · Nhóm 8</span><span>Hệ thống quản lý tòa nhà và phòng cho thuê</span></footer></div><Toast toast={toast}/></div>
+  return <div className="app-frame"><Sidebar page={page} user={user} profile={profile} onNavigate={navigate} onLogout={logout} open={mobileNav} onClose={()=>setMobileNav(false)} role={role} pendingRequests={pendingRequests}/><div className="app-main"><Topbar title={pageTitle} onMenu={()=>setMobileNav(v=>!v)} onRefresh={()=>setRefreshKey(v=>v+1)}/><main className="content-area" key={`${page}-${refreshKey}`}>{page==='rental-requests'?<ContractRequestsPage request={request} role={role} notify={notify}/>:page==='payments'?<PaymentsPage request={request} role={role} notify={notify}/>:page==='new-rental'&&canManage?<RentalForm admin request={request} notify={notify} onSaved={()=>navigate('contracts')}/>:activeModule?.key==='incidents'&&!canManage?<IncidentReportPage module={activeModule} request={request} notify={notify}/>:activeModule?<EntityPage module={activeModule} request={request} notify={notify} readOnly={!canManage} onCreateRental={canManage?()=>navigate('new-rental'):undefined}/>:page==='profile'?<ProfilePage request={request} profile={profile} user={user} onProfileUpdated={setProfile} notify={notify}/>:<DashboardPage request={request} user={user} onNavigate={navigate}/>}</main><footer className="app-footer"><span>© 2026 HomeBase · Nhóm 8</span><span>Hệ thống quản lý tòa nhà và phòng cho thuê</span></footer></div><Toast toast={toast}/></div>
 }

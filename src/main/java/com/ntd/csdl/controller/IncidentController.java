@@ -17,6 +17,7 @@ import java.util.List;
 public class IncidentController {
 
     private final IncidentService incidentService;
+    private final com.ntd.csdl.service.RentalWorkflowService rentals;
 
     // GET ALL
     @GetMapping
@@ -40,8 +41,14 @@ public class IncidentController {
     // CREATE
     @PostMapping
     public ResponseEntity<Incident> create(
-            @Valid @RequestBody IncidentDTO dto) {
-
+            @Valid @RequestBody IncidentDTO dto, org.springframework.security.core.Authentication auth) {
+        if(!com.ntd.csdl.service.RentalWorkflowService.admin(auth)) {
+            rentals.requireRoom(auth.getName(),dto.getRoomId());
+            if(dto.getIncidentContent()==null || dto.getIncidentContent().isBlank() || dto.getIncidentContent().length()>500)
+                throw new IllegalArgumentException("Nội dung sự cố cần có từ 1 đến 500 ký tự");
+            dto.setIncidentId(com.ntd.csdl.service.RentalWorkflowService.id("SC"));
+            dto.setReportDate(java.time.LocalDate.now());dto.setStatus("PENDING");
+        }
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(

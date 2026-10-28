@@ -9,6 +9,9 @@ import java.util.List;
 
 public interface RoomRepository extends JpaRepository<Room, String> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Room r where r.roomId = :id")
+    java.util.Optional<Room> lockById(@org.springframework.data.repository.query.Param("id") String id);
     // Derived Query
     List<Room> findByStatus(String status);
 

@@ -10,6 +10,10 @@ import java.util.List;
 public interface InvoiceRepository
         extends JpaRepository<Invoice, String> {
 
+    List<Invoice> findByContractTenantTenantId(String tenantId);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select i from Invoice i where i.invoiceId = :id")
+    java.util.Optional<Invoice> lockById(@org.springframework.data.repository.query.Param("id") String id);
     // Derived Query
     List<Invoice> findByContractContractId(String contractId);
 

@@ -17,21 +17,23 @@ import java.util.List;
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
+    private final com.ntd.csdl.service.RentalWorkflowService rentals;
+    private final com.ntd.csdl.repo.InvoiceRepository invoices;
 
     @GetMapping
-    public ResponseEntity<List<Invoice>> getAll() {
+    public ResponseEntity<List<Invoice>> getAll(org.springframework.security.core.Authentication auth) {
+        String tenantId=rentals.tenantId(auth.getName());
         return ResponseEntity.ok(
-                invoiceService.getAll()
+                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? invoiceService.getAll() : (tenantId==null ? List.of() : invoices.findByContractTenantTenantId(tenantId))
         );
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Invoice> getById(
-            @PathVariable String id) {
-
-        return ResponseEntity.ok(
-                invoiceService.getById(id)
-        );
+            @PathVariable String id, org.springframework.security.core.Authentication auth) {
+        Invoice invoice=invoiceService.getById(id);
+        if(!com.ntd.csdl.service.RentalWorkflowService.admin(auth)) rentals.requireOwner(auth.getName(),invoice.getContract());
+        return ResponseEntity.ok(invoice);
     }
 
     @PostMapping

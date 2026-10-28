@@ -8,6 +8,9 @@ import java.time.LocalDateTime;
 
 @Getter
 public class ContractRequestResponseDTO {
+    @lombok.Setter private com.ntd.csdl.entity.Tenant tenant;
+    @lombok.Setter private LocalDate requestedEndDate;
+    @lombok.Setter private String contractId;
     private final Long requestId;
     private final String username;
     private final String roomId;

@@ -15,7 +15,7 @@ Railway deploys each component as its own service. This project needs four: the 
 3. Add a Redis database service. Keep it private.
 4. Rename the services exactly MySQL and Redis, so the variable references below match.
 
-The Spring Boot production profile creates the schema from the schema-only SQL resource at startup. It creates 13 empty tables and does not import the local accounts or other local records.
+The Spring Boot production profile creates the schema from the schema-only SQL resource at startup. It creates the core tables and workflow tables if missing and does not import the local accounts or other local records.
 
 ## 2. Add the Spring Boot service
 

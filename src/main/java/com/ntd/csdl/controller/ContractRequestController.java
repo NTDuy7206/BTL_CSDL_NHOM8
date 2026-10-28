@@ -22,7 +22,7 @@ public class ContractRequestController {
     @GetMapping
     public List<ContractRequestResponseDTO> get(Authentication authentication) {
         boolean tenant = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority).anyMatch("ROLE_TENANT"::equals);
+                .map(GrantedAuthority::getAuthority).anyMatch("ROLE_USER"::equals);
         return service.getForAccount(authentication.getName(), tenant);
     }
 

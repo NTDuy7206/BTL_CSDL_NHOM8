@@ -1,97 +1,78 @@
 package com.ntd.csdl.service;
-
-import com.ntd.csdl.dto.ContractRequestCreateDTO;
-import com.ntd.csdl.dto.ContractRequestResponseDTO;
-import com.ntd.csdl.dto.ContractRequestStatusDTO;
-import com.ntd.csdl.entity.ContractRequest;
-import com.ntd.csdl.entity.ContractRequestStatus;
-import com.ntd.csdl.entity.Room;
-import com.ntd.csdl.entity.User;
-import com.ntd.csdl.repo.ContractRequestRepository;
-import com.ntd.csdl.repo.RoomRepository;
-import com.ntd.csdl.repo.UserRepository;
+import com.ntd.csdl.dto.*;
+import com.ntd.csdl.entity.*;
+import com.ntd.csdl.repo.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-
-@Service
-@RequiredArgsConstructor
+import java.time.*;
+import java.math.BigDecimal;
+import java.util.*;
+@Service @RequiredArgsConstructor
 public class ContractRequestService {
     private final ContractRequestRepository requestRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
-
-    @Transactional(readOnly = true)
-    public List<ContractRequestResponseDTO> getForAccount(String username, boolean tenant) {
-        List<ContractRequest> requests = tenant
-                ? requestRepository.findByApplicantUsernameOrderByCreatedAtDesc(username)
-                : requestRepository.findAllByOrderByCreatedAtDesc();
-        return requests.stream().map(ContractRequestResponseDTO::new).toList();
+    private final TenantRepository tenants;
+    private final RentalWorkflowService rentals;
+    private final JdbcTemplate jdbc;
+    private ContractRequestResponseDTO response(ContractRequest request) {
+        ContractRequestResponseDTO dto=new ContractRequestResponseDTO(request);
+        jdbc.query("SELECT tenant_id,requested_end_date,contract_id FROM rental_request_details WHERE request_id=?",
+            (org.springframework.jdbc.core.RowCallbackHandler)rs->{dto.setTenant(tenants.findById(rs.getString(1)).orElse(null));dto.setRequestedEndDate(rs.getDate(2).toLocalDate());dto.setContractId(rs.getString(3));},
+            request.getRequestId());
+        return dto;
     }
-
+    @Transactional(readOnly=true)
+    public List<ContractRequestResponseDTO> getForAccount(String username,boolean tenant) {
+        var requests=tenant?requestRepository.findByApplicantUsernameOrderByCreatedAtDesc(username):requestRepository.findAllByOrderByCreatedAtDesc();
+        return requests.stream().map(this::response).toList();
+    }
     @Transactional
-    public ContractRequestResponseDTO create(String username, ContractRequestCreateDTO dto) {
-        if (dto.getRequestedStartDate().isBefore(LocalDate.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày bắt đầu thuê không được ở trong quá khứ");
-        }
-        User applicant = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản"));
-        Room room = roomRepository.findById(dto.getRoomId().trim())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phòng"));
-        if (!isAvailable(room.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phòng này hiện không được đánh dấu là còn trống");
-        }
-
-        ContractRequest request = new ContractRequest();
-        request.setApplicant(applicant);
-        request.setRoom(room);
-        request.setRequestedStartDate(dto.getRequestedStartDate());
-        request.setMessage(dto.getMessage() == null ? null : dto.getMessage().trim());
-        request.setStatus(ContractRequestStatus.PENDING);
-        request.setCreatedAt(LocalDateTime.now());
-        return new ContractRequestResponseDTO(requestRepository.save(request));
+    public ContractRequestResponseDTO create(String username,ContractRequestCreateDTO dto) {
+        RentalWorkflowService.dates(dto.getRequestedStartDate(),dto.getRequestedEndDate());
+        if(dto.getRequestedStartDate().isBefore(LocalDate.now()))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Ngày bắt đầu không được trong quá khứ");
+        User applicant=userRepository.findByUsername(username).orElseThrow();
+        RentalDTO rental=new RentalDTO();rental.setTenant(dto.getTenant());
+        Tenant tenant=rentals.saveTenant(rental,username,true);
+        if(requestRepository.findByApplicantUsernameOrderByCreatedAtDesc(username).stream().anyMatch(r->
+            r.getStatus()==ContractRequestStatus.PENDING && r.getRoom().getRoomId().equals(dto.getRoomId())))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Bạn đã có yêu cầu đang chờ cho phòng này");
+        Room room=roomRepository.findById(dto.getRoomId()).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy phòng"));
+        if(!RentalWorkflowService.available(room.getStatus()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Phòng không còn trống");
+        ContractRequest request=new ContractRequest();request.setApplicant(applicant);request.setRoom(room);
+        request.setRequestedStartDate(dto.getRequestedStartDate());request.setMessage(dto.getMessage());
+        request.setStatus(ContractRequestStatus.PENDING);request.setCreatedAt(LocalDateTime.now());
+        request=requestRepository.saveAndFlush(request);
+        jdbc.update("INSERT INTO rental_request_details(request_id,tenant_id,requested_end_date) VALUES (?,?,?)",
+            request.getRequestId(),tenant.getTenantId(),dto.getRequestedEndDate());
+        return response(request);
     }
-
     @Transactional
-    public ContractRequestResponseDTO updateStatus(Long requestId, ContractRequestStatusDTO dto) {
-        ContractRequestStatus status;
-        try {
-            status = ContractRequestStatus.valueOf(dto.getStatus().trim().toUpperCase());
-        } catch (IllegalArgumentException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái chỉ được là APPROVED hoặc REJECTED");
+    public ContractRequestResponseDTO updateStatus(Long id,ContractRequestStatusDTO dto) {
+        String status=dto.getStatus().trim().toUpperCase(Locale.ROOT);
+        if(!Set.of("APPROVED","REJECTED").contains(status))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Chỉ chọn APPROVED hoặc REJECTED");
+        jdbc.queryForList("SELECT request_id FROM contract_requests WHERE request_id=? FOR UPDATE",id);
+        ContractRequest request=requestRepository.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy yêu cầu"));
+        if(request.getStatus()!=ContractRequestStatus.PENDING)
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Yêu cầu đã được xử lý");
+        if(status.equals("APPROVED")) {
+            ContractRequestResponseDTO details=response(request);
+            if(details.getTenant()==null || details.getRequestedEndDate()==null)
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"Yêu cầu cũ thiếu thông tin khách thuê. Vui lòng từ chối và yêu cầu gửi lại");
+            if(details.getRequestedEndDate().isBefore(LocalDate.now()))
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"Thời gian thuê đã hết, vui lòng gửi yêu cầu mới");
+            Contract contract=rentals.book(details.getTenant(),request.getRoom().getRoomId(),
+                request.getRequestedStartDate(),details.getRequestedEndDate(),BigDecimal.ZERO);
+            jdbc.update("UPDATE rental_request_details SET contract_id=? WHERE request_id=?",contract.getContractId(),id);
         }
-        if (status == ContractRequestStatus.PENDING) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể chuyển yêu cầu về trạng thái chờ");
-        }
-
-        ContractRequest request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu thuê"));
-        if (request.getStatus() != ContractRequestStatus.PENDING) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu này đã được xử lý");
-        }
-        request.setStatus(status);
-        return new ContractRequestResponseDTO(request);
-    }
-
-    private boolean isAvailable(String status) {
-        if (status == null) return false;
-        String normalized = status.toLowerCase().replace('đ', 'd').replaceAll("[^a-z0-9 ]", " ").trim();
-        if (normalized.contains("not available") || normalized.contains("not vacant")
-                || normalized.contains("not occupied") || normalized.contains("occupied")
-                || normalized.contains("rented") || normalized.contains("leased")
-                || normalized.contains("khong trong") || normalized.contains("da thue")
-                || normalized.contains("dang thue")) {
-            return false;
-        }
-        return normalized.contains("available") || normalized.contains("vacant")
-                || normalized.contains("unoccupied") || normalized.contains("empty")
-                || normalized.contains("trong") || normalized.contains("chua thue")
-                || normalized.contains("chua cho thue");
+        request.setStatus(ContractRequestStatus.valueOf(status));
+        return response(request);
     }
 }

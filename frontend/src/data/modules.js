@@ -26,7 +26,7 @@ export const modules = [
   },
   {
     key: 'contracts', title: 'Hợp đồng', singular: 'hợp đồng', icon: 'contract', path: '/api/contracts', id: 'contractId',
-    columns: ['contractId', 'startDate', 'endDate', 'deposit', 'roomId', 'tenantId'],
+    columns: ['contractId', 'tenantName', 'tenantBirth', 'tenantPhone', 'roomId', 'startDate', 'endDate', 'deposit'],
     fields: [
       ['contractId', 'Mã hợp đồng', 'text'], ['startDate', 'Ngày bắt đầu', 'date'], ['endDate', 'Ngày kết thúc', 'date'],
       ['deposit', 'Tiền cọc', 'number'], ['roomId', 'Mã phòng', 'text'], ['tenantId', 'Mã khách thuê', 'text'],
@@ -91,11 +91,13 @@ export const modules = [
 ]
 
 export const relationMap = {
+  tenantName: ['tenant','fullName'], tenantBirth: ['tenant','dateOfBirth'], tenantPhone: ['tenant','phoneNumber'],
   roomId: ['room', 'roomId'], tenantId: ['tenant', 'tenantId'], contractId: ['contract', 'contractId'],
   employeeId: ['employee', 'employeeId'], incidentId: ['incident', 'incidentId'], ruleId: ['rule', 'ruleId'],
 }
 
 export const labels = {
+  tenantName: 'Khách thuê', tenantBirth: 'Ngày sinh', tenantPhone: 'Điện thoại',
   tenantId: 'Mã khách thuê', employeeId: 'Mã nhân viên', roomId: 'Mã phòng', contractId: 'Mã hợp đồng', invoiceId: 'Mã hóa đơn',
   readingId: 'Mã chỉ số', incidentId: 'Mã sự cố', resolutionId: 'Mã xử lý', supportId: 'Mã hỗ trợ', ruleId: 'Mã nội quy', violationId: 'Mã vi phạm',
   fullName: 'Họ tên', cccd: 'CCCD', phoneNumber: 'Điện thoại', dateOfBirth: 'Ngày sinh', permanentAddress: 'Địa chỉ', position: 'Vị trí',

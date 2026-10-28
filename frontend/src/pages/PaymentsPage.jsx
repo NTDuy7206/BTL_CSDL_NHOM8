@@ -6,7 +6,7 @@ function date(value) { return value ? new Intl.DateTimeFormat('vi-VN',{dateStyle
 function statusLabel(value) { return value === 'PAID' ? 'Đã xác nhận' : value === 'REJECTED' ? 'Cần kiểm tra lại' : 'Chờ chủ nhà xác nhận' }
 
 export default function PaymentsPage({ request, role, notify }) {
-  const isTenant = role === 'TENANT'
+  const isTenant = role === 'USER'
   const [invoices, setInvoices] = useState([])
   const [reports, setReports] = useState([])
   const [invoiceId, setInvoiceId] = useState('')

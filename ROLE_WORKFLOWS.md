@@ -1,0 +1,33 @@
+# Khách thuê và chủ nhà
+
+Trang đăng ký có hai lựa chọn: **Khách thuê (USER)** và **Chủ nhà (ADMIN)**. Vai trò được lưu trong MySQL và kiểm tra lại ở API; ẩn nút trên giao diện không thay thế kiểm tra quyền.
+
+| Chức năng | USER – khách thuê | ADMIN – chủ nhà |
+|---|---|---|
+| Nhân viên, phòng, nội quy, vi phạm, danh sách sự cố | Xem | Thêm, sửa, xóa |
+| Báo cáo sự cố | Báo sự cố tại phòng có hợp đồng đang hiệu lực của mình | Quản lý, cập nhật và xử lý |
+| Hợp đồng | Gửi đăng ký; chỉ xem hợp đồng được liên kết với tài khoản mình | Tạo, duyệt, quản lý tất cả |
+| Hóa đơn | Chỉ xem hóa đơn thuộc hợp đồng của mình | Quản lý tất cả |
+| Thanh toán | Gửi mã chuyển khoản cho hóa đơn của mình | Đối soát, xác nhận đã thu hoặc từ chối |
+| Khách thuê, chỉ số điện nước, xử lý sự cố, dọn dẹp | Không truy cập API quản lý | Quản lý |
+| Thông tin cá nhân | Xem và cập nhật hồ sơ của mình | Xem và cập nhật hồ sơ của mình |
+
+## Chủ nhà thêm khách và hợp đồng
+
+Vào **Thêm khách & hợp đồng**, hoặc chọn thêm mới trong **Khách thuê / Hợp đồng**. Chọn khách đã có để tự điền họ tên, CCCD, ngày sinh, địa chỉ, điện thoại; hoặc nhập khách mới. Chọn tài khoản USER, phòng trống, ngày bắt đầu/kết thúc và tiền cọc. Kiểm tra phần xem trước rồi lưu.
+
+Khách thuê, liên kết tài khoản, hợp đồng và trạng thái phòng được lưu trong cùng một giao dịch. Nếu một bước lỗi, các thay đổi của giao dịch đó được hoàn tác. Mã khách và mã hợp đồng do hệ thống tạo. Không cần tự nhập mã cho từng bản ghi. Khách chưa có tài khoản có thể được lưu trước; muốn khách truy cập hợp đồng/hóa đơn trên website thì chủ nhà cần liên kết đúng tài khoản USER.
+
+## Khách đăng ký và thanh toán
+
+Khách vào **Đăng ký thuê**, nhập hồ sơ, chọn phòng và thời hạn. Chủ nhà nhận yêu cầu trong **Yêu cầu thuê**. Khi chọn **Duyệt & tạo hợp đồng**, hệ thống tạo hợp đồng và chuyển phòng sang đã thuê. Hai yêu cầu không thể cùng được duyệt để thuê một phòng. Hợp đồng từ yêu cầu thuê có tiền cọc ban đầu là 0; chủ nhà cập nhật theo thỏa thuận thực tế.
+
+Khách xem **Hợp đồng của tôi**, **Hóa đơn của tôi** và **Thanh toán**. Thanh toán hiện là chuyển khoản bên ngoài rồi gửi mã giao dịch để chủ nhà xác nhận, chưa tích hợp cổng ngân hàng tự động. Không đánh dấu đã thanh toán chỉ vì khách gửi báo cáo.
+
+## Dữ liệu và triển khai
+
+`tenant_accounts` liên kết một tài khoản USER với một hồ sơ khách thuê. `rental_request_details` lưu khách thuê, thời hạn và hợp đồng được tạo từ yêu cầu. Không tự suy đoán liên kết cho dữ liệu cũ chỉ dựa vào tên giống nhau. Yêu cầu cũ thiếu hồ sơ cần được gửi lại.
+
+`src/main/resources/schema.sql` tạo các bảng bổ sung nếu chưa có, đồng thời chuyển vai trò cũ OWNER thành ADMIN và TENANT/OWNER_PENDING thành USER. Giữ nguyên USER=0, ADMIN=1 trong dữ liệu hiện có. Sau nâng cấp cần đăng xuất rồi đăng nhập lại để làm mới giao diện theo quyền.
+
+Chạy kiểm thử trên **database riêng**, không chạy trên dữ liệu thật: khởi động ứng dụng tại cổng 18082 với profile prod và MySQL thử nghiệm, sau đó chạy `node scripts/test-rental-workflow.mjs`. Script chỉ nhận địa chỉ localhost, tạo tài khoản và bản ghi thử để kiểm tra phân quyền, duyệt hợp đồng, quyền sở hữu hóa đơn, báo sự cố, thanh toán và hoàn tác giao dịch.

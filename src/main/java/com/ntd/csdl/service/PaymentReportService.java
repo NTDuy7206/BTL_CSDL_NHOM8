@@ -23,6 +23,7 @@ public class PaymentReportService {
     private final PaymentReportRepository reportRepository;
     private final InvoiceRepository invoiceRepository;
     private final UserRepository userRepository;
+    private final RentalWorkflowService rentals;
 
     @Transactional(readOnly = true)
     public List<PaymentReportResponseDTO> getForAccount(String username, boolean tenant) {
@@ -36,8 +37,9 @@ public class PaymentReportService {
     public PaymentReportResponseDTO create(String username, PaymentReportCreateDTO dto) {
         User payer = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản"));
-        Invoice invoice = invoiceRepository.findById(dto.getInvoiceId().trim())
+        Invoice invoice = invoiceRepository.lockById(dto.getInvoiceId().trim())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hóa đơn"));
+        rentals.requireOwner(username, invoice.getContract());
         BigDecimal amount = invoice.getTotalAmount();
         if (amount == null || amount.signum() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hóa đơn chưa có số tiền hợp lệ");

@@ -11,6 +11,8 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class ContractRequestCreateDTO {
+    @jakarta.validation.Valid @NotNull private RentalDTO.Person tenant;
+    @NotNull private LocalDate requestedEndDate;
     @NotBlank(message = "Vui lòng chọn phòng")
     private String roomId;
 
