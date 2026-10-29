@@ -6,7 +6,7 @@ assert.deepEqual(roomGroups(rooms,[],'USER','2026-10-29').rented,[],'user2 must 
 assert.equal(roomGroups(rooms,[contract,contract],'USER','2026-10-29').rented.length,1);
 assert.equal(roomGroups(rooms,[{...contract,endDate:'2026-02-01'}],'USER','2026-10-29').rented.length,0);
 assert.equal(roomGroups(rooms,[{...contract,startDate:'2026-12-01'}],'USER','2026-10-29').rented.length,0);
-assert.equal(roomGroups(rooms,[],'ADMIN','2026-10-29').rented.length,10);
+assert.equal(roomGroups(rooms,[contract],'ADMIN','2026-10-29').rented.length,1,'active contracts override stale room status');
 assert.equal(roomGroups(rooms,[],'USER','2026-10-29').vacant.length,5);
 console.log('7 dashboard room-isolation checks passed');
 
@@ -15,3 +15,16 @@ assert.equal(roomGroups(rooms,[{...contract,startDate:'2026-11-01',actualCheckIn
 console.log('2 actual check-in/check-out dashboard checks passed');
 
 assert.equal(roomGroups(rooms.slice(1),[contract],'USER','2026-10-29').rented.length,0,'other landlord rooms excluded from dashboard even when own old contract exists');
+
+const inventory=Array.from({length:65},(_,i)=>({roomId:'P'+i,status:i<6?'OCCUPIED':'UNCONFIGURED'}));
+const six=inventory.slice(0,6).map((room,i)=>({contractId:'C'+i,room,startDate:'2026-01-01',endDate:'2027-01-01'}));
+const expired={contractId:'old',room:inventory[0],startDate:'2025-01-01',endDate:'2025-12-31'};
+let summary=roomGroups(inventory,[...six,expired],'ADMIN','2026-10-29');
+assert.equal(summary.vacant.length,59);assert.equal(summary.rented.length,6);assert.equal(summary.activeContracts.length,6);assert.equal(summary.unknown.length,0);
+assert.equal(summary.vacant.length+summary.rented.length,65);
+summary=roomGroups(inventory,[...six,{...expired,startDate:'2026-01-01',endDate:'2027-01-01'}],'ADMIN','2026-10-29');
+assert.equal(summary.activeContracts.length,7,'do not hide a genuine overlapping seventh contract');assert.equal(summary.conflictingRooms.length,1);assert.equal(summary.rented.length,6);
+summary=roomGroups(inventory,[...six,{contractId:'missing',room:inventory[6],startDate:null,endDate:null}],'ADMIN','2026-10-29');assert.equal(summary.unknown.length,1);assert.equal(summary.vacant.length,58);
+summary=roomGroups(inventory,[{...six[0],actualCheckOut:'2026-10-29'}],'ADMIN','2026-10-29');assert.equal(summary.rented.length,0);assert.equal(summary.vacant.length,65);
+summary=roomGroups(inventory,[{...six[0],startDate:'2026-11-01',actualCheckIn:'2026-10-28'}],'ADMIN','2026-10-29');assert.equal(summary.rented.length,1);
+console.log('65-room inventory: 59 vacant + 6 occupied, active vs historical contracts, conflicts and incomplete dates passed');
