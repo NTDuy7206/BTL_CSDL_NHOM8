@@ -400,3 +400,6 @@ Khách thuê xem phòng được niêm yết có cột Chủ nhà, chọn trực
 Chủ nhà mới khai báo từng phòng (mã, tầng, diện tích m², loại phòng, giá thuê/tháng) khi đăng ký. Mã `101` lưu dạng `L<id chủ nhà>-101`, cho phép hai chủ nhà cùng có phòng số 101. Chủ nhà cũ khai báo tại Phòng / mặt bằng. Mỗi ADMIN chỉ xem/sửa phòng và khách thuê thuộc mình; số khách thuê đếm mỗi hồ sơ một lần. Hợp đồng và hóa đơn riêng của khách giữ nguyên.
 
 API lựa chọn ADMIN trước đây đã bỏ; bảng lựa chọn cũ được giữ để không xóa dữ liệu nhưng không còn quyết định danh sách phòng. Đăng ký ADMIN gửi `rooms` là danh sách RoomDTO; `roomCount` đơn lẻ không thay thế khai báo chi tiết. Nhân viên/nội quy hiện vẫn là danh mục chung của bài tập.
+
+### Thanh bên và liên kết từng trang
+Nút menu ở đầu trang hoặc mũi tên trên thanh bên thu gọn/mở rộng menu trên máy tính; trạng thái thu gọn được ghi nhớ. Trên điện thoại menu mở dạng ngăn kéo, đóng bằng nút X, bấm nền bên ngoài hoặc phím Esc. Từng mục là liên kết riêng, ví dụ `/#/rooms`, `/#/contracts`, `/#/invoices`, `/#/profile`. Có thể sao chép liên kết, mở tab mới, tải lại, Quay lại/Tiến tới giữa các mục đã truy cập. Truy cập liên kết vẫn yêu cầu đăng nhập và đúng vai trò. Phần sau dấu # dùng cho điều hướng giao diện, không thay đổi các API phía máy chủ.

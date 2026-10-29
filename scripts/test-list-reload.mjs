@@ -18,5 +18,8 @@ try{
  const ownedRooms=[{roomId:'L1-101',landlordName:'Chủ A',roomType:'Studio'},{roomId:'L2-101',landlordName:'Chủ B',roomType:'Studio'}];
  const roomHtml=renderToStaticMarkup(React.createElement(DataTable,{module:roomModule,rows:ownedRooms,readOnly:true}));assert.ok(roomHtml.includes('Chủ nhà'));assert.ok(roomHtml.includes('Chủ A'));assert.ok(roomHtml.includes('Chủ B'));
  const filteredRooms=renderToStaticMarkup(React.createElement(DataTable,{module:roomModule,rows:ownedRooms,readOnly:true,searchValue:'chu b'}));assert.ok(filteredRooms.includes('L2-101'));assert.ok(!filteredRooms.includes('L1-101'));
+ const {Sidebar,Topbar}=await server.ssrLoadModule('/src/components/AppShell.jsx');
+ for(const role of ['USER','ADMIN']){const html=renderToStaticMarkup(React.createElement(Sidebar,{page:'rooms',role,user:{username:'Test'},collapsed:true,onNavigate:()=>{},onToggle:()=>{}}));assert.ok(html.includes('href="/#/rooms"'));assert.ok(html.includes('aria-current="page"'));assert.ok(html.includes('aria-label="Mở rộng thanh bên"'));assert.equal(html.includes('href="/#/accounts"'),role==='ADMIN');assert.ok(!/<button[^>]*class="nav-link/.test(html),'navigation items must be real links');}
+ const expanded=renderToStaticMarkup(React.createElement(Topbar,{title:'Phòng',collapsed:false}));assert.ok(expanded.includes('aria-label="Thu gọn thanh bên"'));assert.ok(expanded.includes('aria-controls="app-sidebar"'));
  console.log('Reload navigation, list validation and 9 empty/error/search UI scenarios passed');
 }finally{await server.close()}
