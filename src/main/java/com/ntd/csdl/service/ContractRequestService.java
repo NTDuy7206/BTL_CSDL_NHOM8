@@ -71,6 +71,8 @@ public class ContractRequestService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"Yêu cầu cũ thiếu thông tin khách thuê. Vui lòng từ chối và yêu cầu gửi lại");
             if(details.getRequestedEndDate().isBefore(LocalDate.now()))
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"Thời gian thuê đã hết, vui lòng gửi yêu cầu mới");
+            String linked=rentals.tenantId(request.getApplicant().getUsername());
+            if(!Objects.equals(linked,details.getTenant().getTenantId()))throw new ResponseStatusException(HttpStatus.CONFLICT,"Hồ sơ yêu cầu không khớp tài khoản gửi. Khách cần gửi yêu cầu mới");
             Contract contract=rentals.book(details.getTenant(),request.getRoom().getRoomId(),
                 request.getRequestedStartDate(),details.getRequestedEndDate(),BigDecimal.ZERO);
             jdbc.update("UPDATE rental_request_details SET contract_id=? WHERE request_id=?",contract.getContractId(),id);

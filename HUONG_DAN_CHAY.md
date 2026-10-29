@@ -164,3 +164,7 @@ Tài khoản trong database MySQL của máy người phát triển không tự 
 ### Triển khai bằng Railway
 
 Nếu bạn chọn Railway, xem hướng dẫn chi tiết trong DEPLOY_RAILWAY.md. Railway chạy app, MySQL, Redis và MinIO dưới dạng các dịch vụ riêng; file Docker Compose dành cho VPS không được Railway chạy trực tiếp.
+
+### Thuê phòng và thanh toán
+
+Khách dùng Đăng ký thuê để gửi yêu cầu của chính tài khoản mình; chủ nhà chỉ duyệt yêu cầu. Đã bỏ tạo hợp đồng thay khách. Trong Hóa đơn của tôi, bấm Thanh toán và chọn chuyển khoản hoặc tiền mặt, nhập thông tin giao dịch rồi gửi để chủ nhà xác nhận. Chưa tích hợp cổng thu tiền tự động.

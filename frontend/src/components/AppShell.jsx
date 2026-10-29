@@ -13,7 +13,7 @@ export function Sidebar({ page, user, profile, onNavigate, onLogout, open, onClo
         <button className={`nav-link ${page === 'rental-requests' ? 'selected' : ''}`} onClick={() => onNavigate('rental-requests')}><Icon name="contract"/><span>{role==='USER'?'Đăng ký thuê':'Yêu cầu thuê'}</span>{role!=='USER'&&pendingRequests>0&&<b className="nav-badge">{pendingRequests>99?'99+':pendingRequests}</b>}</button>
         <button className={`nav-link ${page === 'payments' ? 'selected' : ''}`} onClick={() => onNavigate('payments')}><Icon name="invoice"/><span>Thanh toán</span></button>
       </div>}
-      {role==='ADMIN'&&<div className="nav-section"><div className="nav-heading">QUẢN TRỊ</div><button className={`nav-link ${page === 'new-rental' ? 'selected' : ''}`} onClick={() => onNavigate('new-rental')}><Icon name="employee"/><span>Thêm khách & hợp đồng</span></button><button className="nav-link" onClick={() => onNavigate("accounts")}><Icon name="users"/><span>Tài khoản</span></button></div>}
+      {role==='ADMIN'&&<div className="nav-section"><div className="nav-heading">QUẢN TRỊ</div><button className="nav-link" onClick={() => onNavigate("accounts")}><Icon name="users"/><span>Tài khoản</span></button></div>}
       <div className="nav-section"><div className="nav-heading">QUẢN LÝ TÒA NHÀ</div>
         {visibleModules(role).map((module) => <button key={module.key} className={`nav-link ${page === module.key ? 'selected' : ''}`} onClick={() => onNavigate(module.key)}><Icon name={module.icon} /><span>{module.title}</span></button>)}
       </div>

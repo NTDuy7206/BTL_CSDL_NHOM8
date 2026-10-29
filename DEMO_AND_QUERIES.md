@@ -41,7 +41,7 @@ Tổng cộng 116 bản ghi giả lập, có liên kết khóa ngoại. Tên, đ
 | Nội quy | Xem tất cả, Tìm theo mã |
 | Tài khoản (chủ nhà) | Xem danh sách tài khoản |
 
-Các nút thêm, sửa, xóa trong bảng và các màn hình đăng ký hợp đồng, xử lý yêu cầu thuê, báo cáo sự cố, thanh toán hóa đơn vẫn sử dụng API tương ứng. Tổng giá trị hóa đơn là tổng số tiền trên hóa đơn, không phải số tiền đã thực thu. Thanh toán hiện là ghi nhận/báo thanh toán trong hệ thống, chưa tích hợp cổng ngân hàng.
+Các nút thêm, sửa, xóa trong bảng và các màn hình khách đăng ký hợp đồng, chủ nhà duyệt yêu cầu thuê, báo cáo sự cố, thanh toán hóa đơn vẫn sử dụng API tương ứng. Tổng giá trị hóa đơn là tổng số tiền trên hóa đơn, không phải số tiền đã thực thu. Thanh toán hiện là ghi nhận/báo thanh toán trong hệ thống, chưa tích hợp cổng ngân hàng.
 
 Khách thuê chỉ thấy các chức năng được phân quyền. Hợp đồng và hóa đơn chỉ hiển thị hồ sơ của chính tài khoản đăng nhập. Trong **Đăng ký hợp đồng**, chọn **Thuê của chủ nhà** rồi chọn phòng còn trống của người đó. Yêu cầu thuê chỉ gửi đến chủ nhà sở hữu phòng; khi được duyệt sẽ dùng chính phòng có sẵn.
 
@@ -64,3 +64,5 @@ Chạy `scripts/test-query-workflow.mjs` với Node khi ứng dụng thử chạ
 Để thấy thay đổi trên trang công khai, Railway phải triển khai commit mới trên nhánh `main`. Việc cập nhật mã nguồn trên máy không tự thay thế bản đang chạy nếu Railway chưa nhận commit.
 
 Kiểm tra logic tồn kho phòng bằng `./mvnw -Dtest=LandlordInventoryTests test` (Windows dùng mvnw.cmd). Bộ kiểm tra dùng H2 trong bộ nhớ cho giao dịch/khóa ngoại và mô phỏng repository JPA; không thay thế kiểm tra toàn bộ luồng trên MySQL.
+
+Bản sửa quyền thuê: chủ nhà không còn được tạo hợp đồng thay khách, chỉ duyệt yêu cầu do khách gửi. Tổng quan khách lấy phòng đang thuê từ hợp đồng riêng của tài khoản; danh sách phòng có thanh cuộn. Phương thức báo thanh toán gồm BANK_TRANSFER và CASH; khách chọn tại Thanh toán hoặc bấm nút Thanh toán trong Hóa đơn của tôi.

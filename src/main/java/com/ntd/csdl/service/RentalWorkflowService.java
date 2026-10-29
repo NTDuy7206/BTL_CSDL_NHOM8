@@ -113,11 +113,4 @@ public class RentalWorkflowService {
         room.setStatus("OCCUPIED");rooms.save(room);
         return contract;
     }
-    @Transactional
-    public Contract create(RentalDTO dto) {
-        dates(dto.getStartDate(),dto.getEndDate());
-        Tenant tenant=saveTenant(dto,dto.getAccountUsername(),false);
-        return book(tenant,dto.getRoomId(),dto.getStartDate(),dto.getEndDate(),dto.getDeposit());
-    }
 }
-

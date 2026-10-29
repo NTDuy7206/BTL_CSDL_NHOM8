@@ -8,7 +8,7 @@ export async function request(path, { token = '', ...options } = {}) {
   }
   let response
   try {
-    response = await fetch(path, { ...options, headers })
+    response = await fetch(path, { ...options, headers, cache:'no-store', credentials:'omit' })
   } catch {
     throw new Error('Không kết nối được máy chủ. Hãy kiểm tra Spring Boot và thử lại.')
   }

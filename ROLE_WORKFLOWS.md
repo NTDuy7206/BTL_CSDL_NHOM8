@@ -15,11 +15,12 @@ Trang đăng ký có hai lựa chọn: **Khách thuê (USER)** và **Chủ nhà 
 
 Chủ nhà mới khai báo thêm số phòng khi đăng ký. Chủ nhà đã có tài khoản vào Phòng / mặt bằng để thiết lập số phòng một lần và liên kết các phòng cũ thực sự thuộc về mình. Xem DEMO_AND_QUERIES.md để biết cách cấu hình. Khách thuê chọn chủ nhà trước khi chọn phòng; gửi yêu cầu và duyệt hợp đồng không tạo phòng mới.
 
-## Chủ nhà thêm khách và hợp đồng
+## Khách gửi yêu cầu, chủ nhà duyệt
 
-Vào **Thêm khách & hợp đồng**, hoặc chọn thêm mới trong **Khách thuê / Hợp đồng**. Chọn khách đã có để tự điền họ tên, CCCD, ngày sinh, địa chỉ, điện thoại; hoặc nhập khách mới. Chọn tài khoản USER, phòng trống, ngày bắt đầu/kết thúc và tiền cọc. Kiểm tra phần xem trước rồi lưu.
+Khách đăng nhập bằng tài khoản của mình, vào Đăng ký thuê, nhập hồ sơ, chọn chủ nhà và phòng. Yêu cầu được gắn với tài khoản đang đăng nhập. Chủ nhà chỉ xem và duyệt yêu cầu thuộc phòng của mình. Duyệt yêu cầu tự tạo hợp đồng cho đúng khách gửi yêu cầu.
 
-Khách thuê, liên kết tài khoản, hợp đồng và trạng thái phòng được lưu trong cùng một giao dịch. Nếu một bước lỗi, các thay đổi của giao dịch đó được hoàn tác. Mã khách và mã hợp đồng do hệ thống tạo. Không cần tự nhập mã cho từng bản ghi. Khách chưa có tài khoản có thể được lưu trước; muốn khách truy cập hợp đồng/hóa đơn trên website thì chủ nhà cần liên kết đúng tài khoản USER.
+Đã bỏ menu Thêm khách & hợp đồng và API tạo hợp đồng trực tiếp. POST /api/rentals và POST /api/contracts trả 403. Không cho đổi khách thuê hoặc phòng bằng cách sửa hợp đồng; cần gửi yêu cầu thuê mới.
+
 
 ## Khách đăng ký và thanh toán
 
@@ -34,3 +35,9 @@ Khách xem **Hợp đồng của tôi**, **Hóa đơn của tôi** và **Thanh t
 `src/main/resources/schema.sql` tạo các bảng bổ sung nếu chưa có, đồng thời chuyển vai trò cũ OWNER thành ADMIN và TENANT/OWNER_PENDING thành USER. Giữ nguyên USER=0, ADMIN=1 trong dữ liệu hiện có. Sau nâng cấp cần đăng xuất rồi đăng nhập lại để làm mới giao diện theo quyền.
 
 Chạy kiểm thử trên **database riêng**, không chạy trên dữ liệu thật: khởi động ứng dụng tại cổng 18082 với profile prod và MySQL thử nghiệm, sau đó chạy `node scripts/test-rental-workflow.mjs`. Script chỉ nhận địa chỉ localhost, tạo tài khoản và bản ghi thử để kiểm tra phân quyền, duyệt hợp đồng, quyền sở hữu hóa đơn, báo sự cố, thanh toán và hoàn tác giao dịch.
+
+## Phòng và thanh toán của khách
+
+Tổng quan của USER hiển thị Phòng tôi đang thuê từ hợp đồng đang hiệu lực của tài khoản đó. Danh sách phòng trống là danh sách tham khảo chung; các danh sách phòng có vùng cuộn và hiển thị toàn bộ kết quả.
+
+Tại Hóa đơn của tôi, bấm Thanh toán để chọn hóa đơn tương ứng. Khách chọn BANK_TRANSFER (chuyển khoản) hoặc CASH (tiền mặt), gửi mã giao dịch/thông tin giao tiền. Chủ nhà xác nhận đã nhận tiền thì báo cáo chuyển PAID. Đây là đối soát thủ công, chưa tích hợp cổng thu tiền trực tuyến.

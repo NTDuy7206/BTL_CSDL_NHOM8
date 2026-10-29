@@ -11,6 +11,9 @@ public class PaymentReportCreateDTO {
     @NotBlank(message = "Vui lòng chọn hóa đơn")
     private String invoiceId;
 
+    @NotBlank(message="Vui lòng chọn phương thức thanh toán")
+    private String paymentMethod;
+
     @Size(max = 100, message = "Mã giao dịch không được vượt quá 100 ký tự")
     @NotBlank(message = "Vui lòng nhập mã giao dịch hoặc nội dung chuyển khoản")
     private String transactionReference;

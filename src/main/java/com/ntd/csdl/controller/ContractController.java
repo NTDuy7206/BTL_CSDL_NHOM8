@@ -38,21 +38,17 @@ public class ContractController {
 
     private String ownedId(String id,String name){landlords.requireOwner(name,contractService.getById(id).getRoom().getRoomId());return id;}
 
-    @PostMapping
-    public ResponseEntity<Contract> create(
-            @Valid @RequestBody ContractDTO dto,org.springframework.security.core.Authentication auth) {
-        landlords.requireOwner(auth.getName(),dto.getRoomId());
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(contractService.create(dto));
+    @PostMapping public ResponseEntity<Contract> create(@RequestBody(required=false) ContractDTO dto){
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN,"Khách thuê phải tự gửi yêu cầu. Chủ nhà chỉ được duyệt yêu cầu thuê");
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Contract> update(
             @PathVariable String id,
             @Valid @RequestBody ContractDTO dto,org.springframework.security.core.Authentication auth) {
-        landlords.requireOwner(auth.getName(),dto.getRoomId());
+        Contract existing=contractService.getById(ownedId(id,auth.getName()));
+        if(!java.util.Objects.equals(existing.getTenant().getTenantId(),dto.getTenantId())||!java.util.Objects.equals(existing.getRoom().getRoomId(),dto.getRoomId()))
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,"Không được đổi khách thuê hoặc phòng của hợp đồng; khách phải gửi yêu cầu mới");
 
         return ResponseEntity.ok(
                 contractService.update(ownedId(id,auth.getName()), dto)

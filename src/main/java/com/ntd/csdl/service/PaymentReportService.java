@@ -36,6 +36,8 @@ public class PaymentReportService {
 
     @Transactional
     public PaymentReportResponseDTO create(String username, PaymentReportCreateDTO dto) {
+        String method=dto.getPaymentMethod()==null?"":dto.getPaymentMethod().trim().toUpperCase(java.util.Locale.ROOT);
+        if(!List.of("BANK_TRANSFER","CASH").contains(method))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Chọn phương thức chuyển khoản hoặc tiền mặt");
         User payer = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản"));
         Invoice invoice = invoiceRepository.lockById(dto.getInvoiceId().trim())
@@ -56,7 +58,7 @@ public class PaymentReportService {
         report.setPayer(payer);
         report.setInvoice(invoice);
         report.setAmount(amount);
-        report.setPaymentMethod("BANK_TRANSFER_REPORTED");
+        report.setPaymentMethod(method);
         report.setTransactionReference(dto.getTransactionReference().trim());
         report.setStatus(PaymentReportStatus.PENDING);
         report.setCreatedAt(LocalDateTime.now());
