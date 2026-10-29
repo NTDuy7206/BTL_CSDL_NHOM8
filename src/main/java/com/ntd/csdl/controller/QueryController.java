@@ -39,7 +39,7 @@ public class QueryController {
     case "violations/room" -> violations.getByRoom(value(value));
     default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Không có chức năng tra cứu này");
    };
-   if(result instanceof java.util.List<?> list && RentalWorkflowService.admin(auth))return list.stream().filter(row->!(row instanceof com.ntd.csdl.entity.Contract c)||landlords.owns(auth.getName(),c.getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.Invoice i)||landlords.owns(auth.getName(),i.getContract().getRoom().getRoomId())).toList();
+   if(result instanceof java.util.List<?> list && RentalWorkflowService.admin(auth))return list.stream().filter(row->!(row instanceof com.ntd.csdl.entity.Contract c)||landlords.owns(auth.getName(),c.getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.Incident incident)||landlords.owns(auth.getName(),incident.getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.IncidentResolution resolution)||landlords.owns(auth.getName(),resolution.getIncident().getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.CleaningSupport cleaning)||landlords.owns(auth.getName(),cleaning.getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.Invoice i)||landlords.owns(auth.getName(),i.getContract().getRoom().getRoomId())).toList();
    return result;
  }
 }

@@ -41,3 +41,7 @@ Chạy kiểm thử trên **database riêng**, không chạy trên dữ liệu t
 Tổng quan của USER hiển thị Phòng tôi đang thuê từ hợp đồng đang hiệu lực của tài khoản đó. Danh sách phòng trống là danh sách tham khảo chung; các danh sách phòng có vùng cuộn và hiển thị toàn bộ kết quả.
 
 Tại Hóa đơn của tôi, bấm Thanh toán để chọn hóa đơn tương ứng. Khách chọn BANK_TRANSFER (chuyển khoản) hoặc CASH (tiền mặt), gửi mã giao dịch/thông tin giao tiền. Chủ nhà xác nhận đã nhận tiền thì báo cáo chuyển PAID. Đây là đối soát thủ công, chưa tích hợp cổng thu tiền trực tuyến.
+
+## Hoàn thành công việc
+
+Trong Sự cố, Xử lý sự cố và Hỗ trợ dọn dẹp, danh sách mặc định là Chờ xử lý. Chủ nhà bấm Đã xử lý xong trên từng dòng để hoàn thành; chỉ được hoàn thành việc thuộc phòng của mình. Dòng đã xong rời danh sách chờ và có thể xem tại Đã xong. Dữ liệu lịch sử vẫn được lưu trong MySQL. Hoàn thành sự cố cũng đánh dấu các bản ghi xử lý liên quan là đã hoàn thành.

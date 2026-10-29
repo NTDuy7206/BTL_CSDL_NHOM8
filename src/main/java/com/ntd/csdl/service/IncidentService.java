@@ -16,6 +16,19 @@ public class IncidentService {
 
     private final IncidentRepository incidentRepository;
     private final RoomRepository roomRepository;
+    private final LandlordService landlords;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @org.springframework.transaction.annotation.Transactional
+    public Incident complete(String id,String username){
+        jdbc.queryForList("SELECT incident_id FROM incidents WHERE incident_id=? FOR UPDATE",id);
+        Incident incident=incidentRepository.findById(id).orElseThrow(()->new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,"Không tìm thấy sự cố"));
+        landlords.requireOwner(username,incident.getRoom().getRoomId());
+        incident.setStatus("COMPLETED");
+        jdbc.update("UPDATE incident_resolutions SET is_completed=true,resolution_date=COALESCE(resolution_date,CURRENT_DATE) WHERE incident_id=?",id);
+        return incidentRepository.save(incident);
+    }
+
 
     // =========================
     // CREATE

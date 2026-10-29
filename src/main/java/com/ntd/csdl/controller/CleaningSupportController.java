@@ -17,12 +17,13 @@ import java.util.List;
 public class CleaningSupportController {
 
     private final CleaningSupportService cleaningSupportService;
+    private final com.ntd.csdl.service.LandlordService landlords;
 
     // GET ALL
     @GetMapping
-    public ResponseEntity<List<CleaningSupport>> getAll() {
+    public ResponseEntity<List<CleaningSupport>> getAll(org.springframework.security.core.Authentication auth) {
         return ResponseEntity.ok(
-                cleaningSupportService.getAll()
+                cleaningSupportService.getAll().stream().filter(r->landlords.owns(auth.getName(),r.getRoom().getRoomId())).toList()
         );
     }
 
@@ -99,7 +100,8 @@ public class CleaningSupportController {
     // COMPLETE
     @PutMapping("/{id}/complete")
     public ResponseEntity<CleaningSupport> complete(
-            @PathVariable String id) {
+            @PathVariable String id,org.springframework.security.core.Authentication auth) {
+        landlords.requireOwner(auth.getName(),cleaningSupportService.getById(id).getRoom().getRoomId());
 
         return ResponseEntity.ok(
                 cleaningSupportService.complete(id)

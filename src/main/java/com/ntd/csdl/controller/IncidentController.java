@@ -17,14 +17,18 @@ import java.util.List;
 public class IncidentController {
 
     private final IncidentService incidentService;
+    private final com.ntd.csdl.service.LandlordService landlords;
     private final com.ntd.csdl.service.RentalWorkflowService rentals;
+
+    @PutMapping("/{id}/complete")
+    public Incident complete(@PathVariable String id,org.springframework.security.core.Authentication auth){return incidentService.complete(id,auth.getName());}
 
     // GET ALL
     @GetMapping
-    public ResponseEntity<List<Incident>> getAll() {
+    public ResponseEntity<List<Incident>> getAll(org.springframework.security.core.Authentication auth) {
 
         return ResponseEntity.ok(
-                incidentService.getAll()
+                incidentService.getAll().stream().filter(r->!com.ntd.csdl.service.RentalWorkflowService.admin(auth)||landlords.owns(auth.getName(),r.getRoom().getRoomId())).toList()
         );
     }
 

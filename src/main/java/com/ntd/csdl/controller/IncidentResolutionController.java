@@ -18,15 +18,18 @@ public class IncidentResolutionController {
 
     private final IncidentResolutionService incidentResolutionService;
 
+    private final com.ntd.csdl.service.LandlordService landlords;
+
     @PutMapping("/{id}/complete")
-    public IncidentResolution complete(@PathVariable String id) {
+    public IncidentResolution complete(@PathVariable String id,org.springframework.security.core.Authentication auth) {
+        landlords.requireOwner(auth.getName(),incidentResolutionService.getById(id).getIncident().getRoom().getRoomId());
         return incidentResolutionService.complete(id);
     }
 
     @GetMapping
-    public ResponseEntity<List<IncidentResolution>> getAll() {
+    public ResponseEntity<List<IncidentResolution>> getAll(org.springframework.security.core.Authentication auth) {
         return ResponseEntity.ok(
-                incidentResolutionService.getAll()
+                incidentResolutionService.getAll().stream().filter(r->landlords.owns(auth.getName(),r.getIncident().getRoom().getRoomId())).toList()
         );
     }
 
