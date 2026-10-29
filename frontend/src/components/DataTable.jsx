@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { getValue, labels } from '../data/modules.js'
+import {matchesKeyword} from '../data/search.js'
 import Icon from './Icon.jsx'
 
 function display(record, key) {
@@ -22,8 +23,7 @@ function display(record, key) {
 export default function DataTable({ module, rows, loading, onCreate, onEdit, onDelete, error, onRetry, readOnly = false, onPay, onComplete,completing,onStay }) {
   const [query, setQuery] = useState('')
   const filtered = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase('vi')
-    return q ? rows.filter(row => JSON.stringify(row).toLocaleLowerCase('vi').includes(q)) : rows
+    return rows.filter(row=>matchesKeyword(row,query))
   }, [rows, query])
   const items=filtered
   const download = () => {
@@ -33,7 +33,7 @@ export default function DataTable({ module, rows, loading, onCreate, onEdit, onD
   }
 
   return <section className="data-card">
-    <div className="data-toolbar"><div><h2>Danh sách {module.title.toLocaleLowerCase('vi')}</h2><p>{filtered.length} bản ghi {query && `· lọc từ ${rows.length} dòng`}{readOnly&&' · Chế độ chỉ xem'}</p></div><div className="table-actions"><label className="search-control"><Icon name="search" size={17}/><input value={query} onChange={e=>{setQuery(e.target.value)}} placeholder="Tìm kiếm dữ liệu…" /></label><button className="button button-secondary" onClick={download}><Icon name="download" size={16}/> Xuất CSV</button>{!readOnly&&!['rooms','contracts'].includes(module.key)&&<button className="button button-primary" onClick={onCreate}><Icon name="plus" size={17}/> Thêm {module.singular}</button>}</div></div>
+    <div className="data-toolbar"><div><h2>Danh sách {module.title.toLocaleLowerCase('vi')}</h2><p>{filtered.length} bản ghi {query && `· lọc từ ${rows.length} dòng`}{readOnly&&' · Chế độ chỉ xem'}</p></div><div className="table-actions"><label className="search-control"><Icon name="search" size={17}/><input aria-label="Tìm theo từ khóa" value={query} onChange={e=>{setQuery(e.target.value)}} placeholder="Nhập tên, một phần mã hoặc nội dung…" /></label>{query&&<button className="button button-secondary" onClick={()=>setQuery('')}>Xóa từ khóa</button>}<button className="button button-secondary" onClick={download}><Icon name="download" size={16}/> Xuất CSV</button>{!readOnly&&!['rooms','contracts'].includes(module.key)&&<button className="button button-primary" onClick={onCreate}><Icon name="plus" size={17}/> Thêm {module.singular}</button>}</div></div>
     {error ? <div className="table-state"><div className="state-icon error-state"><Icon name="incident" size={23}/></div><h3>Không tải được dữ liệu</h3><p>{error}</p><button className="button button-secondary" onClick={onRetry}><Icon name="refresh" size={16}/> Thử lại</button></div> : loading ? <div className="table-state"><span className="spinner"/><p>Đang tải dữ liệu…</p></div> : filtered.length===0 ? <div className="table-state"><div className="state-icon"><Icon name="search" size={23}/></div><h3>{rows.length?'Không tìm thấy kết quả':'Chưa có dữ liệu'}</h3><p>{rows.length?'Thử từ khóa khác.':readOnly?'Chưa có dữ liệu trong phân hệ này.':module.key==='contracts'?'Khách thuê gửi yêu cầu tại Đăng ký thuê; chủ nhà duyệt để tạo hợp đồng.':'Thêm bản ghi đầu tiên để bắt đầu quản lý.'}</p>{!rows.length&&!readOnly&&!['rooms','contracts'].includes(module.key)&&<button className="button button-primary" onClick={onCreate}><Icon name="plus" size={17}/> Thêm dữ liệu</button>}</div> : <>
       <div className="table-scroll data-scroll-frame" tabIndex="0" role="region" aria-label={module.title}><table className="data-table"><thead><tr>{module.columns.map(key=><th key={key}>{labels[key]||key}</th>)}{(!readOnly||onPay)&&<th className="actions-heading">Thao tác</th>}</tr></thead><tbody>{items.map((row,index)=><tr key={row[module.id]??index}>{module.columns.map((key,colIndex)=><td key={key} className={colIndex===0?'primary-cell':''}>{display(row,key)}</td>)}{(!readOnly||onPay)&&<td><div className="row-actions">{onStay&&<>{row.agreedRent==null&&<button className="button button-secondary" onClick={()=>onStay(row,'rent-rate')}>Xác nhận giá thuê</button>}{!row.actualCheckIn&&!row.actualCheckOut&&<button className="button button-secondary" onClick={()=>onStay(row,'check-in')}>Check-in</button>}{!row.actualCheckOut&&<button className="button button-primary" onClick={()=>onStay(row,'check-out')}>Check-out</button>}</>}{onComplete&&<button className="button button-primary" disabled={completing!=null} onClick={()=>onComplete(row)}>{completing===row[module.id]?'Đang lưu…':'Đã xử lý xong'}</button>}{onPay&&<button className="button button-primary" onClick={()=>onPay(row)}>Thanh toán</button>}{!readOnly&&<><button className="icon-button row-edit" title="Chỉnh sửa" onClick={()=>onEdit(row)}><Icon name="edit" size={16}/></button>{module.key!=='rooms'&&<button className="icon-button row-delete" title="Xóa" onClick={()=>onDelete(row)}><Icon name="trash" size={16}/></button>}</>}</div></td>}</tr>)}</tbody></table></div>
       <div className="table-footer"><span>{filtered.length} bản ghi · Cuộn trong khung để xem toàn bộ danh sách</span></div>

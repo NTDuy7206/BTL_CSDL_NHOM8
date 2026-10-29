@@ -24,24 +24,21 @@ Tổng cộng 116 bản ghi giả lập, có liên kết khóa ngoại. Tên, đ
 
 ## Sử dụng trên giao diện
 
-Đăng nhập với vai trò chủ nhà để thấy các bảng nghiệp vụ và các chức năng quản lý. Mỗi màn hình có vùng **Tra cứu nhanh**; bấm nút, nhập điều kiện nếu cần, rồi bấm **Tra cứu**. Kết quả hiện ở bảng phía dưới.
+Đăng nhập theo vai trò. Mỗi bảng có một ô **Tìm theo từ khóa**: nhập một phần tên, mã, số điện thoại hoặc nội dung; kết quả lọc ngay khi gõ. Không cần nhập mã đầy đủ, không phân biệt hoa/thường hoặc dấu tiếng Việt. Có thể nhập nhiều từ, ví dụ nguyen anh, hoặc đoạn mã như 103. Dùng **Xóa từ khóa** để bỏ tìm kiếm.
 
-| Màn hình | Các nút ngoài Xem tất cả và Tìm theo mã |
+Tìm kiếm áp dụng trên danh sách hiện được API trả về theo quyền tài khoản. Nếu đã chọn bộ lọc hoặc mục Đã xong/Chờ xử lý, từ khóa chỉ tìm trong danh sách đang hiển thị. Bấm Xem tất cả để nạp lại và bỏ từ khóa cũ. Không yêu cầu nhập ID để đọc dữ liệu.
+
+| Màn hình | Bộ lọc bổ sung ngoài tìm kiếm từ khóa |
 |---|---|
-| Khách thuê | Tìm khách theo tên |
-| Nhân viên | Tìm nhân viên theo tên |
-| Phòng | Theo tình trạng, Theo loại phòng, Giá thuê tối đa |
-| Hợp đồng | Hợp đồng hết hạn, Hợp đồng theo khách, Hợp đồng theo phòng |
-| Hóa đơn | Hóa đơn theo hợp đồng, Tổng giá trị hóa đơn |
-| Sự cố | Sự cố theo phòng, Theo trạng thái |
-| Xử lý sự cố | Theo sự cố, Theo nhân viên, Chưa hoàn thành, Đánh dấu hoàn thành |
-| Hỗ trợ dọn dẹp | Theo phòng, Theo nhân viên, Chưa hoàn thành, Đánh dấu hoàn thành |
-| Chỉ số điện nước | Chỉ số theo phòng |
-| Vi phạm | Vi phạm theo phòng |
-| Nội quy | Xem tất cả, Tìm theo mã |
+| Khách thuê, nhân viên, nội quy, vi phạm, chỉ số điện nước | Xem tất cả; tìm bằng ô từ khóa trong bảng |
+| Phòng | Theo tình trạng, Giá thuê tối đa |
+| Hợp đồng (chủ nhà) | Hợp đồng hết hạn |
+| Hóa đơn (chủ nhà) | Tổng giá trị hóa đơn |
+| Sự cố | Theo trạng thái; Chờ xử lý / Đã xong |
+| Xử lý sự cố, Hỗ trợ dọn dẹp | Chưa hoàn thành; Chờ xử lý / Đã xong |
 | Tài khoản (chủ nhà) | Xem danh sách tài khoản |
 
-Các nút thêm, sửa, xóa trong bảng và các màn hình khách đăng ký hợp đồng, chủ nhà duyệt yêu cầu thuê, báo cáo sự cố, thanh toán hóa đơn vẫn sử dụng API tương ứng. Tổng giá trị hóa đơn là tổng số tiền trên hóa đơn, không phải số tiền đã thực thu. Thanh toán hiện là ghi nhận/báo thanh toán trong hệ thống, chưa tích hợp cổng ngân hàng.
+Nút **Đã xử lý xong**, **Check-in/Check-out** và **Thanh toán** thao tác trên dòng đã chọn; không dùng từ khóa để đoán bản ghi cần cập nhật. Tổng giá trị hóa đơn là tổng tiền trên hóa đơn, không phải tiền đã thực thu. Thanh toán hiện là ghi nhận thủ công và chủ nhà đối soát.
 
 Khách thuê chỉ thấy các chức năng được phân quyền. Hợp đồng và hóa đơn chỉ hiển thị hồ sơ của chính tài khoản đăng nhập. Trong **Đăng ký hợp đồng**, chọn **Thuê của chủ nhà** rồi chọn phòng còn trống của người đó. Yêu cầu thuê chỉ gửi đến chủ nhà sở hữu phòng; khi được duyệt sẽ dùng chính phòng có sẵn.
 

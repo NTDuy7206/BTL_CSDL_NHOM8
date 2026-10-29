@@ -172,3 +172,5 @@
 .room-list-scroll{max-height:360px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:8px;scrollbar-width:auto}.room-list-scroll:focus-visible{outline:2px solid #4568ec;outline-offset:4px}.room-list-scroll::-webkit-scrollbar{width:9px}.room-list-scroll::-webkit-scrollbar-thumb{background:#b1bfd8;border-radius:8px}
 
 .data-scroll-frame{max-height:62vh;min-height:200px;overflow:auto;scrollbar-gutter:stable;overscroll-behavior:contain}.data-scroll-frame thead th{position:sticky;top:0;z-index:2;background:#f0f4fb}.data-scroll-frame:focus-visible{outline:2px solid #496de9}.billing-notice{margin-bottom:20px}.billing-alert-list{max-height:240px;overflow:auto}.row-actions{flex-wrap:wrap}.record-dialog{max-height:92vh;overflow:auto}
+
+.search-control{min-width:min(340px,100%)}.table-actions{flex-wrap:wrap}@media(max-width:700px){.search-control{min-width:0;width:100%}}

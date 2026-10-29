@@ -33,7 +33,9 @@ Trang công khai có thể đang chạy commit khác với mã trên máy. Muố
 | Hóa đơn | Chỉ xem/thanh toán hóa đơn của mình | Quản lý hóa đơn theo phòng thuộc mình, đối soát thanh toán |
 | Thanh toán | Chọn chuyển khoản hoặc tiền mặt, gửi thông tin đã thanh toán | Xác nhận đã thu hoặc yêu cầu kiểm tra lại |
 | Sự cố | Báo sự cố tại phòng đang thuê, xem tình trạng | Xử lý, bấm Đã xử lý xong, xem lịch sử hoàn thành |
-| Tra cứu | Dùng những nút được phân quyền | Tra cứu nhanh theo mã, tên, phòng, trạng thái, giá… |
+| Tra cứu | Dùng những nút được phân quyền | Tìm theo từ khóa tên/một phần mã/nội dung; lọc trạng thái, giá… |
+
+Ô tìm kiếm trong bảng lọc ngay theo **từ khóa**, hỗ trợ mã một phần, tên/nội dung không dấu và không phân biệt hoa thường; không cần nhớ đầy đủ ID. Các bộ lọc chỉ giới hạn thêm danh sách đang tìm.
 
 Các bảng hiển thị trong **khung cuộn**, không chia trang; có đơn vị **m², kWh, m³ (khối nước), ₫**. Tổng quan của khách lấy **Phòng tôi đang thuê** từ hợp đồng của chính tài khoản đó. Danh sách phòng để tham khảo có thể bao gồm phòng của các chủ nhà khác.
 
