@@ -9,4 +9,5 @@ import lombok.Setter;
 public class PaymentReportStatusDTO {
     @NotBlank
     private String status;
+    private java.time.LocalDate receivedOn;
 }

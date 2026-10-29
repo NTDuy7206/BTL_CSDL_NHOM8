@@ -21,5 +21,9 @@ try{
  const {Sidebar,Topbar}=await server.ssrLoadModule('/src/components/AppShell.jsx');
  for(const role of ['USER','ADMIN']){const html=renderToStaticMarkup(React.createElement(Sidebar,{page:'rooms',role,user:{username:'Test'},collapsed:true,onNavigate:()=>{},onToggle:()=>{}}));assert.ok(html.includes('href="/#/rooms"'));assert.ok(html.includes('aria-current="page"'));assert.ok(html.includes('aria-label="Mở rộng thanh bên"'));assert.equal(html.includes('href="/#/accounts"'),role==='ADMIN');assert.ok(!/<button[^>]*class="nav-link/.test(html),'navigation items must be real links');}
  const expanded=renderToStaticMarkup(React.createElement(Topbar,{title:'Phòng',collapsed:false}));assert.ok(expanded.includes('aria-label="Thu gọn thanh bên"'));assert.ok(expanded.includes('aria-controls="app-sidebar"'));
+ const {default:ProfitsPage}=await server.ssrLoadModule('/src/pages/ProfitsPage.jsx');const {default:AdminUtilities}=await server.ssrLoadModule('/src/components/AdminUtilities.jsx');
+ const financeHtml=renderToStaticMarkup(React.createElement(ProfitsPage,{request:async()=>[],notify:()=>{}}));assert.ok(financeHtml.includes('Lợi nhuận theo ngày, tháng và năm'));assert.ok(financeHtml.includes('Ngày xem báo cáo'));assert.ok(financeHtml.includes('Ghi nhận chi phí khác'));
+ const utilitiesHtml=renderToStaticMarkup(React.createElement(AdminUtilities,{request:async()=>[],notify:()=>{}}));assert.ok(utilitiesHtml.includes('Thanh toán điện, nước cho đơn vị cung cấp'));
+ for(const role of ['USER','ADMIN']){const nav=renderToStaticMarkup(React.createElement(Sidebar,{page:'profits',role,user:{username:'Test'}}));assert.equal(nav.includes('href="/#/profits"'),role==='ADMIN');}
  console.log('Reload navigation, list validation and 9 empty/error/search UI scenarios passed');
 }finally{await server.close()}

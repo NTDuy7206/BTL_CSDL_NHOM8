@@ -49,3 +49,6 @@ Trong Sự cố, Xử lý sự cố và Hỗ trợ dọn dẹp, danh sách mặc
 ## Nhận/trả phòng và tự tính hóa đơn
 
 Xem [HUONG_DAN_THUE_VA_HOA_DON.md](HUONG_DAN_THUE_VA_HOA_DON.md) để dùng check-in/check-out, chốt giá thuê và nhập chỉ số điện nước. Hóa đơn đến hạn được tính tự động khi đủ dữ liệu và thông báo trong tài khoản khách thuê.
+
+## Điện/nước và lợi nhuận của chủ nhà
+ADMIN vào Thanh toán để tổng hợp điện/nước của khách theo tháng và ghi nhận số thực trả cho nhà cung cấp sau khi đã trả bên ngoài ứng dụng. Thu tiền khách vẫn được xác nhận ở phần dưới, có ngày thực thu. Vào Lợi nhuận để xem thu/chi và lợi nhuận tạm tính theo ngày, tháng, năm; bổ sung chi phí khác và ngày thực thu còn thiếu của dữ liệu cũ. USER không được truy cập sổ chi trả hay lợi nhuận của chủ nhà.

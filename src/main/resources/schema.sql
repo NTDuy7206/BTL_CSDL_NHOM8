@@ -107,3 +107,28 @@ CREATE TABLE IF NOT EXISTS tenant_landlords (
  FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE,
  FOREIGN KEY(user_id) REFERENCES landlord_properties(user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS finance_receipts (
+ payment_report_id BIGINT PRIMARY KEY,
+ invoice_id VARCHAR(20) NOT NULL UNIQUE,
+ landlord_id BIGINT NOT NULL,
+ received_on DATE NOT NULL,
+ amount DECIMAL(18,2) NOT NULL,
+ FOREIGN KEY(payment_report_id) REFERENCES payment_reports(payment_report_id),
+ FOREIGN KEY(invoice_id) REFERENCES invoices(invoice_id),
+ FOREIGN KEY(landlord_id) REFERENCES user(id),
+ INDEX ix_receipt_owner_day(landlord_id,received_on)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS utility_disbursements (
+ id VARCHAR(36) PRIMARY KEY,landlord_id BIGINT NOT NULL,bill_year INT NOT NULL,bill_month INT NOT NULL,
+ utility_type VARCHAR(20) NOT NULL,amount DECIMAL(18,2) NOT NULL,paid_on DATE NOT NULL,
+ provider VARCHAR(120) NOT NULL,reference VARCHAR(200) NOT NULL,
+ UNIQUE KEY uq_utility_period(landlord_id,bill_year,bill_month,utility_type),
+ FOREIGN KEY(landlord_id) REFERENCES user(id),INDEX ix_utility_owner_day(landlord_id,paid_on)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS landlord_expenses (
+ id VARCHAR(36) PRIMARY KEY,landlord_id BIGINT NOT NULL,amount DECIMAL(18,2) NOT NULL,paid_on DATE NOT NULL,
+ description VARCHAR(300) NOT NULL,reference VARCHAR(200) NOT NULL,
+ UNIQUE KEY uq_expense_receipt(landlord_id,reference),
+ FOREIGN KEY(landlord_id) REFERENCES user(id),INDEX ix_expense_owner_day(landlord_id,paid_on)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

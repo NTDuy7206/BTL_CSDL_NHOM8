@@ -18,6 +18,7 @@ export function Sidebar({ page, user, profile, onNavigate, onLogout, open, onClo
       {['USER','ADMIN'].includes(role) && <div className="nav-section"><div className="nav-heading">GIAO DỊCH</div>
         <NavLink target="rental-requests" page={page} onNavigate={onNavigate} label={role==='USER'?'Đăng ký thuê':'Yêu cầu thuê'}><Icon name="contract"/><span>{role==='USER'?'Đăng ký thuê':'Yêu cầu thuê'}</span>{role!=='USER'&&pendingRequests>0&&<b className="nav-badge">{pendingRequests>99?'99+':pendingRequests}</b>}</NavLink>
         <NavLink target="payments" page={page} onNavigate={onNavigate} label="Thanh toán"><Icon name="invoice"/><span>Thanh toán</span></NavLink>
+        {role==='ADMIN'&&<NavLink target="profits" page={page} onNavigate={onNavigate} label="Lợi nhuận"><Icon name="meter"/><span>Lợi nhuận</span></NavLink>}
       </div>}
       {role==='ADMIN'&&<div className="nav-section"><div className="nav-heading">QUẢN TRỊ</div><NavLink target="accounts" page={page} onNavigate={onNavigate} label="Tài khoản"><Icon name="users"/><span>Tài khoản</span></NavLink></div>}
       <div className="nav-section"><div className="nav-heading">QUẢN LÝ TÒA NHÀ</div>

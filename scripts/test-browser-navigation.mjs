@@ -19,3 +19,5 @@ followPageLink(click,()=>called++,'rooms');assert.equal(called,1);assert.equal(p
 for(const extra of [{ctrlKey:true},{metaKey:true},{shiftKey:true},{altKey:true},{button:1},{defaultPrevented:true}])followPageLink({...click,...extra},()=>called++,'rooms')
 assert.equal(called,1,'new tab / modified clicks retain native link behavior');assert.equal(prevented,1)
 console.log('Browser navigation: Back/Forward, direct links, reload, role guards and normal link behavior passed')
+
+assert.equal(pageFromHash('#/profits',user),'dashboard');assert.equal(pageFromHash('#/profits',admin),'profits');

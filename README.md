@@ -31,7 +31,8 @@ Trang công khai có thể đang chạy commit khác với mã trên máy. Muố
 | Hợp đồng | Chỉ xem hợp đồng gắn với tài khoản của mình | Duyệt yêu cầu để tạo hợp đồng; không tạo hợp đồng thay khách |
 | Ngày thuê thực tế | Xem ngày nhận/trả thực tế trên hợp đồng | Xác nhận Check-in/Check-out, công tơ và giá thuê thỏa thuận |
 | Hóa đơn | Chỉ xem/thanh toán hóa đơn của mình | Quản lý hóa đơn theo phòng thuộc mình, đối soát thanh toán |
-| Thanh toán | Chọn chuyển khoản hoặc tiền mặt, gửi thông tin đã thanh toán | Xác nhận đã thu hoặc yêu cầu kiểm tra lại |
+| Thanh toán | Chọn chuyển khoản hoặc tiền mặt, gửi thông tin đã thanh toán | Tổng hợp/ghi nhận chi trả điện nước cho nhà cung cấp; xác nhận thu tiền khách theo ngày thực thu |
+| Lợi nhuận | Không truy cập | Xem thực thu, thực chi, lợi nhuận tạm tính theo ngày/tháng/năm; nhập chi phí khác |
 | Sự cố | Báo sự cố tại phòng đang thuê, xem tình trạng | Xử lý, bấm Đã xử lý xong, xem lịch sử hoàn thành |
 | Tra cứu | Dùng những nút được phân quyền | Tìm theo từ khóa tên/một phần mã/nội dung; lọc trạng thái, giá… |
 
@@ -406,3 +407,29 @@ Nút menu ở đầu trang hoặc mũi tên trên thanh bên thu gọn/mở rộ
 
 ### Thống kê phòng và hợp đồng trên Tổng quan
 Với ADMIN, phòng đã thuê được đếm theo các phòng khác nhau có hợp đồng đang hiệu lực (ngày nhận/trả thực tế nếu có, nếu chưa có dùng thời hạn hợp đồng). Các phòng còn lại là phòng trống; phòng chưa cấu hình/bảo trì được tính là chưa có khách nhưng không tự mở đăng ký thuê. Hợp đồng thiếu ngày làm phòng vào nhóm chưa xác định để chủ nhà đối soát. Ô Hợp đồng đang hiệu lực không đếm lịch sử đã hết hạn/trả phòng; mục Hợp đồng vẫn giữ toàn bộ bản ghi. Ví dụ 65 phòng, 6 phòng có hợp đồng đang hiệu lực và 1 hợp đồng cũ: 59 trống, 6 đã thuê, 6 hợp đồng đang hiệu lực / 7 lịch sử. Nếu có hai hợp đồng cùng hiệu lực trong một phòng, hiển thị cảnh báo thay vì tự xóa hay sửa hợp đồng. Lỗi tải hợp đồng hiển thị thống kê chưa xác định, không suy ra toàn bộ phòng đang trống.
+
+### Thanh toán của chủ nhà và lợi nhuận
+| Mục | Hành vi |
+| --- | --- |
+| Thanh toán – điện/nước | Tổng hợp riêng hóa đơn khách của chủ nhà theo tháng. Điện và nước có chứng từ/ngày thực trả riêng. Số đã tính cho khách là tham khảo; nhập số trả thực tế cho Điện lực/Cấp nước. |
+| Ghi nhận chi trả | Chỉ bấm sau khi đã trả tiền ngoài ứng dụng; lưu DB và chứng từ. Không tự chuyển tiền hoặc kết nối cơ quan nhà nước/nhà cung cấp. Mỗi chủ nhà/kỳ/loại điện hoặc nước chỉ ghi nhận một lần. |
+| Thu tiền từ khách | Giữ chức năng đối soát của chủ nhà; khi xác nhận PAID, nhập ngày thực thu. Sổ thu khóa theo hóa đơn để chống tính hai lần. |
+| Lợi nhuận (`/#/profits`) | Chỉ ADMIN. Báo cáo theo ngày, tháng, năm và khoảng ngày tùy chọn; ba thẻ tổng hợp theo ngày xem, tháng đó, năm đó. Dùng giờ Việt Nam. |
+| Công thức | Lợi nhuận tạm tính trên cơ sở thu/chi = tiền hóa đơn đã xác nhận thu – điện/nước thực trả – chi phí khác đã nhập. Hóa đơn chưa thu và báo cáo PENDING/REJECTED không phải thực thu; tiền cọc không nằm trong sổ thu hóa đơn. Chưa trừ chi phí chưa ghi nhận. |
+| Chi phí khác | Nhập ngày chi, nội dung, số tiền và mã chứng từ duy nhất (sửa chữa, dọn dẹp, nhân công...). Không nhập lại khoản điện/nước đã ghi trong Thanh toán. |
+| Dữ liệu cũ | Khoản PAID chưa có ngày thực thu nằm trong danh sách cần bổ sung tại Lợi nhuận. Không tự lấy ngày khách gửi báo cáo làm ngày thực thu. Mỗi hóa đơn chỉ phân bổ một lần, kể cả có báo cáo trùng cũ. |
+| Phân quyền | Các API `/api/finance/**` thuộc ADMIN; dữ liệu truy vấn bằng ID tài khoản đăng nhập, không nhận ID chủ nhà từ client. Thu/chi của từng chủ nhà độc lập. |
+
+Các bảng bổ sung `finance_receipts`, `utility_disbursements`, `landlord_expenses` được tạo qua `schema.sql`; không sửa hay xóa hóa đơn cũ. Khoản đã ghi nhận được giữ nguyên để đối soát. Số tiền tổng hợp bằng DECIMAL/BigDecimal; báo cáo nhóm theo ngày thực thu/chi, không dùng tháng của hóa đơn làm ngày nhận tiền.
+
+| API ADMIN | Mục đích |
+| --- | --- |
+| GET `/api/finance/utilities?year=2026&month=10` | Tổng điện/nước đã tính cho khách trong kỳ và lịch sử trả nhà cung cấp |
+| POST `/api/finance/utilities` | Ghi nhận khoản đã trả: year, month, utilityType (ELECTRICITY/WATER), amount, paidOn, provider, reference |
+| GET `/api/finance/summary?date=2026-10-29` | Tổng thu/chi và lợi nhuận theo ngày, tháng, năm của ngày đã chọn |
+| GET `/api/finance/report?from=2026-10-01&to=2026-10-29&group=day` | Chi tiết theo day/month/year; ngày tối đa 366 ngày, tháng/năm tối đa 10 năm |
+| GET/POST `/api/finance/expenses` | Danh sách hoặc thêm khoản thực chi: amount, paidOn, description, reference |
+| GET `/api/finance/unallocated-receipts` | Khoản thu cũ thiếu ngày thực thu |
+| POST `/api/finance/receipts/{id}` | Bổ sung receivedOn cho báo cáo PAID thuộc chủ nhà hiện tại |
+
+Kiểm tra tài chính: `FinanceTests` dùng schema bổ sung thực tế trên DB kiểm thử H2, kiểm tra số tiền lẻ, ngày/tháng/năm, phân quyền dữ liệu, thu cũ, chống trùng và hai yêu cầu đồng thời. Chưa kiểm thử kết nối với ngân hàng/nhà cung cấp vì ứng dụng chỉ ghi nhận thủ công.
