@@ -9,3 +9,7 @@ assert.equal(roomGroups(rooms,[{...contract,startDate:'2026-12-01'}],'USER','202
 assert.equal(roomGroups(rooms,[],'ADMIN','2026-10-29').rented.length,10);
 assert.equal(roomGroups(rooms,[],'USER','2026-10-29').vacant.length,5);
 console.log('7 dashboard room-isolation checks passed');
+
+assert.equal(roomGroups(rooms,[{...contract,actualCheckOut:'2026-10-29'}],'USER','2026-10-29').rented.length,0);
+assert.equal(roomGroups(rooms,[{...contract,startDate:'2026-11-01',actualCheckIn:'2026-10-28'}],'USER','2026-10-29').rented.length,1);
+console.log('2 actual check-in/check-out dashboard checks passed');

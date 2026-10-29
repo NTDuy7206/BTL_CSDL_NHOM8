@@ -14,6 +14,10 @@ import java.time.LocalDate;
 @Builder
 public class Contract {
 
+    @Transient private BigDecimal agreedRent;
+    @Transient private LocalDate actualCheckIn;
+    @Transient private LocalDate actualCheckOut;
+
     @Id
     @Column(name = "contract_id", length = 20)
     private String contractId;

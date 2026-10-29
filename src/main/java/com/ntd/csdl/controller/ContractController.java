@@ -17,13 +17,14 @@ import java.util.List;
 public class ContractController {
 
     private final ContractService contractService;
+    private final com.ntd.csdl.service.StayService stays;
     private final com.ntd.csdl.service.LandlordService landlords;
     private final com.ntd.csdl.service.RentalWorkflowService rentals;
 
     @GetMapping
     public ResponseEntity<List<Contract>> getAll(org.springframework.security.core.Authentication auth) {
         return ResponseEntity.ok(
-                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? contractService.getAll().stream().filter(c->landlords.owns(auth.getName(),c.getRoom().getRoomId())).toList() : rentals.mine(auth.getName())
+                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? contractService.getAll().stream().filter(c->landlords.owns(auth.getName(),c.getRoom().getRoomId())).map(stays::enrich).toList() : rentals.mine(auth.getName()).stream().map(stays::enrich).toList()
         );
     }
 
@@ -33,7 +34,7 @@ public class ContractController {
         Contract contract=contractService.getById(id);
         if(com.ntd.csdl.service.RentalWorkflowService.admin(auth))landlords.requireOwner(auth.getName(),contract.getRoom().getRoomId());
         else rentals.requireOwner(auth.getName(),contract);
-        return ResponseEntity.ok(contract);
+        return ResponseEntity.ok(stays.enrich(contract));
     }
 
     private String ownedId(String id,String name){landlords.requireOwner(name,contractService.getById(id).getRoom().getRoomId());return id;}

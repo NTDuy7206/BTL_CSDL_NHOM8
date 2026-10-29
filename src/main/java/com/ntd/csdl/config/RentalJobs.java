@@ -1,0 +1,8 @@
+package com.ntd.csdl.config;
+import com.ntd.csdl.service.*;import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Component;import org.springframework.scheduling.annotation.*;import org.springframework.jdbc.core.JdbcTemplate;import java.time.*;
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="app.rental-jobs.enabled",havingValue="true",matchIfMissing=true)
+@Component @EnableScheduling @RequiredArgsConstructor public class RentalJobs {
+ private final StayService stays;private final MonthlyBillingService billing;private final JdbcTemplate jdbc;
+ @Scheduled(initialDelay=30000,fixedDelay=60000) public void tick(){try{stays.refreshAll();var now=LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));jdbc.update("INSERT INTO billing_start(id,start_month) SELECT 1,? WHERE NOT EXISTS (SELECT 1 FROM billing_start WHERE id=1)",now.toLocalDate().withDayOfMonth(1));YearMonth due=dueMonth(now),first=YearMonth.from(jdbc.queryForObject("SELECT start_month FROM billing_start WHERE id=1",java.sql.Date.class).toLocalDate());for(YearMonth m=first;!m.isAfter(due);m=m.plusMonths(1))for(String id:jdbc.query("SELECT contract_id FROM contracts",(rs,n)->rs.getString(1)))try{billing.bill(id,m);}catch(Exception e){System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Chưa tính được hóa đơn "+id+" kỳ "+m+": "+e.getClass().getSimpleName());}}catch(Exception e){System.getLogger(getClass().getName()).log(System.Logger.Level.WARNING,"Tác vụ thuê phòng sẽ thử lại: "+e.getClass().getSimpleName());}}
+ public static YearMonth dueMonth(LocalDateTime now){YearMonth m=YearMonth.from(now);return now.getDayOfMonth()==m.lengthOfMonth()&&!now.toLocalTime().isBefore(LocalTime.of(23,55))?m:m.minusMonths(1);}
+}

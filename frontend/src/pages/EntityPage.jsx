@@ -4,9 +4,11 @@ import RecordDialog from '../components/RecordDialog.jsx'
 import Icon from '../components/Icon.jsx'
 import InventorySetup from '../components/InventorySetup.jsx'
 import {completionModules,isComplete,visibleWork} from '../data/completion.js'
+import StayDialog from '../components/StayDialog.jsx'
 import QueryPanel from '../components/QueryPanel.jsx'
 
 export default function EntityPage({ module, request, notify, readOnly = false, onPay }) {
+  const [stay,setStay]=useState(null)
   const tracked=completionModules.has(module.key)
   const [workView,setWorkView]=useState('pending'),[completing,setCompleting]=useState(null)
   const [rows,setRows]=useState([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [editing,setEditing]=useState(undefined)
@@ -20,7 +22,8 @@ export default function EntityPage({ module, request, notify, readOnly = false, 
     {module.key==='rooms'&&!readOnly&&<InventorySetup request={request} onDone={load}/>}
     <QueryPanel module={module} request={request} readOnly={readOnly} onResults={result=>{setRows(result);setError('');setLoading(false)}}/>
     {tracked&&<section className="content-card workflow-card"><div className="workflow-buttons" role="group" aria-label="Lọc công việc"><button className={'button '+(workView==='pending'?'button-primary':'button-secondary')} onClick={()=>setWorkView('pending')}>Chờ xử lý ({rows.filter(r=>!isComplete(module.key,r)).length})</button><button className={'button '+(workView==='completed'?'button-primary':'button-secondary')} onClick={()=>setWorkView('completed')}>Đã xong ({rows.filter(r=>isComplete(module.key,r)).length})</button></div><p>Các mục hoàn thành tự rời danh sách chờ xử lý. Xem lại tại Đã xong.</p></section>}
-    <DataTable key={workView} module={module} rows={tracked?visibleWork(module.key,rows,workView):rows} loading={loading} error={error} onRetry={load} readOnly={readOnly} onCreate={()=>setEditing(null)} onPay={onPay} onComplete={tracked&&!readOnly&&workView==='pending'?complete:undefined} completing={completing} onEdit={row=>setEditing(row)} onDelete={remove}/>
+    <DataTable key={workView} module={module} rows={tracked?visibleWork(module.key,rows,workView):rows} loading={loading} error={error} onRetry={load} readOnly={readOnly} onCreate={()=>setEditing(null)} onPay={onPay} onStay={module.key==='contracts'&&!readOnly?(row,mode)=>setStay({row,mode}):undefined} onComplete={tracked&&!readOnly&&workView==='pending'?complete:undefined} completing={completing} onEdit={row=>setEditing(row)} onDelete={remove}/>
+    {stay&&<StayDialog row={stay.row} mode={stay.mode} request={request} onClose={()=>setStay(null)} onSaved={load}/>}
     {editing!==undefined&&<RecordDialog key={`${module.key}-${editing?.[module.id]||'new'}`} module={module} record={editing} onClose={()=>setEditing(undefined)} onSave={save}/>}
   </div>
 }

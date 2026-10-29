@@ -45,3 +45,7 @@ Tại Hóa đơn của tôi, bấm Thanh toán để chọn hóa đơn tương �
 ## Hoàn thành công việc
 
 Trong Sự cố, Xử lý sự cố và Hỗ trợ dọn dẹp, danh sách mặc định là Chờ xử lý. Chủ nhà bấm Đã xử lý xong trên từng dòng để hoàn thành; chỉ được hoàn thành việc thuộc phòng của mình. Dòng đã xong rời danh sách chờ và có thể xem tại Đã xong. Dữ liệu lịch sử vẫn được lưu trong MySQL. Hoàn thành sự cố cũng đánh dấu các bản ghi xử lý liên quan là đã hoàn thành.
+
+## Nhận/trả phòng và tự tính hóa đơn
+
+Xem [HUONG_DAN_THUE_VA_HOA_DON.md](HUONG_DAN_THUE_VA_HOA_DON.md) để dùng check-in/check-out, chốt giá thuê và nhập chỉ số điện nước. Hóa đơn đến hạn được tính tự động khi đủ dữ liệu và thông báo trong tài khoản khách thuê.

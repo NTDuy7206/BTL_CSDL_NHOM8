@@ -168,3 +168,7 @@ Nếu bạn chọn Railway, xem hướng dẫn chi tiết trong DEPLOY_RAILWAY.m
 ### Thuê phòng và thanh toán
 
 Khách dùng Đăng ký thuê để gửi yêu cầu của chính tài khoản mình; chủ nhà chỉ duyệt yêu cầu. Đã bỏ tạo hợp đồng thay khách. Trong Hóa đơn của tôi, bấm Thanh toán và chọn chuyển khoản hoặc tiền mặt, nhập thông tin giao dịch rồi gửi để chủ nhà xác nhận. Chưa tích hợp cổng thu tiền tự động.
+
+## Nhận/trả phòng và tự tính hóa đơn
+
+Xem [HUONG_DAN_THUE_VA_HOA_DON.md](HUONG_DAN_THUE_VA_HOA_DON.md) để dùng check-in/check-out, chốt giá thuê và nhập chỉ số điện nước. Hóa đơn đến hạn được tính tự động khi đủ dữ liệu và thông báo trong tài khoản khách thuê.

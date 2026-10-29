@@ -6,8 +6,6 @@ import com.ntd.csdl.entity.Invoice;
 import com.ntd.csdl.repo.ContractRepository;
 import com.ntd.csdl.repo.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -19,18 +17,13 @@ public class InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
     private final ContractRepository contractRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     // CREATE
-    @CacheEvict(
-            value = {
-                    "invoices",
-                    "invoiceById",
-                    "invoicesByContract",
-                    "totalRevenue"
-            },
-            allEntries = true
-    )
+    @org.springframework.transaction.annotation.Transactional
     public Invoice create(InvoiceDTO dto) {
+        jdbc.queryForList("SELECT contract_id FROM contracts WHERE contract_id=? FOR UPDATE",dto.getContractId());
+        if(!jdbc.queryForList("SELECT invoice_id FROM invoices WHERE contract_id=? AND month=? AND year=?",dto.getContractId(),dto.getMonth(),dto.getYear()).isEmpty())throw new IllegalArgumentException("Hợp đồng đã có hóa đơn trong tháng này");
 
         if (dto.getInvoiceId() == null ||
                 dto.getInvoiceId().isBlank()) {
@@ -108,13 +101,11 @@ public class InvoiceService {
     }
 
     // READ ALL
-    @Cacheable(value = "invoices")
     public List<Invoice> getAll() {
         return invoiceRepository.findAll();
     }
 
     // READ BY ID
-    @Cacheable(value = "invoiceById", key = "#id")
     public Invoice getById(String id) {
 
         return invoiceRepository.findById(id)
@@ -126,21 +117,17 @@ public class InvoiceService {
     }
 
     // UPDATE
-    @CacheEvict(
-            value = {
-                    "invoices",
-                    "invoiceById",
-                    "invoicesByContract",
-                    "totalRevenue"
-            },
-            allEntries = true
-    )
+    @org.springframework.transaction.annotation.Transactional
     public Invoice update(
             String id,
             InvoiceDTO dto
     ) {
 
+        jdbc.queryForList("SELECT contract_id FROM contracts WHERE contract_id=? FOR UPDATE",dto.getContractId());
+        jdbc.queryForList("SELECT invoice_id FROM invoices WHERE invoice_id=? FOR UPDATE",id);
         Invoice existing = getById(id);
+        if(!java.util.Objects.equals(existing.getContract().getContractId(),dto.getContractId())||!java.util.Objects.equals(existing.getMonth(),dto.getMonth())||!java.util.Objects.equals(existing.getYear(),dto.getYear()))throw new IllegalArgumentException("Không được đổi hợp đồng hoặc kỳ của hóa đơn đã lập");
+        if(!jdbc.queryForList("SELECT payment_report_id FROM payment_reports WHERE invoice_id=? AND status IN ('PENDING','PAID')",id).isEmpty())throw new IllegalArgumentException("Hóa đơn đang đối soát hoặc đã thanh toán; không được sửa số tiền");
 
         Contract contract = contractRepository
                 .findById(dto.getContractId())
@@ -192,15 +179,6 @@ public class InvoiceService {
     }
 
     // DELETE
-    @CacheEvict(
-            value = {
-                    "invoices",
-                    "invoiceById",
-                    "invoicesByContract",
-                    "totalRevenue"
-            },
-            allEntries = true
-    )
     public void delete(String id) {
 
         if (!invoiceRepository.existsById(id)) {
@@ -213,10 +191,6 @@ public class InvoiceService {
     }
 
     // GET INVOICES BY CONTRACT
-    @Cacheable(
-            value = "invoicesByContract",
-            key = "#contractId"
-    )
     public List<Invoice> getByContract(
             String contractId
     ) {
@@ -226,7 +200,6 @@ public class InvoiceService {
     }
 
     // TOTAL REVENUE
-    @Cacheable(value = "totalRevenue")
     public BigDecimal getTotalRevenue() {
 
         BigDecimal total =

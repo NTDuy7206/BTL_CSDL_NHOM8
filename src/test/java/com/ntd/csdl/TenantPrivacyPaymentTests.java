@@ -17,9 +17,10 @@ import java.util.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 class TenantPrivacyPaymentTests {
- RentalWorkflowService rentals;Contract c1,c2;Invoice invoice;InvoiceRepository invoices;UserRepository users;PaymentReportRepository reports;LandlordService landlords;PaymentReportService payments;
+ StayService stays;RentalWorkflowService rentals;Contract c1,c2;Invoice invoice;InvoiceRepository invoices;UserRepository users;PaymentReportRepository reports;LandlordService landlords;PaymentReportService payments;
  org.springframework.security.core.Authentication auth(String username){return new UsernamePasswordAuthenticationToken(username,null,List.of(new SimpleGrantedAuthority("ROLE_USER")));}
  @BeforeEach void init(){
+  stays=mock(StayService.class);when(stays.enrich(any(Contract.class))).thenAnswer(i->i.getArgument(0));
   var jdbc=new JdbcTemplate(new DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+";NON_KEYWORDS=USER;DB_CLOSE_DELAY=-1","sa",""));
   jdbc.execute("CREATE TABLE user(id BIGINT PRIMARY KEY,username VARCHAR(100) UNIQUE)");jdbc.execute("CREATE TABLE tenant_accounts(user_id BIGINT PRIMARY KEY,tenant_id VARCHAR(20) UNIQUE)");jdbc.update("INSERT INTO user VALUES(1,'user1'),(2,'user2'),(3,'user3')");jdbc.update("INSERT INTO tenant_accounts VALUES(1,'T1'),(2,'T2')");
   var contracts=mock(ContractRepository.class);users=mock(UserRepository.class);invoices=mock(InvoiceRepository.class);reports=mock(PaymentReportRepository.class);landlords=mock(LandlordService.class);
@@ -34,9 +35,9 @@ class TenantPrivacyPaymentTests {
   payments=new PaymentReportService(reports,invoices,users,rentals,landlords);
  }
  @Test void eachAccountOnlyGetsItsOwnContract(){assertEquals("C1",rentals.mine("user1").getFirst().getContractId());assertEquals("C2",rentals.mine("user2").getFirst().getContractId());assertTrue(rentals.mine("user3").isEmpty());assertThrows(ResponseStatusException.class,()->rentals.requireOwner("user2",c1));}
- @Test void contractEndpointRejectsAnotherAccountsId(){var service=mock(ContractService.class);when(service.getById("C1")).thenReturn(c1);var ctl=new ContractController(service,landlords,rentals);assertEquals("C1",ctl.getById("C1",auth("user1")).getBody().getContractId());assertEquals(403,assertThrows(ResponseStatusException.class,()->ctl.getById("C1",auth("user2"))).getStatusCode().value());}
+ @Test void contractEndpointRejectsAnotherAccountsId(){var service=mock(ContractService.class);when(service.getById("C1")).thenReturn(c1);var ctl=new ContractController(service,stays,landlords,rentals);assertEquals("C1",ctl.getById("C1",auth("user1")).getBody().getContractId());assertEquals(403,assertThrows(ResponseStatusException.class,()->ctl.getById("C1",auth("user2"))).getStatusCode().value());}
  @Test void invoiceEndpointRejectsAnotherAccountsId(){var service=mock(InvoiceService.class);when(service.getById("I1")).thenReturn(invoice);var ctl=new InvoiceController(service,landlords,mock(ContractRepository.class),rentals,invoices);assertEquals(403,assertThrows(ResponseStatusException.class,()->ctl.getById("I1",auth("user2"))).getStatusCode().value());}
- @Test void landlordCannotCreateRentalOrContractDirectly(){var ctl=new RentalWorkflowController(rentals,landlords);assertEquals(403,assertThrows(ResponseStatusException.class,()->ctl.create(null,auth("owner"))).getStatusCode().value());var contracts=new ContractController(mock(ContractService.class),landlords,rentals);assertEquals(403,assertThrows(ResponseStatusException.class,()->contracts.create(null)).getStatusCode().value());}
+ @Test void landlordCannotCreateRentalOrContractDirectly(){var ctl=new RentalWorkflowController(rentals,landlords);assertEquals(403,assertThrows(ResponseStatusException.class,()->ctl.create(null,auth("owner"))).getStatusCode().value());var contracts=new ContractController(mock(ContractService.class),stays,landlords,rentals);assertEquals(403,assertThrows(ResponseStatusException.class,()->contracts.create(null)).getStatusCode().value());}
  PaymentReportCreateDTO dto(String method){var dto=new PaymentReportCreateDTO();dto.setInvoiceId("I1");dto.setPaymentMethod(method);dto.setTransactionReference("Reference 01");return dto;}
  @Test void bothMethodsPersistWithPendingStatusAndCorrectPayer(){for(String method:List.of("BANK_TRANSFER","CASH")){var r=payments.create("user1",dto(method));assertEquals(method,r.getPaymentMethod());assertEquals("PENDING",r.getStatus());assertEquals("user1",r.getUsername());assertEquals(new BigDecimal("3000000"),r.getAmount());}}
  @Test void anotherTenantCannotPayThisInvoice(){assertEquals(403,assertThrows(ResponseStatusException.class,()->payments.create("user2",dto("CASH"))).getStatusCode().value());verify(reports,never()).save(any());}

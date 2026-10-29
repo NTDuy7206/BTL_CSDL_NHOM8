@@ -61,10 +61,9 @@ public class RentalWorkflowService {
         return jdbc.queryForList("SELECT u.username, ta.tenant_id AS tenantId FROM user u LEFT JOIN tenant_accounts ta ON ta.user_id=u.id WHERE u.role=0 ORDER BY u.username");
     }
     public void requireRoom(String username,String roomId) {
-        LocalDate now=LocalDate.now();
-        if(mine(username).stream().noneMatch(c->c.getRoom()!=null && c.getRoom().getRoomId().equals(roomId)
-            && c.getStartDate()!=null && !c.getStartDate().isAfter(now) && c.getEndDate()!=null && !c.getEndDate().isBefore(now)))
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Chỉ được báo cáo sự cố tại phòng bạn đang thuê");
+        LocalDate now=StayService.today();String tenant=tenantId(username);
+        Integer active=jdbc.queryForObject("SELECT COUNT(*) FROM contracts c LEFT JOIN contract_stays s ON s.contract_id=c.contract_id WHERE c.tenant_id=? AND c.room_id=? AND "+StayService.activeSql(),Integer.class,tenant,roomId,now,now,now);
+        if(active==null||active==0)throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Chỉ được báo cáo sự cố tại phòng bạn đang thuê");
     }
     // Called inside the same transaction as the request or the final contract.
     public Tenant saveTenant(RentalDTO dto, String username, boolean self) {
@@ -105,11 +104,11 @@ public class RentalWorkflowService {
         // Read its current locked status, not that potentially stale managed entity.
         String currentStatus=jdbc.queryForObject("SELECT status FROM rooms WHERE room_id=? FOR UPDATE",String.class,roomId);
         if(!available(currentStatus)) throw new ResponseStatusException(HttpStatus.CONFLICT,"Phòng không còn trống");
-        boolean overlap=contracts.findByRoomRoomId(roomId).stream().anyMatch(c ->
-            c.getStartDate()==null || c.getEndDate()==null || (!c.getStartDate().isAfter(end) && !c.getEndDate().isBefore(start)));
+        boolean overlap=jdbc.queryForObject("SELECT COUNT(*) FROM contracts c LEFT JOIN contract_stays s ON s.contract_id=c.contract_id WHERE c.room_id=? AND COALESCE(s.check_in,c.start_date)<=? AND ((s.check_out IS NULL AND c.end_date>=?) OR s.check_out>?)",Integer.class,roomId,end,start,start)>0;
         if(overlap) throw new ResponseStatusException(HttpStatus.CONFLICT,"Phòng đã có hợp đồng trong thời gian này");
         Contract contract=Contract.builder().contractId(id("HD")).tenant(tenant).room(room).startDate(start).endDate(end).deposit(deposit).build();
         contract=contracts.saveAndFlush(contract);
+        jdbc.update("INSERT INTO contract_stays(contract_id,monthly_rent) VALUES (?,?)",contract.getContractId(),room.getBasePrice());
         room.setStatus("OCCUPIED");rooms.save(room);
         return contract;
     }

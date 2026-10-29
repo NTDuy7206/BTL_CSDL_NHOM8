@@ -26,7 +26,7 @@ export const modules = [
   },
   {
     key: 'contracts', title: 'Hợp đồng', singular: 'hợp đồng', icon: 'contract', path: '/api/contracts', id: 'contractId',
-    columns: ['contractId', 'tenantName', 'tenantBirth', 'tenantPhone', 'roomId', 'startDate', 'endDate', 'deposit'],
+    columns: ['contractId', 'tenantName', 'tenantBirth', 'tenantPhone', 'roomId', 'startDate', 'endDate', 'actualCheckIn', 'actualCheckOut', 'agreedRent', 'deposit'],
     fields: [
       ['contractId', 'Mã hợp đồng', 'text'], ['startDate', 'Ngày bắt đầu', 'date'], ['endDate', 'Ngày kết thúc', 'date'],
       ['deposit', 'Tiền cọc', 'number'], ['roomId', 'Mã phòng', 'text'], ['tenantId', 'Mã khách thuê', 'text'],
@@ -34,7 +34,7 @@ export const modules = [
   },
   {
     key: 'invoices', title: 'Hóa đơn', singular: 'hóa đơn', icon: 'invoice', path: '/api/invoices', id: 'invoiceId',
-    columns: ['invoiceId', 'month', 'year', 'totalAmount', 'contractId'],
+    columns: ['invoiceId', 'month', 'year', 'rentAmount', 'electricityAmount', 'waterAmount', 'totalAmount', 'contractId'],
     fields: [
       ['invoiceId', 'Mã hóa đơn', 'text'], ['month', 'Tháng', 'number'], ['year', 'Năm', 'number'], ['rentAmount', 'Tiền thuê', 'number'],
       ['electricityAmount', 'Tiền điện', 'number'], ['waterAmount', 'Tiền nước', 'number'], ['fineAmount', 'Tiền phạt', 'number'],
@@ -43,12 +43,12 @@ export const modules = [
   },
   {
     key: 'utility-readings', title: 'Chỉ số điện nước', singular: 'chỉ số điện nước', icon: 'meter', path: '/api/utility-readings', id: 'readingId',
-    columns: ['readingId', 'month', 'year', 'roomId', 'electricityEndIndex', 'waterEndIndex'],
+    columns: ['readingId', 'month', 'year', 'roomId', 'electricityStartIndex', 'electricityEndIndex', 'electricityUsage', 'waterStartIndex', 'waterEndIndex', 'waterUsage'],
     fields: [
-      ['readingId', 'Mã chỉ số', 'text'], ['month', 'Tháng', 'number'], ['year', 'Năm', 'number'], ['electricityPrice', 'Đơn giá điện', 'number'],
-      ['waterPrice', 'Đơn giá nước', 'number'], ['electricityStartIndex', 'Chỉ số điện đầu kỳ', 'number'],
-      ['electricityEndIndex', 'Chỉ số điện cuối kỳ', 'number'], ['waterStartIndex', 'Chỉ số nước đầu kỳ', 'number'],
-      ['waterEndIndex', 'Chỉ số nước cuối kỳ', 'number'], ['roomId', 'Mã phòng', 'text'],
+      ['readingId', 'Mã chỉ số', 'text'], ['month', 'Tháng', 'number'], ['year', 'Năm', 'number'], ['electricityPrice', 'Đơn giá điện (₫/kWh)', 'number'],
+      ['waterPrice', 'Đơn giá nước (₫/m³)', 'number'], ['electricityStartIndex', 'Chỉ số điện đầu kỳ (kWh)', 'number'],
+      ['electricityEndIndex', 'Chỉ số điện cuối kỳ (kWh)', 'number'], ['waterStartIndex', 'Chỉ số nước đầu kỳ (m³)', 'number'],
+      ['waterEndIndex', 'Chỉ số nước cuối kỳ (m³)', 'number'], ['roomId', 'Mã phòng', 'text'],
     ],
   },
   {
@@ -97,20 +97,23 @@ export const relationMap = {
 }
 
 export const labels = {
+  actualCheckIn:'Nhận phòng thực tế',actualCheckOut:'Trả phòng thực tế',agreedRent:'Giá thuê thỏa thuận (₫/tháng)',
   tenantName: 'Khách thuê', tenantBirth: 'Ngày sinh', tenantPhone: 'Điện thoại',
   tenantId: 'Mã khách thuê', employeeId: 'Mã nhân viên', roomId: 'Mã phòng', contractId: 'Mã hợp đồng', invoiceId: 'Mã hóa đơn',
   readingId: 'Mã chỉ số', incidentId: 'Mã sự cố', resolutionId: 'Mã xử lý', supportId: 'Mã hỗ trợ', ruleId: 'Mã nội quy', violationId: 'Mã vi phạm',
   fullName: 'Họ tên', cccd: 'CCCD', phoneNumber: 'Điện thoại', dateOfBirth: 'Ngày sinh', permanentAddress: 'Địa chỉ', position: 'Vị trí',
-  baseSalary: 'Lương cơ bản', seniority: 'Thâm niên', floor: 'Tầng', area: 'Diện tích', roomType: 'Loại phòng', status: 'Trạng thái',
+  baseSalary: 'Lương cơ bản', seniority: 'Thâm niên', floor: 'Tầng', area: 'Diện tích (m²)', roomType: 'Loại phòng', status: 'Trạng thái',
   startDate: 'Bắt đầu', endDate: 'Kết thúc', deposit: 'Tiền cọc', month: 'Tháng', year: 'Năm', rentAmount: 'Tiền thuê', electricityAmount: 'Tiền điện',
-  waterAmount: 'Tiền nước', fineAmount: 'Tiền phạt', totalAmount: 'Tổng tiền', electricityPrice: 'Đơn giá điện', waterPrice: 'Đơn giá nước',
-  electricityStartIndex: 'Điện đầu kỳ', electricityEndIndex: 'Điện cuối kỳ', waterStartIndex: 'Nước đầu kỳ', waterEndIndex: 'Nước cuối kỳ',
+  waterAmount: 'Tiền nước', fineAmount: 'Tiền phạt', totalAmount: 'Tổng tiền', electricityPrice: 'Đơn giá điện (₫/kWh)', waterPrice: 'Đơn giá nước (₫/m³)',
+  electricityUsage:'Điện sử dụng (kWh)',waterUsage:'Nước sử dụng (m³ / khối)',electricityStartIndex: 'Điện đầu kỳ (kWh)', electricityEndIndex: 'Điện cuối kỳ (kWh)', waterStartIndex: 'Nước đầu kỳ (m³)', waterEndIndex: 'Nước cuối kỳ (m³)',
   incidentContent: 'Nội dung', reportDate: 'Ngày báo', resolutionDate: 'Ngày xử lý', result: 'Kết quả', isCompleted: 'Hoàn tất',
   supportDate: 'Ngày hỗ trợ', taskContent: 'Công việc', violationName: 'Tên lỗi', description: 'Mô tả', prescribedFine: 'Mức phạt',
   violationDate: 'Ngày vi phạm', detailedDescription: 'Chi tiết', actualFine: 'Phạt thực tế',
 }
 
 export function getValue(record, key) {
+  if(key==='electricityUsage')return record?.electricityEndIndex!=null&&record?.electricityStartIndex!=null?record.electricityEndIndex-record.electricityStartIndex:''
+  if(key==='waterUsage')return record?.waterEndIndex!=null&&record?.waterStartIndex!=null?record.waterEndIndex-record.waterStartIndex:''
   if (record?.[key] != null && typeof record[key] !== 'object') return record[key]
   const relation = relationMap[key]
   return relation ? record?.[relation[0]]?.[relation[1]] ?? '' : record?.[key] ?? ''

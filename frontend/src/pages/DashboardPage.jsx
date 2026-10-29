@@ -42,7 +42,7 @@ export default function DashboardPage({ request, user, onNavigate }) {
 
   useEffect(() => {
     let mounted = true
-    Promise.all(modules.map(async module => {
+    const update=()=>Promise.all(modules.map(async module => {
       try {
         const result = await request(module.path)
         return [module.key, Array.isArray(result) ? result : null]
@@ -57,7 +57,8 @@ export default function DashboardPage({ request, user, onNavigate }) {
     }).finally(() => {
       if (mounted) setBusy(false)
     })
-    return () => { mounted = false }
+    update();const timer=setInterval(update,60000)
+    return () => { mounted = false;clearInterval(timer) }
   }, [request,user?.role,dataVersion])
 
   const valid = Object.values(counts).filter(value => value !== null).length

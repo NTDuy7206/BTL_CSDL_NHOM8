@@ -74,3 +74,22 @@ CREATE TABLE IF NOT EXISTS room_landlords (
  CONSTRAINT fk_rl_room FOREIGN KEY(room_id) REFERENCES rooms(room_id),
  CONSTRAINT fk_rl_user FOREIGN KEY(user_id) REFERENCES landlord_properties(user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS contract_stays (
+ contract_id VARCHAR(20) PRIMARY KEY,check_in DATE NULL,check_out DATE NULL,
+ check_in_electric INT NULL,check_in_water INT NULL,check_out_electric INT NULL,check_out_water INT NULL,monthly_rent DECIMAL(18,2) NULL,
+ FOREIGN KEY(contract_id) REFERENCES contracts(contract_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS billing_start (id INT PRIMARY KEY,start_month DATE NOT NULL) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS automatic_bills (
+ contract_id VARCHAR(20) NOT NULL,year INT NOT NULL,month INT NOT NULL,invoice_id VARCHAR(20) NOT NULL,
+ PRIMARY KEY(contract_id,year,month),FOREIGN KEY(contract_id) REFERENCES contracts(contract_id),FOREIGN KEY(invoice_id) REFERENCES invoices(invoice_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS billing_alerts (
+ contract_id VARCHAR(20) NOT NULL,year INT NOT NULL,month INT NOT NULL,message VARCHAR(500) NOT NULL,
+ PRIMARY KEY(contract_id,year,month),FOREIGN KEY(contract_id) REFERENCES contracts(contract_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS invoice_notifications (
+ invoice_id VARCHAR(20) PRIMARY KEY,user_id BIGINT NOT NULL,message VARCHAR(300) NOT NULL,seen BOOLEAN NOT NULL DEFAULT FALSE,
+ FOREIGN KEY(invoice_id) REFERENCES invoices(invoice_id) ON DELETE CASCADE,FOREIGN KEY(user_id) REFERENCES user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
