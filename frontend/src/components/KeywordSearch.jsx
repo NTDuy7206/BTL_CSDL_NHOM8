@@ -1,0 +1,3 @@
+import{useId}from'react'
+import Icon from './Icon.jsx'
+export default function KeywordSearch({value,onChange,label='Tìm kiếm theo từ khóa',placeholder='Nhập tên, một phần mã hoặc nội dung…'}){const id=useId();return <div className="keyword-search"><label htmlFor={id}>{label}</label><div className="keyword-search-controls"><div className="search-control"><Icon name="search" size={18}/><input id={id} type="search" value={value} onChange={e=>onChange(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')onChange('')}} placeholder={placeholder}/></div><button className="button button-secondary" disabled={!value} onClick={()=>onChange('')}>Xóa từ khóa</button></div><small>Lọc ngay khi gõ · Có thể nhập không dấu · Không cần nhớ đầy đủ mã</small></div>}

@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import KeywordSearch from '../components/KeywordSearch.jsx'
+import{matchesKeyword}from '../data/search.js'
+import{requireRows}from '../data/listResponse.js'
 import Icon from '../components/Icon.jsx'
 
 function money(value) { return `${Number(value || 0).toLocaleString('vi-VN')} ₫` }
@@ -7,6 +10,7 @@ function methodLabel(value){return value==='CASH'?'Tiền mặt':['BANK_TRANSFER
 function statusLabel(value) { return value === 'PAID' ? 'Đã xác nhận' : value === 'REJECTED' ? 'Cần kiểm tra lại' : 'Chờ chủ nhà xác nhận' }
 
 export default function PaymentsPage({ request, role, notify,initialInvoiceId='' }) {
+  const [query,setQuery]=useState('')
   const isTenant = role === 'USER'
   const [invoices, setInvoices] = useState([])
   const [reports, setReports] = useState([])
@@ -23,14 +27,15 @@ export default function PaymentsPage({ request, role, notify,initialInvoiceId=''
         request('/api/payment-reports'),
         isTenant ? request('/api/invoices') : Promise.resolve([]),
       ])
-      setReports(Array.isArray(reportRows) ? reportRows : [])
-      setInvoices(Array.isArray(invoiceRows) ? invoiceRows : [])
+      setReports(requireRows(reportRows))
+      setInvoices(requireRows(invoiceRows))
       setInvoiceId(current=>Array.isArray(invoiceRows)&&invoiceRows.some(i=>i.invoiceId===current)&&!reportRows.some(r=>r.invoiceId===current&&['PENDING','PAID'].includes(r.status))?current:'')
     } catch (err) { setError(err.message || 'Không tải được dữ liệu thanh toán.') }
   }, [request, isTenant])
 
   useEffect(() => { load() }, [load])
 
+  const shownReports=reports.filter(row=>matchesKeyword(row,query))
   const settledInvoiceIds = new Set(reports.filter(row => row.status === 'PENDING' || row.status === 'PAID').map(row => row.invoiceId))
   const payableInvoices = invoices.filter(invoice => !settledInvoiceIds.has(invoice.invoiceId))
   const selectedInvoice = invoices.find(invoice => invoice.invoiceId === invoiceId)
@@ -62,7 +67,8 @@ export default function PaymentsPage({ request, role, notify,initialInvoiceId=''
     </section>}
     {error&&<div className="alert alert-error"><Icon name="incident" size={16}/>{error}</div>}
     <section className="content-card workflow-card"><div className="card-heading"><div><h2>{isTenant?'Lịch sử báo thanh toán':'Báo cáo cần đối soát'}</h2><p>{reports.length} báo cáo thanh toán</p></div><span className="module-count">{reports.filter(row=>row.status==='PENDING').length} đang chờ</span></div>
-      {reports.length ? <div className="payment-table-wrap"><table className="payment-table"><thead><tr><th>Hóa đơn</th>{!isTenant&&<th>Tài khoản</th>}<th>Số tiền</th><th>Phương thức</th><th>Thông tin thanh toán</th><th>Gửi lúc</th><th>Trạng thái</th>{!isTenant&&<th>Đối soát</th>}</tr></thead><tbody>{reports.map(row=><tr key={row.paymentReportId}><td><b>{row.invoiceId}</b></td>{!isTenant&&<td>{row.username}</td>}<td>{money(row.amount)}</td><td>{methodLabel(row.paymentMethod)}</td><td>{row.transactionReference}</td><td>{date(row.createdAt)}</td><td><span className={`status-pill status-${String(row.status).toLowerCase()}`}>{statusLabel(row.status)}</span></td>{!isTenant&&<td>{row.status==='PENDING'&&<div className="workflow-buttons"><button className="button button-secondary" disabled={busy} onClick={()=>review(row,'REJECTED')}>Kiểm tra lại</button><button className="button button-primary" disabled={busy} onClick={()=>review(row,'PAID')}>Xác nhận đã thu</button></div>}</td>}</tr>)}</tbody></table></div> : <div className="workflow-empty"><Icon name="invoice" size={22}/><span>Chưa có báo cáo thanh toán.</span></div>}
+      <KeywordSearch value={query} onChange={setQuery} label="Tìm báo cáo thanh toán theo từ khóa"/><p>{shownReports.length} / {reports.length} báo cáo</p>
+      {shownReports.length ? <div className="payment-table-wrap"><table className="payment-table"><thead><tr><th>Hóa đơn</th>{!isTenant&&<th>Tài khoản</th>}<th>Số tiền</th><th>Phương thức</th><th>Thông tin thanh toán</th><th>Gửi lúc</th><th>Trạng thái</th>{!isTenant&&<th>Đối soát</th>}</tr></thead><tbody>{shownReports.map(row=><tr key={row.paymentReportId}><td><b>{row.invoiceId}</b></td>{!isTenant&&<td>{row.username}</td>}<td>{money(row.amount)}</td><td>{methodLabel(row.paymentMethod)}</td><td>{row.transactionReference}</td><td>{date(row.createdAt)}</td><td><span className={`status-pill status-${String(row.status).toLowerCase()}`}>{statusLabel(row.status)}</span></td>{!isTenant&&<td>{row.status==='PENDING'&&<div className="workflow-buttons"><button className="button button-secondary" disabled={busy} onClick={()=>review(row,'REJECTED')}>Kiểm tra lại</button><button className="button button-primary" disabled={busy} onClick={()=>review(row,'PAID')}>Xác nhận đã thu</button></div>}</td>}</tr>)}</tbody></table></div> : <div className="workflow-empty"><Icon name="invoice" size={22}/><span>{query?'Không tìm thấy báo cáo khớp từ khóa.':'Chưa có báo cáo thanh toán.'}</span></div>}
     </section>
   </div>
 }

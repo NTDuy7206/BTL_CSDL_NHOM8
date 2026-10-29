@@ -1,10 +1,11 @@
 import {useEffect,useState} from 'react'
+import {requireRows} from '../data/listResponse.js'
 import {available} from '../data/permissions.js'
 const blank={fullName:'',cccd:'',dateOfBirth:'',permanentAddress:'',phoneNumber:''}
 const today=()=>new Date().toLocaleDateString('en-CA')
 export default function RentalForm({request,onSaved,notify}){
  const[rooms,setRooms]=useState([]),[landlordId,setLandlordId]=useState(''),[person,setPerson]=useState(blank),[roomId,setRoomId]=useState(''),[startDate,setStart]=useState(''),[endDate,setEnd]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
- useEffect(()=>{let active=true;Promise.all([request('/api/landlords/rooms'),request('/api/rentals/me')]).then(([r,t])=>{if(active){setRooms(r);if(t)setPerson({...blank,...t})}}).catch(e=>{if(active)setError(e.message)}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[request]);
+ useEffect(()=>{let active=true;Promise.all([request('/api/landlords/rooms'),request('/api/rentals/me')]).then(([r,t])=>{if(active){setRooms(requireRows(r));if(t)setPerson({...blank,...t})}}).catch(e=>{if(active)setError(e.message)}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[request]);
  async function submit(e){e.preventDefault();if(endDate<=startDate){setError('Ngày kết thúc phải sau ngày bắt đầu.');return}setBusy(true);setError('');try{const result=await request('/api/contract-requests',{method:'POST',body:JSON.stringify({tenant:person,roomId,requestedStartDate:startDate,requestedEndDate:endDate,message})});notify('Đã gửi yêu cầu thuê của tài khoản đang đăng nhập cho chủ nhà.');if(onSaved)await onSaved(result)}catch(e){setError(e.message)}finally{setBusy(false)}}
  const owners=[...new Map(rooms.map(r=>[String(r.landlordId),r.landlordName])).entries()],shownRooms=rooms.filter(r=>String(r.landlordId)===landlordId&&available(r)),room=shownRooms.find(r=>r.roomId===roomId);
  return <section className="content-card workflow-card"><h2>Thông tin đăng ký hợp đồng</h2><p>Yêu cầu thuê được gắn với tài khoản đang đăng nhập. Chủ nhà chỉ duyệt yêu cầu của bạn.</p>{error&&<div role="alert" className="alert alert-error">{error}</div>}{loading?<p>Đang tải…</p>:<form className="rental-form" onSubmit={submit}>

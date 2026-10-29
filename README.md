@@ -387,3 +387,5 @@ BTL_CSDL_NHOM8/
 | [README báo cáo cũ](docs/README_BAO_CAO_CU.md) | Giữ lại toàn bộ nội dung đã viết trước đây để tham khảo; có phần đã lỗi thời |
 
 README là hướng dẫn chạy và dùng mã nguồn. Báo cáo môn Cơ sở dữ liệu trình bày riêng phần phân tích yêu cầu, ER, lược đồ quan hệ, khóa/ràng buộc, SQL và chuẩn hóa theo schema đã xác minh.
+
+Khi tải lại trình duyệt, mục đang mở được giữ theo từng tài khoản trong phiên đăng nhập; từ khóa bắt đầu trống để tránh che kết quả. Ô tìm kiếm luôn hiện ở đầu danh sách, kể cả khi đang tải, không có kết quả hoặc API lỗi. Tài khoản, yêu cầu thuê, thanh toán và phòng trong Tổng quan cũng có ô tìm riêng. Danh sách lỗi không bị coi nhầm là danh sách rỗng; khi có dữ liệu đã tải, giao diện giữ lại để kiểm tra. Các mục của chủ nhà trống do chưa liên kết phòng sẽ có hướng dẫn thiết lập phòng, không tự gán dữ liệu của chủ nhà khác.

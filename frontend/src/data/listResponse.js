@@ -1,0 +1,1 @@
+export function requireRows(value){if(!Array.isArray(value)||value.some(row=>row==null||typeof row!=='object'||Array.isArray(row)))throw new Error('Máy chủ trả dữ liệu không đúng định dạng danh sách. Hãy bấm Tải lại để kiểm tra kết nối.');return value}

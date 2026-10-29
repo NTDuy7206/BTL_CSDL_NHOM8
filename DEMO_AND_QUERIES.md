@@ -24,7 +24,7 @@ Tổng cộng 116 bản ghi giả lập, có liên kết khóa ngoại. Tên, đ
 
 ## Sử dụng trên giao diện
 
-Đăng nhập theo vai trò. Mỗi bảng có một ô **Tìm theo từ khóa**: nhập một phần tên, mã, số điện thoại hoặc nội dung; kết quả lọc ngay khi gõ. Không cần nhập mã đầy đủ, không phân biệt hoa/thường hoặc dấu tiếng Việt. Có thể nhập nhiều từ, ví dụ nguyen anh, hoặc đoạn mã như 103. Dùng **Xóa từ khóa** để bỏ tìm kiếm.
+Đăng nhập theo vai trò. Mỗi bảng có một ô **Tìm kiếm theo từ khóa**: nhập một phần tên, mã, số điện thoại hoặc nội dung; kết quả lọc ngay khi gõ. Không cần nhập mã đầy đủ, không phân biệt hoa/thường hoặc dấu tiếng Việt. Có thể nhập nhiều từ, ví dụ nguyen anh, hoặc đoạn mã như 103. Dùng **Xóa từ khóa** để bỏ tìm kiếm.
 
 Tìm kiếm áp dụng trên danh sách hiện được API trả về theo quyền tài khoản. Nếu đã chọn bộ lọc hoặc mục Đã xong/Chờ xử lý, từ khóa chỉ tìm trong danh sách đang hiển thị. Bấm Xem tất cả để nạp lại và bỏ từ khóa cũ. Không yêu cầu nhập ID để đọc dữ liệu.
 
@@ -63,3 +63,5 @@ Chạy `scripts/test-query-workflow.mjs` với Node khi ứng dụng thử chạ
 Kiểm tra logic tồn kho phòng bằng `./mvnw -Dtest=LandlordInventoryTests test` (Windows dùng mvnw.cmd). Bộ kiểm tra dùng H2 trong bộ nhớ cho giao dịch/khóa ngoại và mô phỏng repository JPA; không thay thế kiểm tra toàn bộ luồng trên MySQL.
 
 Bản sửa quyền thuê: chủ nhà không còn được tạo hợp đồng thay khách, chỉ duyệt yêu cầu do khách gửi. Tổng quan khách lấy phòng đang thuê từ hợp đồng riêng của tài khoản; danh sách phòng có thanh cuộn. Phương thức báo thanh toán gồm BANK_TRANSFER và CASH; khách chọn tại Thanh toán hoặc bấm nút Thanh toán trong Hóa đơn của tôi.
+
+Khi tải lại trình duyệt, mục đang mở được giữ theo từng tài khoản trong phiên đăng nhập; từ khóa bắt đầu trống để tránh che kết quả. Ô tìm kiếm luôn hiện ở đầu danh sách, kể cả khi đang tải, không có kết quả hoặc API lỗi. Tài khoản, yêu cầu thuê, thanh toán và phòng trong Tổng quan cũng có ô tìm riêng. Danh sách lỗi không bị coi nhầm là danh sách rỗng; khi có dữ liệu đã tải, giao diện giữ lại để kiểm tra. Các mục của chủ nhà trống do chưa liên kết phòng sẽ có hướng dẫn thiết lập phòng, không tự gán dữ liệu của chủ nhà khác.

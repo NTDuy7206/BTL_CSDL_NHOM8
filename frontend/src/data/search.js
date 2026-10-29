@@ -1,4 +1,4 @@
-const statuses={AVAILABLE:'phòng trống còn trống',VACANT:'phòng trống',OCCUPIED:'đã thuê đang thuê',PENDING:'chờ xử lý đang chờ',COMPLETED:'đã xong đã xử lý hoàn thành',APPROVED:'đã duyệt',REJECTED:'từ chối cần kiểm tra lại',PAID:'đã thanh toán đã xác nhận',UNCONFIGURED:'chưa cấu hình'}
+const statuses={USER:'khách thuê người thuê',ADMIN:'chủ nhà quản trị',AVAILABLE:'phòng trống còn trống',VACANT:'phòng trống',OCCUPIED:'đã thuê đang thuê',PENDING:'chờ xử lý đang chờ',COMPLETED:'đã xong đã xử lý hoàn thành',APPROVED:'đã duyệt',REJECTED:'từ chối cần kiểm tra lại',PAID:'đã thanh toán đã xác nhận',UNCONFIGURED:'chưa cấu hình'}
 const aliases={roomId:'phòng',contractId:'hợp đồng',tenantId:'khách thuê',employeeId:'nhân viên',fullName:'họ tên',incidentId:'sự cố',invoiceId:'hóa đơn'}
 export function normalizeKeyword(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLocaleLowerCase('vi').replace(/\s+/g,' ').trim()}
 function values(value,key=''){
