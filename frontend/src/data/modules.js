@@ -18,7 +18,7 @@ export const modules = [
   },
   {
     key: 'rooms', title: 'Phòng / mặt bằng', singular: 'phòng', icon: 'building', path: '/api/rooms', id: 'roomId',
-    columns: ['roomId', 'floor', 'area', 'roomType', 'status', 'basePrice'],
+    columns: ['roomId', 'landlordName', 'floor', 'area', 'roomType', 'status', 'basePrice'],
     fields: [
       ['roomId', 'Mã phòng', 'text'], ['floor', 'Tầng', 'number'], ['area', 'Diện tích (m²)', 'number'],
       ['roomType', 'Loại phòng', 'text'], ['status', 'Tình trạng', 'text'], ['basePrice', 'Giá thuê cơ bản', 'number'],
@@ -97,6 +97,7 @@ export const relationMap = {
 }
 
 export const labels = {
+  landlordName: 'Chủ nhà',
   actualCheckIn:'Nhận phòng thực tế',actualCheckOut:'Trả phòng thực tế',agreedRent:'Giá thuê thỏa thuận (₫/tháng)',
   tenantName: 'Khách thuê', tenantBirth: 'Ngày sinh', tenantPhone: 'Điện thoại',
   tenantId: 'Mã khách thuê', employeeId: 'Mã nhân viên', roomId: 'Mã phòng', contractId: 'Mã hợp đồng', invoiceId: 'Mã hóa đơn',

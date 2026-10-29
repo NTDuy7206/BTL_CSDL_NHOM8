@@ -12,8 +12,8 @@ await call('/rooms/'+roomId,a.token,'PUT',payload)
 await call('/rooms',a.token,'POST',payload,409)
 await call('/rooms/'+roomId,a.token,'DELETE',null,409)
 await call('/landlords/property',a.token,'POST',{roomCount:10},409)
-assert.deepEqual(await call('/landlords/rooms',user.token),[]);await call('/landlords/selection',user.token,'PUT',{landlordId:a.id});
-const catalog=await call('/landlords/rooms',user.token);assert.ok(catalog.some(r=>r.roomId===roomId&&r.landlordName===a.username));assert.ok(catalog.every(r=>r.landlordName===a.username));await call('/rooms/'+ownB[0].roomId,user.token,'GET',null,403)
+const catalog=await call('/landlords/rooms',user.token);assert.ok(catalog.some(r=>r.roomId===roomId&&r.landlordName===a.username));assert.ok(catalog.some(r=>r.landlordName===b.username));
+assert.equal((await call('/rooms/'+ownB[0].roomId,user.token)).landlordName,b.username)
 assert.equal((await call('/queries/rooms/status?value=AVAILABLE',a.token)).length,2)
 assert.equal((await call('/queries/rooms/status?value=AVAILABLE',b.token)).length,3)
 const before=(await call('/rooms',user.token)).length

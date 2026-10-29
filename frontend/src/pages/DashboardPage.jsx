@@ -26,7 +26,7 @@ function RoomGroup({ title, kind, rooms, loading, unavailable, onNavigate,target
     </div>
     {shown.length ? <div className="room-list room-list-scroll" tabIndex="0" role="region" aria-label={title}>{shown.map(room => <article className="room-list-item" key={room.roomId}>
       <span className="room-list-icon"><Icon name="building" size={17}/></span>
-      <div className="room-list-main"><b>{room.roomId || 'Phòng chưa có mã'}</b><span>{[room.roomType, room.floor != null ? `Tầng ${room.floor}` : null, room.area != null ? `${room.area} m²` : null].filter(Boolean).join(' · ') || room.status}</span></div>
+      <div className="room-list-main"><b>{room.roomId || 'Phòng chưa có mã'}</b><span>{[room.landlordName ? `Chủ nhà: ${room.landlordName}` : null, room.roomType, room.floor != null ? `Tầng ${room.floor}` : null, room.area != null ? `${room.area} m²` : null].filter(Boolean).join(' · ') || room.status}</span></div>
       <span className="room-list-price">{room.basePrice != null ? `${Number(room.basePrice).toLocaleString('vi-VN')} ₫` : ''}</span>
     </article>)}</div> : <div className="room-empty-state">{loading ? 'Đang tải…' : unavailable ? 'Không tải được danh sách phòng. Hãy kiểm tra kết nối API.' : 'Chưa có phòng thuộc nhóm này.'}</div>}
     {rooms.length > shown.length && <p className="room-list-more">Hiển thị {shown.length} trong {rooms.length} phòng</p>}

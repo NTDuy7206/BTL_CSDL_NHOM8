@@ -1,8 +1,0 @@
-import {useEffect,useState} from 'react'
-import {requireRows} from '../data/listResponse.js'
-export default function TenantScope({request,children,onChanged,browse}){
- const[owners,setOwners]=useState([]),[selected,setSelected]=useState(''),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('')
- useEffect(()=>{let active=true;Promise.all([request('/api/landlords'),request('/api/landlords/selection')]).then(([list,choice])=>{if(active){setOwners(requireRows(list));setSelected(String(choice.landlordId||''))}}).catch(e=>{if(active)setError(e.message)}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[request])
- async function choose(id){if(!id)return;setBusy(true);setError('');try{await request('/api/landlords/selection',{method:'PUT',body:JSON.stringify({landlordId:Number(id)})});setSelected(id);onChanged()}catch(e){setError(e.message)}finally{setBusy(false)}}
- return <><section className="content-card landlord-selector"><label className="form-field"><span>Chọn chủ nhà muốn thuê</span><select aria-label="Chọn chủ nhà muốn thuê" value={selected} disabled={loading||busy} onChange={e=>choose(e.target.value)}><option value="">Chọn chủ nhà trước khi xem phòng</option>{owners.map(o=><option key={o.landlordId} value={o.landlordId}>{o.landlordName} · {o.roomCount} phòng</option>)}</select></label><p>Chỉ hiển thị phòng của chủ nhà đã chọn. Hợp đồng và hóa đơn cá nhân vẫn được giữ khi đổi chủ nhà.</p>{error&&<div role="alert" className="alert alert-error">{error}</div>}</section>{busy||loading?<p>Đang tải chủ nhà…</p>:browse&&!selected?<section className="content-card workflow-card">Hãy chọn một chủ nhà ở trên để xem phòng và đăng ký thuê.</section>:children}</>
-}

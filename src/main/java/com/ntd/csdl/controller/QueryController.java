@@ -20,9 +20,9 @@ public class QueryController {
    Object result=switch(module+"/"+action){
     case "tenants/name" -> {var ids=landlords.tenantIds(auth.getName());yield tenants.searchByName(value(value)).stream().filter(t->ids.contains(t.getTenantId())).toList();}
     case "employees/name" -> employees.searchByName(value(value));
-    case "rooms/status" -> (RentalWorkflowService.admin(auth)?landlords.mine(auth.getName()):landlords.selectedRooms(auth.getName())).stream().filter(r->Objects.equals(r.getStatus(),value(value))).toList();
-    case "rooms/type" -> (RentalWorkflowService.admin(auth)?landlords.mine(auth.getName()):landlords.selectedRooms(auth.getName())).stream().filter(r->Objects.equals(r.getRoomType(),value(value))).toList();
-    case "rooms/max-price" -> {BigDecimal price;try{price=new BigDecimal(value(value));}catch(NumberFormatException e){throw new IllegalArgumentException("Giá phải là số");}if(price.signum()<0)throw new IllegalArgumentException("Giá không được âm");BigDecimal limit=price;yield (RentalWorkflowService.admin(auth)?landlords.mine(auth.getName()):landlords.selectedRooms(auth.getName())).stream().filter(r->r.getBasePrice()!=null&&r.getBasePrice().compareTo(limit)<=0).toList();}
+    case "rooms/status" -> (RentalWorkflowService.admin(auth)?landlords.mine(auth.getName()):landlords.browseRooms()).stream().filter(r->Objects.equals(r.getStatus(),value(value))).toList();
+    case "rooms/type" -> (RentalWorkflowService.admin(auth)?landlords.mine(auth.getName()):landlords.browseRooms()).stream().filter(r->Objects.equals(r.getRoomType(),value(value))).toList();
+    case "rooms/max-price" -> {BigDecimal price;try{price=new BigDecimal(value(value));}catch(NumberFormatException e){throw new IllegalArgumentException("Giá phải là số");}if(price.signum()<0)throw new IllegalArgumentException("Giá không được âm");BigDecimal limit=price;yield (RentalWorkflowService.admin(auth)?landlords.mine(auth.getName()):landlords.browseRooms()).stream().filter(r->r.getBasePrice()!=null&&r.getBasePrice().compareTo(limit)<=0).toList();}
     case "contracts/expired" -> contracts.getExpiredContracts();
     case "contracts/tenant" -> contracts.getByTenant(value(value));
     case "contracts/room" -> contracts.getByRoom(value(value));

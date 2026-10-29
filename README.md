@@ -26,7 +26,7 @@ Trang công khai có thể đang chạy commit khác với mã trên máy. Muố
 | Chức năng | USER — Khách thuê | ADMIN — Chủ nhà |
 |---|---|---|
 | Tài khoản | Đăng ký, đăng nhập JWT, cập nhật hồ sơ/ảnh đại diện | Đăng ký với số phòng cố định, đăng nhập, cập nhật hồ sơ |
-| Phòng | Xem danh sách, chọn chủ nhà rồi chọn phòng trống | Khai báo số phòng một lần, sửa thông tin phòng thuộc mình |
+| Phòng | Xem phòng có tên chủ nhà, chọn trực tiếp phòng trống | Khai báo số phòng một lần, sửa thông tin phòng thuộc mình |
 | Đăng ký thuê | Tự nhập hồ sơ và gửi yêu cầu bằng tài khoản đang đăng nhập | Xem yêu cầu thuộc phòng của mình, duyệt hoặc từ chối |
 | Hợp đồng | Chỉ xem hợp đồng gắn với tài khoản của mình | Duyệt yêu cầu để tạo hợp đồng; không tạo hợp đồng thay khách |
 | Ngày thuê thực tế | Xem ngày nhận/trả thực tế trên hợp đồng | Xác nhận Check-in/Check-out, công tơ và giá thuê thỏa thuận |
@@ -37,7 +37,7 @@ Trang công khai có thể đang chạy commit khác với mã trên máy. Muố
 
 Ô tìm kiếm trong bảng lọc ngay theo **từ khóa**, hỗ trợ mã một phần, tên/nội dung không dấu và không phân biệt hoa thường; không cần nhớ đầy đủ ID. Các bộ lọc chỉ giới hạn thêm danh sách đang tìm.
 
-Các bảng hiển thị trong **khung cuộn**, không chia trang; có đơn vị **m², kWh, m³ (khối nước), ₫**. Tổng quan của khách lấy **Phòng tôi đang thuê** từ hợp đồng của chính tài khoản đó. Danh sách phòng và Tổng quan chỉ hiển thị phòng của chủ nhà khách đã chọn; hợp đồng/hóa đơn cá nhân vẫn giữ đầy đủ lịch sử.
+Các bảng hiển thị trong **khung cuộn**, không chia trang; có đơn vị **m², kWh, m³ (khối nước), ₫**. Tổng quan của khách lấy **Phòng tôi đang thuê** từ hợp đồng của chính tài khoản đó. Danh sách phòng và Tổng quan ghi rõ chủ nhà của mỗi phòng; hợp đồng/hóa đơn cá nhân vẫn giữ đầy đủ lịch sử.
 
 Một số phân hệ như nhân viên, nội quy và các chức năng quản lý dùng chung vẫn theo phân quyền của bài tập lớn; dự án chưa tách toàn bộ dữ liệu thành các tòa nhà độc lập. Quyền ở API là căn cứ thực thi, không chỉ dựa vào việc ẩn nút trên giao diện.
 
@@ -193,7 +193,7 @@ Khách thuê dùng role USER và không cần roomCount. Đăng ký chủ nhà c
 | Bước | Chủ nhà | Khách thuê |
 |---|---|---|
 | Thiết lập | Khai báo số phòng; với tài khoản cũ, vào Phòng / mặt bằng và liên kết các phòng cũ thực sự thuộc mình | Đăng ký USER và đăng nhập |
-| Mở cho thuê | Sửa diện tích, loại phòng, giá và chuyển trạng thái AVAILABLE | Vào Đăng ký thuê, chọn chủ nhà và phòng |
+| Mở cho thuê | Sửa diện tích, loại phòng, giá và chuyển trạng thái AVAILABLE | Vào Đăng ký thuê, chọn phòng có ghi rõ chủ nhà |
 | Hợp đồng | Duyệt yêu cầu do đúng khách gửi | Nhập hồ sơ, thời hạn và gửi yêu cầu |
 | Nhận/trả phòng | Xác nhận ngày thực tế và công tơ | Xem Hợp đồng của tôi |
 | Hóa đơn | Nhập chỉ số cuối tháng; xem cảnh báo, đối soát thanh toán | Xem Hóa đơn của tôi, chọn phương thức thanh toán |
@@ -392,11 +392,11 @@ README là hướng dẫn chạy và dùng mã nguồn. Báo cáo môn Cơ sở 
 
 Khi tải lại trình duyệt, mục đang mở được giữ theo từng tài khoản trong phiên đăng nhập; từ khóa bắt đầu trống để tránh che kết quả. Ô tìm kiếm luôn hiện ở đầu danh sách, kể cả khi đang tải, không có kết quả hoặc API lỗi. Tài khoản, yêu cầu thuê, thanh toán và phòng trong Tổng quan cũng có ô tìm riêng. Danh sách lỗi không bị coi nhầm là danh sách rỗng; khi có dữ liệu đã tải, giao diện giữ lại để kiểm tra. Các mục của chủ nhà trống do chưa liên kết phòng sẽ có hướng dẫn thiết lập phòng, không tự gán dữ liệu của chủ nhà khác.
 
-### Chọn chủ nhà và tách dữ liệu
-Khách thuê chọn chủ nhà ở đầu màn hình trước khi xem phòng hoặc gửi yêu cầu thuê. Lựa chọn lưu trong DB theo tài khoản; thay đổi chủ nhà sẽ tải lại danh sách phòng tương ứng. API danh sách, chi tiết, tra cứu và gửi yêu cầu kiểm tra lựa chọn này. Hợp đồng và hóa đơn cá nhân vẫn giữ nguyên khi đổi lựa chọn.
+### Phòng thuộc chủ nhà nào
+Khách thuê xem phòng được niêm yết có cột Chủ nhà, chọn trực tiếp phòng muốn thuê. Hệ thống lấy chủ nhà từ liên kết `room_landlords` của phòng, tự gửi yêu cầu cho đúng chủ sở hữu; khách không cần chọn tài khoản ADMIN trước. Danh sách, chi tiết, bộ lọc phòng và form đăng ký đều dùng danh mục phòng đã liên kết chủ nhà. Phòng chưa có chủ sở hữu không được niêm yết. Yêu cầu vẫn kiểm tra phòng trống trước khi gửi và duyệt.
 
-Chủ nhà mới khai báo từng phòng (mã, tầng, diện tích m², loại phòng, giá thuê/tháng) ngay khi đăng ký; số phòng lấy từ danh sách khai báo. Mã `101` được lưu dạng `L<id chủ nhà>-101`, cho phép nhiều chủ nhà cùng có phòng số 101. Không tự nhận phòng của tài khoản khác. Chủ nhà cũ giữ nguyên phòng đã liên kết và tiếp tục sửa cấu hình phòng tại Phòng / mặt bằng.
+`GET /api/landlords` liệt kê tất cả ADMIN, kể cả tài khoản chưa thiết lập phòng (hiện 0 phòng và chưa thiết lập). Số phòng là số liên kết thực tế, không lấy danh sách tài khoản làm danh sách phòng. Không tự gán phòng cũ hay tạo phòng cho ADMIN chưa khai báo. Giao diện Đăng ký thuê có bảng thông tin chủ nhà và số phòng để phân biệt trường hợp này.
 
-Danh sách và số khách thuê của chủ nhà lấy từ hợp đồng thuộc phòng của họ và hồ sơ họ đã thêm, đếm mỗi khách một lần. Hồ sơ cũ chưa có liên kết không tự chia cho tất cả chủ nhà. Hồ sơ dùng trong hợp đồng của nhiều chủ nhà không được một chủ nhà sửa/xóa ảnh hưởng bên khác. Nhân viên/nội quy hiện vẫn là danh mục chung của bài tập; thay đổi này tách phòng và khách thuê, không tự phân quyền lại toàn bộ danh mục.
+Chủ nhà mới khai báo từng phòng (mã, tầng, diện tích m², loại phòng, giá thuê/tháng) khi đăng ký. Mã `101` lưu dạng `L<id chủ nhà>-101`, cho phép hai chủ nhà cùng có phòng số 101. Chủ nhà cũ khai báo tại Phòng / mặt bằng. Mỗi ADMIN chỉ xem/sửa phòng và khách thuê thuộc mình; số khách thuê đếm mỗi hồ sơ một lần. Hợp đồng và hóa đơn riêng của khách giữ nguyên.
 
-API: USER `GET/PUT /api/landlords/selection` (body `{"landlordId": 1}`); `GET /api/landlords` để chọn. Đăng ký ADMIN gửi `rooms` là danh sách RoomDTO; `roomCount` đơn lẻ không thay thế khai báo chi tiết. Bổ sung bảng `tenant_landlord_selection`, `tenant_landlords` qua `schema.sql`, không xóa dữ liệu cũ.
+API lựa chọn ADMIN trước đây đã bỏ; bảng lựa chọn cũ được giữ để không xóa dữ liệu nhưng không còn quyết định danh sách phòng. Đăng ký ADMIN gửi `rooms` là danh sách RoomDTO; `roomCount` đơn lẻ không thay thế khai báo chi tiết. Nhân viên/nội quy hiện vẫn là danh mục chung của bài tập.

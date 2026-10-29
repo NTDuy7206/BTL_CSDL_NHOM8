@@ -12,7 +12,6 @@ async function account(role,n){const username='test_'+suffix+n;const u=await cal
 const admin=await account('ADMIN','a'),user=await account('USER','u'),other=await account('USER','o')
 await call('/auth/register','','POST',{username:admin.username,password,role:'ADMIN'},400)
 await call('/auth/register','','POST',{username:'bad_'+suffix,password,role:'OWNER'},400)
-for(const tenant of [user,other])await call('/landlords/selection',tenant.token,'PUT',{landlordId:admin.id})
 const inventory=await call('/rooms',admin.token);assert.equal(inventory.length,3)
 const [room1,room2,room3]=inventory.map(r=>r.roomId)
 for(const roomId of [room1,room2])await call('/rooms/'+roomId,admin.token,'PUT',{roomId,floor:1,area:30,roomType:'Studio',status:'Trống',basePrice:3000000})

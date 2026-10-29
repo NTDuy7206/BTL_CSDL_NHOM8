@@ -14,5 +14,9 @@ try{
  const search=renderToStaticMarkup(React.createElement(QueryPanel,{...base,keyword:'',onKeywordChange:()=>{},onResults:()=>{}}));assert.ok(search.includes('type="search"'));assert.ok(search.includes('Tìm kiếm theo từ khóa'));
  for(const state of [{rows:[],loading:true},{rows:[],loading:false},{rows:[],error:'API error'},{rows,error:'API error'}]){const html=renderToStaticMarkup(React.createElement(DataTable,{module,...state}));assert.ok(html.includes('Tìm theo từ khóa'),'search toolbar must stay visible');if(state.rows===rows)assert.ok(html.includes('NQ01'),'last loaded rows survive a refresh error');}
  for(const[name,props]of [['AccountsPage',{}],['ContractRequestsPage',{role:'ADMIN'}],['PaymentsPage',{role:'ADMIN'}]]){const {default:Component}=await server.ssrLoadModule('/src/pages/'+name+'.jsx');const html=renderToStaticMarkup(React.createElement(Component,{request:async()=>[],notify:()=>{},...props}));assert.ok(html.includes('type="search"'),name+' search must exist even when empty');}
+ const {modules}=await server.ssrLoadModule('/src/data/modules.js');const roomModule=modules.find(m=>m.key==='rooms');
+ const ownedRooms=[{roomId:'L1-101',landlordName:'Chủ A',roomType:'Studio'},{roomId:'L2-101',landlordName:'Chủ B',roomType:'Studio'}];
+ const roomHtml=renderToStaticMarkup(React.createElement(DataTable,{module:roomModule,rows:ownedRooms,readOnly:true}));assert.ok(roomHtml.includes('Chủ nhà'));assert.ok(roomHtml.includes('Chủ A'));assert.ok(roomHtml.includes('Chủ B'));
+ const filteredRooms=renderToStaticMarkup(React.createElement(DataTable,{module:roomModule,rows:ownedRooms,readOnly:true,searchValue:'chu b'}));assert.ok(filteredRooms.includes('L2-101'));assert.ok(!filteredRooms.includes('L1-101'));
  console.log('Reload navigation, list validation and 9 empty/error/search UI scenarios passed');
 }finally{await server.close()}

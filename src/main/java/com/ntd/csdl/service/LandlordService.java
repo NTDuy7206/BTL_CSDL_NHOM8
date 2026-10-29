@@ -14,18 +14,9 @@ public class LandlordService {
  private final JdbcTemplate jdbc;
  private final UserRepository users;
  private final RoomRepository rooms;
- public List<Map<String,Object>> landlords(){return jdbc.queryForList("SELECT u.id AS landlordId,u.username AS landlordName,p.room_limit AS roomCount FROM landlord_properties p JOIN user u ON u.id=p.user_id WHERE u.role=1 ORDER BY u.username");}
- public Long selected(String username){return jdbc.query("SELECT landlord_id FROM tenant_landlord_selection WHERE user_id=?",(rs,n)->rs.getLong(1),accountId(username)).stream().findFirst().orElse(null);}
- public Map<String,Object> selection(String username){Long id=selected(username);return id==null?Map.of():Map.of("landlordId",id);}
- @Transactional public Map<String,Object> select(String username,Long id){
-  if(id==null||jdbc.queryForList("SELECT p.user_id FROM landlord_properties p JOIN user u ON u.id=p.user_id WHERE p.user_id=? AND u.role=1",id).isEmpty())throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Chủ nhà không hợp lệ");
-  Long user=accountId(username);jdbc.queryForList("SELECT id FROM user WHERE id=? FOR UPDATE",user);
-  jdbc.update("DELETE FROM tenant_landlord_selection WHERE user_id=?",user);
-  jdbc.update("INSERT INTO tenant_landlord_selection(user_id,landlord_id) VALUES (?,?)",user,id);return selection(username);
- }
- public void requireSelected(String username,String room){Long id=selected(username);if(id==null||!id.equals(owner(room)))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Hãy chọn đúng chủ nhà trước khi xem hoặc đăng ký phòng");}
- public List<Room> selectedRooms(String username){Long id=selected(username);return id==null?List.of():rooms.findAllById(jdbc.query("SELECT room_id FROM room_landlords WHERE user_id=?",(rs,n)->rs.getString(1),id));}
- public List<Map<String,Object>> selectedCatalog(String username){Long id=selected(username);return id==null?List.of():catalog().stream().filter(row->Objects.equals(((Number)row.get("landlordId")).longValue(),id)).toList();}
+ public List<Map<String,Object>> landlords(){return jdbc.queryForList("SELECT u.id AS landlordId,u.username AS landlordName,(SELECT COUNT(*) FROM room_landlords l WHERE l.user_id=u.id) AS roomCount,CASE WHEN p.user_id IS NULL THEN FALSE ELSE TRUE END AS configured FROM user u LEFT JOIN landlord_properties p ON p.user_id=u.id WHERE u.role=1 ORDER BY u.username");}
+ public void requireListed(String room){if(catalog().stream().noneMatch(r->Objects.equals(r.get("roomId"),room)))throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Phòng chưa có chủ nhà cho thuê hoặc không còn được niêm yết");}
+ public List<Room> browseRooms(){var catalog=catalog();var byId=new HashMap<String,Map<String,Object>>();for(var row:catalog)byId.put((String)row.get("roomId"),row);return rooms.findAllById(byId.keySet()).stream().map(room->{var row=byId.get(room.getRoomId());room.setLandlordId(((Number)row.get("landlordId")).longValue());room.setLandlordName((String)row.get("landlordName"));return room;}).toList();}
  public Set<String> tenantIds(String username){Long id=accountId(username);return new HashSet<>(jdbc.query("SELECT tenant_id FROM tenant_landlords WHERE user_id=? UNION SELECT c.tenant_id FROM contracts c JOIN room_landlords l ON l.room_id=c.room_id WHERE l.user_id=?",(rs,n)->rs.getString(1),id,id));}
  public void requireTenant(String username,String tenant){if(!tenantIds(username).contains(tenant))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Khách thuê không thuộc chủ nhà đang đăng nhập");}
  public void linkTenant(String username,String tenant){jdbc.update("INSERT INTO tenant_landlords(tenant_id,user_id) VALUES (?,?)",tenant,accountId(username));}
@@ -46,7 +37,7 @@ public class LandlordService {
  public Long owner(String room){return jdbc.query("SELECT user_id FROM room_landlords WHERE room_id=?",(rs,n)->rs.getLong(1),room).stream().findFirst().orElse(null);}
  public void requireOwner(String username,String room){Long id=owner(room);if(id==null||!id.equals(users.findByUsername(username).orElseThrow().getId()))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Phòng không thuộc chủ nhà đang đăng nhập");}
  public void requireAssigned(String room){if(owner(room)==null)throw new ResponseStatusException(HttpStatus.CONFLICT,"Phòng chưa được liên kết với chủ nhà. Vui lòng chọn phòng khác");}
- public List<Room> mine(String username){Long id=users.findByUsername(username).orElseThrow().getId();return rooms.findAllById(jdbc.query("SELECT room_id FROM room_landlords WHERE user_id=?",(rs,n)->rs.getString(1),id));}
+ public List<Room> mine(String username){Long id=users.findByUsername(username).orElseThrow().getId();return rooms.findAllById(jdbc.query("SELECT room_id FROM room_landlords WHERE user_id=?",(rs,n)->rs.getString(1),id)).stream().map(room->{room.setLandlordId(id);room.setLandlordName(username);return room;}).toList();}
  public List<Map<String,Object>> catalog(){return jdbc.queryForList("SELECT r.room_id AS roomId,r.floor,r.area,r.room_type AS roomType,r.status,r.base_price AS basePrice,u.id AS landlordId,u.username AS landlordName FROM rooms r JOIN room_landlords l ON l.room_id=r.room_id JOIN user u ON u.id=l.user_id WHERE u.role=1 ORDER BY u.username,r.room_id");}
  public Map<String,Object> property(String username){Long id=users.findByUsername(username).orElseThrow().getId();var rows=jdbc.queryForList("SELECT room_limit AS roomCount FROM landlord_properties WHERE user_id=?",id);return rows.isEmpty()?Map.of("configured",false):Map.of("configured",true,"roomCount",rows.getFirst().get("roomCount"));}
  public List<Room> unassigned(){return rooms.findAllById(jdbc.query("SELECT r.room_id FROM rooms r LEFT JOIN room_landlords l ON l.room_id=r.room_id WHERE l.room_id IS NULL ORDER BY r.room_id",(rs,n)->rs.getString(1)));}

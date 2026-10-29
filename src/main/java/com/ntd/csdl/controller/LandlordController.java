@@ -10,10 +10,7 @@ public class LandlordController {
  private final LandlordService service;
  public record Setup(Integer roomCount,List<String> existingRoomIds){}
  @GetMapping public List<Map<String,Object>> list(){return service.landlords();}
- @GetMapping("/selection") public Object selection(org.springframework.security.core.Authentication auth){return service.selection(auth.getName());}
- @PutMapping("/selection") public Object select(org.springframework.security.core.Authentication auth,@RequestBody Selection dto){return service.select(auth.getName(),dto.landlordId());}
- record Selection(Long landlordId){}
- @GetMapping("/rooms") public List<Map<String,Object>> rooms(org.springframework.security.core.Authentication auth){return com.ntd.csdl.service.RentalWorkflowService.admin(auth)?service.catalog().stream().filter(r->java.util.Objects.equals(service.owner((String)r.get("roomId")),service.accountId(auth.getName()))).toList():service.selectedCatalog(auth.getName());}
+ @GetMapping("/rooms") public List<Map<String,Object>> rooms(org.springframework.security.core.Authentication auth){return com.ntd.csdl.service.RentalWorkflowService.admin(auth)?service.catalog().stream().filter(r->java.util.Objects.equals(service.owner((String)r.get("roomId")),service.accountId(auth.getName()))).toList():service.catalog();}
  @GetMapping("/my-rooms") public List<Map<String,Object>> mine(Authentication auth){return service.catalog().stream().filter(r->Objects.equals(service.owner((String)r.get("roomId")),service.accountId(auth.getName()))).toList();}
  @GetMapping("/property") public Map<String,Object> property(Authentication auth){return service.property(auth.getName());}
  @GetMapping("/unassigned") public List<Room> unassigned(){return service.unassigned();}

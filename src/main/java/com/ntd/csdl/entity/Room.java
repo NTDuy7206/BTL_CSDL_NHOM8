@@ -13,6 +13,12 @@ import java.math.BigDecimal;
 @Builder
 public class Room {
 
+    @Transient
+    private Long landlordId;
+
+    @Transient
+    private String landlordName;
+
     @Id
     @Column(name = "room_id", length = 20)
     private String roomId;

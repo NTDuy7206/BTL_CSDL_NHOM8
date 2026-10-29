@@ -5,7 +5,7 @@ Trang đăng ký có hai lựa chọn: **Khách thuê (USER)** và **Chủ nhà 
 | Chức năng | USER – khách thuê | ADMIN – chủ nhà |
 |---|---|---|
 | Nhân viên, nội quy, vi phạm, danh sách sự cố | Xem | Thêm, sửa, xóa |
-| Phòng | Chọn chủ nhà trước; chỉ xem phòng của chủ nhà đó | Khai báo danh sách phòng một lần, chỉ quản lý phòng và khách thuê thuộc mình |
+| Phòng | Xem chủ sở hữu ghi trên mỗi phòng; chọn trực tiếp phòng muốn thuê | Khai báo danh sách phòng một lần, chỉ quản lý phòng và khách thuê thuộc mình |
 | Báo cáo sự cố | Báo sự cố tại phòng có hợp đồng đang hiệu lực của mình | Quản lý, cập nhật và xử lý |
 | Hợp đồng | Gửi đăng ký; chỉ xem hợp đồng được liên kết với tài khoản mình | Tạo, duyệt, quản lý theo phòng thuộc mình |
 | Hóa đơn | Chỉ xem hóa đơn thuộc hợp đồng của mình | Quản lý theo phòng thuộc mình |
@@ -13,11 +13,11 @@ Trang đăng ký có hai lựa chọn: **Khách thuê (USER)** và **Chủ nhà 
 | Khách thuê, chỉ số điện nước, xử lý sự cố, dọn dẹp | Không truy cập API quản lý | Quản lý |
 | Thông tin cá nhân | Xem và cập nhật hồ sơ của mình | Xem và cập nhật hồ sơ của mình |
 
-Chủ nhà mới khai báo từng phòng (mã, tầng, diện tích, loại và giá) khi đăng ký. Chủ nhà đã có tài khoản vào Phòng / mặt bằng để thiết lập số phòng một lần và liên kết các phòng cũ thực sự thuộc về mình. Xem DEMO_AND_QUERIES.md để biết cách cấu hình. Khách thuê chọn chủ nhà trước khi chọn phòng; gửi yêu cầu và duyệt hợp đồng không tạo phòng mới.
+Chủ nhà mới khai báo từng phòng (mã, tầng, diện tích, loại và giá) khi đăng ký. Chủ nhà đã có tài khoản vào Phòng / mặt bằng để thiết lập số phòng một lần và liên kết các phòng cũ thực sự thuộc về mình. Xem DEMO_AND_QUERIES.md để biết cách cấu hình. Khách thuê chọn phòng có ghi rõ tên chủ nhà; gửi yêu cầu và duyệt hợp đồng không tạo phòng mới.
 
 ## Khách gửi yêu cầu, chủ nhà duyệt
 
-Khách đăng nhập bằng tài khoản của mình, vào Đăng ký thuê, nhập hồ sơ, chọn chủ nhà và phòng. Yêu cầu được gắn với tài khoản đang đăng nhập. Chủ nhà chỉ xem và duyệt yêu cầu thuộc phòng của mình. Duyệt yêu cầu tự tạo hợp đồng cho đúng khách gửi yêu cầu.
+Khách đăng nhập bằng tài khoản của mình, vào Đăng ký thuê, nhập hồ sơ, chọn phòng có ghi rõ chủ nhà. Yêu cầu được gắn với tài khoản đang đăng nhập. Chủ nhà chỉ xem và duyệt yêu cầu thuộc phòng của mình. Duyệt yêu cầu tự tạo hợp đồng cho đúng khách gửi yêu cầu.
 
 Đã bỏ menu Thêm khách & hợp đồng và API tạo hợp đồng trực tiếp. POST /api/rentals và POST /api/contracts trả 403. Không cho đổi khách thuê hoặc phòng bằng cách sửa hợp đồng; cần gửi yêu cầu thuê mới.
 

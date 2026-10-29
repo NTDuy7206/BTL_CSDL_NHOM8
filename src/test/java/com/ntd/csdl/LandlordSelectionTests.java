@@ -32,13 +32,21 @@ class LandlordSelectionTests {
   service.declareRooms(a,List.of(room("101"),room("102")));service.declareRooms(b,List.of(room("101")));
  }
  RoomDTO room(String code){return new RoomDTO(code,1,20f,"Phòng đơn","AVAILABLE",new BigDecimal("2000000"));}
- @Test void choiceIsPersistedAndEachUserAndOwnerIsSeparate(){
-  assertTrue(service.selectedRooms("user1").isEmpty());assertThrows(ResponseStatusException.class,()->service.requireSelected("user1","L1-101"));
-  service.select("user1",1L);assertEquals(Set.of("L1-101","L1-102"),new HashSet<>(service.selectedRooms("user1").stream().map(Room::getRoomId).toList()));
-  assertTrue(service.selectedRooms("user2").isEmpty());service.select("user2",2L);assertEquals(1,service.selectedCatalog("user2").size());
-  service.requireSelected("user1","L1-101");assertThrows(ResponseStatusException.class,()->service.requireSelected("user1","L2-101"));
-  service.select("user1",2L);assertEquals(2L,service.selection("user1").get("landlordId"));assertEquals(List.of("L2-101"),service.selectedRooms("user1").stream().map(Room::getRoomId).toList());
-  assertThrows(ResponseStatusException.class,()->service.select("user1",3L));assertEquals(2L,service.selected("user1"));
+ @Test void roomsDeclareTheirOwnerWithoutRequiringAnAdminSelection(){
+  var catalog=service.browseRooms();assertEquals(3,catalog.size());
+  assertEquals(2,catalog.stream().filter(room->"A".equals(room.getLandlordName())).count());
+  assertEquals(1,catalog.stream().filter(room->"B".equals(room.getLandlordName())).count());
+  service.requireListed("L1-101");service.requireListed("L2-101");
+  assertThrows(ResponseStatusException.class,()->service.requireListed("UNASSIGNED"));
+  assertEquals(2,service.mine("A").size());assertEquals(1,service.mine("B").size());
+  assertThrows(ResponseStatusException.class,()->service.requireOwner("A","L2-101"));
+ }
+ @Test void allAdminAccountsAppearIncludingThoseWithoutRooms(){
+  jdbc.update("INSERT INTO user VALUES(5,'C',1)");
+  var all=service.landlords();assertEquals(3,all.size());
+  var empty=all.stream().filter(row->"C".equals(row.get("landlordName"))).findFirst().orElseThrow();
+  assertEquals(0,((Number)empty.get("roomCount")).intValue());assertEquals(false,empty.get("configured"));
+  assertEquals(3,service.browseRooms().size(),"Do not invent ownership for an admin without rooms");
  }
  @Test void tenantsAreCountedOnceOnlyForTheirLandlord(){
   jdbc.update("INSERT INTO contracts VALUES('T1','L1-101'),('T1','L1-102'),('T2','L2-101')");service.linkTenant("A","T3");
@@ -53,9 +61,11 @@ class LandlordSelectionTests {
   assertThrows(ResponseStatusException.class,()->service.declareRooms(u,List.of(room("201"),room("201"))));
   assertThrows(ResponseStatusException.class,()->service.declareRooms(u,List.of()));
  }
- @Test void roomDetailsCannotBypassSelection(){
-  var controller=new RoomController(mock(RoomService.class),service);var auth=new UsernamePasswordAuthenticationToken("user1",null,List.of());service.select("user1",1L);
-  assertThrows(ResponseStatusException.class,()->controller.getById("L2-101",auth));
+ @Test void roomDetailsAllowEitherPublishedOwnerButRejectUnassignedRooms(){
+  var controller=new RoomController(mock(RoomService.class),service);var auth=new UsernamePasswordAuthenticationToken("user1",null,List.of());
+  assertEquals("A",controller.getById("L1-101",auth).getBody().getLandlordName());
+  assertEquals("B",controller.getById("L2-101",auth).getBody().getLandlordName());
+  assertThrows(ResponseStatusException.class,()->controller.getById("UNASSIGNED",auth));
  }
  @Test void tenantEndpointsFilterListAndRejectOtherOwnersEdits(){
   jdbc.update("INSERT INTO contracts VALUES('T1','L1-101'),('T2','L2-101')");
