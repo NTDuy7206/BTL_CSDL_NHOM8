@@ -30,6 +30,8 @@ public class SecurityConfiguration {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/landlords/selection").hasRole("USER")
+                        .requestMatchers(HttpMethod.PUT,"/api/landlords/selection").hasRole("USER")
                         .requestMatchers(org.springframework.http.HttpMethod.GET,"/api/billing/notifications").hasAnyRole("USER","ADMIN")
                         .requestMatchers(org.springframework.http.HttpMethod.POST,"/api/billing/notifications/*/seen").hasAnyRole("USER","ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/landlords","/api/landlords/rooms").hasAnyRole("USER","ADMIN")

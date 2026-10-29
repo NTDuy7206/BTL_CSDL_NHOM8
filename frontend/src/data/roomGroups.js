@@ -9,6 +9,6 @@ export function roomStatusGroup(value){
 export function activeContract(c,today){return Boolean(c.room&&c.startDate&&c.endDate&&(c.actualCheckIn||c.startDate)<=today&&(c.actualCheckOut?c.actualCheckOut>today:c.endDate>=today))}
 export function roomGroups(rooms,contracts,role,today){
  const vacant=rooms.filter(r=>roomStatusGroup(r.status)==='vacant');
- const rented=role==='ADMIN'?rooms.filter(r=>roomStatusGroup(r.status)==='rented'):[...new Map(contracts.filter(c=>activeContract(c,today)).map(c=>[c.room.roomId,c.room])).values()];
+ const rented=role==='ADMIN'?rooms.filter(r=>roomStatusGroup(r.status)==='rented'):[...new Map(contracts.filter(c=>activeContract(c,today)&&rooms.some(r=>r.roomId===c.room.roomId)).map(c=>[c.room.roomId,c.room])).values()];
  return{vacant,rented};
 }

@@ -37,7 +37,7 @@ Trang công khai có thể đang chạy commit khác với mã trên máy. Muố
 
 Ô tìm kiếm trong bảng lọc ngay theo **từ khóa**, hỗ trợ mã một phần, tên/nội dung không dấu và không phân biệt hoa thường; không cần nhớ đầy đủ ID. Các bộ lọc chỉ giới hạn thêm danh sách đang tìm.
 
-Các bảng hiển thị trong **khung cuộn**, không chia trang; có đơn vị **m², kWh, m³ (khối nước), ₫**. Tổng quan của khách lấy **Phòng tôi đang thuê** từ hợp đồng của chính tài khoản đó. Danh sách phòng để tham khảo có thể bao gồm phòng của các chủ nhà khác.
+Các bảng hiển thị trong **khung cuộn**, không chia trang; có đơn vị **m², kWh, m³ (khối nước), ₫**. Tổng quan của khách lấy **Phòng tôi đang thuê** từ hợp đồng của chính tài khoản đó. Danh sách phòng và Tổng quan chỉ hiển thị phòng của chủ nhà khách đã chọn; hợp đồng/hóa đơn cá nhân vẫn giữ đầy đủ lịch sử.
 
 Một số phân hệ như nhân viên, nội quy và các chức năng quản lý dùng chung vẫn theo phân quyền của bài tập lớn; dự án chưa tách toàn bộ dữ liệu thành các tòa nhà độc lập. Quyền ở API là căn cứ thực thi, không chỉ dựa vào việc ẩn nút trên giao diện.
 
@@ -182,11 +182,13 @@ Ví dụ để tự đăng ký qua API; đây là tài khoản ví dụ, không 
   "username": "chu_nha_demo",
   "password": "TuDatMatKhauCuaBan!",
   "role": "ADMIN",
-  "roomCount": 10
+  "rooms": [
+    {"roomId":"101","floor":1,"area":25,"roomType":"Studio","basePrice":2500000}
+  ]
 }
 ```
 
-Khách thuê dùng role USER và không cần roomCount. Đăng ký chủ nhà cần số phòng từ **1 đến 200**. Username trùng bị từ chối.
+Khách thuê dùng role USER và không cần roomCount. Đăng ký chủ nhà cần danh sách chi tiết từ **1 đến 200 phòng**. Username trùng bị từ chối.
 
 | Bước | Chủ nhà | Khách thuê |
 |---|---|---|
@@ -196,7 +198,7 @@ Khách thuê dùng role USER và không cần roomCount. Đăng ký chủ nhà c
 | Nhận/trả phòng | Xác nhận ngày thực tế và công tơ | Xem Hợp đồng của tôi |
 | Hóa đơn | Nhập chỉ số cuối tháng; xem cảnh báo, đối soát thanh toán | Xem Hóa đơn của tôi, chọn phương thức thanh toán |
 
-Phòng mới ban đầu UNCONFIGURED. Số phòng cố định sau thiết lập; tạo hồ sơ/yêu cầu/hợp đồng không sinh thêm phòng. API thêm/xóa phòng trực tiếp đã bị chặn. Không tự gán phòng cũ cho một chủ nhà chỉ dựa trên tên.
+Phòng khai báo đầy đủ khi đăng ký mới sẵn sàng cho thuê (AVAILABLE). Phòng tạo qua thiết lập cũ ban đầu UNCONFIGURED. Số phòng cố định sau thiết lập; tạo hồ sơ/yêu cầu/hợp đồng không sinh thêm phòng. API thêm/xóa phòng trực tiếp đã bị chặn. Không tự gán phòng cũ cho một chủ nhà chỉ dựa trên tên.
 
 ## Quy trình thuê phòng và hóa đơn
 
@@ -389,3 +391,12 @@ BTL_CSDL_NHOM8/
 README là hướng dẫn chạy và dùng mã nguồn. Báo cáo môn Cơ sở dữ liệu trình bày riêng phần phân tích yêu cầu, ER, lược đồ quan hệ, khóa/ràng buộc, SQL và chuẩn hóa theo schema đã xác minh.
 
 Khi tải lại trình duyệt, mục đang mở được giữ theo từng tài khoản trong phiên đăng nhập; từ khóa bắt đầu trống để tránh che kết quả. Ô tìm kiếm luôn hiện ở đầu danh sách, kể cả khi đang tải, không có kết quả hoặc API lỗi. Tài khoản, yêu cầu thuê, thanh toán và phòng trong Tổng quan cũng có ô tìm riêng. Danh sách lỗi không bị coi nhầm là danh sách rỗng; khi có dữ liệu đã tải, giao diện giữ lại để kiểm tra. Các mục của chủ nhà trống do chưa liên kết phòng sẽ có hướng dẫn thiết lập phòng, không tự gán dữ liệu của chủ nhà khác.
+
+### Chọn chủ nhà và tách dữ liệu
+Khách thuê chọn chủ nhà ở đầu màn hình trước khi xem phòng hoặc gửi yêu cầu thuê. Lựa chọn lưu trong DB theo tài khoản; thay đổi chủ nhà sẽ tải lại danh sách phòng tương ứng. API danh sách, chi tiết, tra cứu và gửi yêu cầu kiểm tra lựa chọn này. Hợp đồng và hóa đơn cá nhân vẫn giữ nguyên khi đổi lựa chọn.
+
+Chủ nhà mới khai báo từng phòng (mã, tầng, diện tích m², loại phòng, giá thuê/tháng) ngay khi đăng ký; số phòng lấy từ danh sách khai báo. Mã `101` được lưu dạng `L<id chủ nhà>-101`, cho phép nhiều chủ nhà cùng có phòng số 101. Không tự nhận phòng của tài khoản khác. Chủ nhà cũ giữ nguyên phòng đã liên kết và tiếp tục sửa cấu hình phòng tại Phòng / mặt bằng.
+
+Danh sách và số khách thuê của chủ nhà lấy từ hợp đồng thuộc phòng của họ và hồ sơ họ đã thêm, đếm mỗi khách một lần. Hồ sơ cũ chưa có liên kết không tự chia cho tất cả chủ nhà. Hồ sơ dùng trong hợp đồng của nhiều chủ nhà không được một chủ nhà sửa/xóa ảnh hưởng bên khác. Nhân viên/nội quy hiện vẫn là danh mục chung của bài tập; thay đổi này tách phòng và khách thuê, không tự phân quyền lại toàn bộ danh mục.
+
+API: USER `GET/PUT /api/landlords/selection` (body `{"landlordId": 1}`); `GET /api/landlords` để chọn. Đăng ký ADMIN gửi `rooms` là danh sách RoomDTO; `roomCount` đơn lẻ không thay thế khai báo chi tiết. Bổ sung bảng `tenant_landlord_selection`, `tenant_landlords` qua `schema.sql`, không xóa dữ liệu cũ.

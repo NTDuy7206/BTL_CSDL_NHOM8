@@ -16,6 +16,7 @@ public class UserDTO {
     private  String password;
     private String role;
     private Integer roomCount;
+    private java.util.List<RoomDTO> rooms;
 
     public String getRole() {
         return role;

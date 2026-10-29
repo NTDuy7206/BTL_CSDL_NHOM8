@@ -17,34 +17,38 @@ import java.util.List;
 public class TenantController {
 
     private final TenantService tenantService;
+    private final com.ntd.csdl.service.LandlordService landlords;
 
     @GetMapping
-    public ResponseEntity<List<Tenant>> getAll() {
-        return ResponseEntity.ok(tenantService.getAll());
+    public ResponseEntity<List<Tenant>> getAll(org.springframework.security.core.Authentication auth) {
+        var ids=landlords.tenantIds(auth.getName());
+        return ResponseEntity.ok(tenantService.getAll().stream().filter(t->ids.contains(t.getTenantId())).toList());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Tenant> getById(
-            @PathVariable String id) {
+            @PathVariable String id, org.springframework.security.core.Authentication auth) {
+        landlords.requireTenant(auth.getName(),id);
 
         return ResponseEntity.ok(
                 tenantService.getById(id)
         );
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping
     public ResponseEntity<Tenant> create(
-            @Valid @RequestBody TenantDTO dto) {
+            @Valid @RequestBody TenantDTO dto,org.springframework.security.core.Authentication auth) {
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(tenantService.create(dto));
+        Tenant created=tenantService.create(dto);landlords.linkTenant(auth.getName(),created.getTenantId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Tenant> update(
             @PathVariable String id,
-            @Valid @RequestBody TenantDTO dto) {
+            @Valid @RequestBody TenantDTO dto,org.springframework.security.core.Authentication auth) {
+        landlords.requireExclusiveTenant(auth.getName(),id);
 
         return ResponseEntity.ok(
                 tenantService.update(id, dto)
@@ -53,7 +57,8 @@ public class TenantController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
-            @PathVariable String id) {
+            @PathVariable String id,org.springframework.security.core.Authentication auth) {
+        landlords.requireExclusiveTenant(auth.getName(),id);
 
         tenantService.delete(id);
 

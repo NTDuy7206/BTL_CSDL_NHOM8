@@ -8,10 +8,11 @@ async function call(path,token='',method='GET',body,expected=200){
  const r=await fetch(base+'/api'+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});const raw=await r.text();let data;try{data=raw?JSON.parse(raw):null}catch{data=raw}
  assert.equal(r.status,expected,method+' '+path+' => '+raw);checks++;return data
 }
-async function account(role,n){const username='test_'+suffix+n;const u=await call('/auth/register','','POST',{username,password,role,...(role==='ADMIN'?{roomCount:3}:{})},201);assert.equal(u.role,role);const l=await call('/auth/login','','POST',{username,password});return{username,token:l.accessToken}}
+async function account(role,n){const username='test_'+suffix+n;const u=await call('/auth/register','','POST',{username,password,role,...(role==='ADMIN'?{rooms:Array.from({length:3},(_,i)=>({roomId:String(101+i),floor:1,area:20,roomType:'Studio',basePrice:2000000}))}:{})},201);assert.equal(u.role,role);const l=await call('/auth/login','','POST',{username,password});return{...u,username,token:l.accessToken}}
 const admin=await account('ADMIN','a'),user=await account('USER','u'),other=await account('USER','o')
 await call('/auth/register','','POST',{username:admin.username,password,role:'ADMIN'},400)
 await call('/auth/register','','POST',{username:'bad_'+suffix,password,role:'OWNER'},400)
+for(const tenant of [user,other])await call('/landlords/selection',tenant.token,'PUT',{landlordId:admin.id})
 const inventory=await call('/rooms',admin.token);assert.equal(inventory.length,3)
 const [room1,room2,room3]=inventory.map(r=>r.roomId)
 for(const roomId of [room1,room2])await call('/rooms/'+roomId,admin.token,'PUT',{roomId,floor:1,area:30,roomType:'Studio',status:'Trống',basePrice:3000000})

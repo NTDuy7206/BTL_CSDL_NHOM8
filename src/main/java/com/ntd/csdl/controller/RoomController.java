@@ -21,13 +21,13 @@ public class RoomController {
 
     @GetMapping
     public ResponseEntity<List<Room>> getAll(org.springframework.security.core.Authentication auth) {
-        return ResponseEntity.ok(com.ntd.csdl.service.RentalWorkflowService.admin(auth)?landlords.mine(auth.getName()):roomService.getAll());
+        return ResponseEntity.ok(com.ntd.csdl.service.RentalWorkflowService.admin(auth)?landlords.mine(auth.getName()):landlords.selectedRooms(auth.getName()));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Room> getById(
             @PathVariable String id,org.springframework.security.core.Authentication auth) {
-        if(com.ntd.csdl.service.RentalWorkflowService.admin(auth))landlords.requireOwner(auth.getName(),id);
+        if(com.ntd.csdl.service.RentalWorkflowService.admin(auth))landlords.requireOwner(auth.getName(),id);else landlords.requireSelected(auth.getName(),id);
         return ResponseEntity.ok(
                 roomService.getById(id)
         );

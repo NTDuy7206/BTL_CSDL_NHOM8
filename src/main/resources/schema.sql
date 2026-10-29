@@ -93,3 +93,17 @@ CREATE TABLE IF NOT EXISTS invoice_notifications (
  invoice_id VARCHAR(20) PRIMARY KEY,user_id BIGINT NOT NULL,message VARCHAR(300) NOT NULL,seen BOOLEAN NOT NULL DEFAULT FALSE,
  FOREIGN KEY(invoice_id) REFERENCES invoices(invoice_id) ON DELETE CASCADE,FOREIGN KEY(user_id) REFERENCES user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS tenant_landlord_selection (
+ user_id BIGINT NOT NULL PRIMARY KEY,
+ landlord_id BIGINT NOT NULL,
+ FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE,
+ FOREIGN KEY(landlord_id) REFERENCES landlord_properties(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS tenant_landlords (
+ tenant_id VARCHAR(20) NOT NULL,
+ user_id BIGINT NOT NULL,
+ PRIMARY KEY(tenant_id,user_id),
+ FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+ FOREIGN KEY(user_id) REFERENCES landlord_properties(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

@@ -15,6 +15,32 @@ public class LandlordService {
  private final UserRepository users;
  private final RoomRepository rooms;
  public List<Map<String,Object>> landlords(){return jdbc.queryForList("SELECT u.id AS landlordId,u.username AS landlordName,p.room_limit AS roomCount FROM landlord_properties p JOIN user u ON u.id=p.user_id WHERE u.role=1 ORDER BY u.username");}
+ public Long selected(String username){return jdbc.query("SELECT landlord_id FROM tenant_landlord_selection WHERE user_id=?",(rs,n)->rs.getLong(1),accountId(username)).stream().findFirst().orElse(null);}
+ public Map<String,Object> selection(String username){Long id=selected(username);return id==null?Map.of():Map.of("landlordId",id);}
+ @Transactional public Map<String,Object> select(String username,Long id){
+  if(id==null||jdbc.queryForList("SELECT p.user_id FROM landlord_properties p JOIN user u ON u.id=p.user_id WHERE p.user_id=? AND u.role=1",id).isEmpty())throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Chủ nhà không hợp lệ");
+  Long user=accountId(username);jdbc.queryForList("SELECT id FROM user WHERE id=? FOR UPDATE",user);
+  jdbc.update("DELETE FROM tenant_landlord_selection WHERE user_id=?",user);
+  jdbc.update("INSERT INTO tenant_landlord_selection(user_id,landlord_id) VALUES (?,?)",user,id);return selection(username);
+ }
+ public void requireSelected(String username,String room){Long id=selected(username);if(id==null||!id.equals(owner(room)))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Hãy chọn đúng chủ nhà trước khi xem hoặc đăng ký phòng");}
+ public List<Room> selectedRooms(String username){Long id=selected(username);return id==null?List.of():rooms.findAllById(jdbc.query("SELECT room_id FROM room_landlords WHERE user_id=?",(rs,n)->rs.getString(1),id));}
+ public List<Map<String,Object>> selectedCatalog(String username){Long id=selected(username);return id==null?List.of():catalog().stream().filter(row->Objects.equals(((Number)row.get("landlordId")).longValue(),id)).toList();}
+ public Set<String> tenantIds(String username){Long id=accountId(username);return new HashSet<>(jdbc.query("SELECT tenant_id FROM tenant_landlords WHERE user_id=? UNION SELECT c.tenant_id FROM contracts c JOIN room_landlords l ON l.room_id=c.room_id WHERE l.user_id=?",(rs,n)->rs.getString(1),id,id));}
+ public void requireTenant(String username,String tenant){if(!tenantIds(username).contains(tenant))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Khách thuê không thuộc chủ nhà đang đăng nhập");}
+ public void linkTenant(String username,String tenant){jdbc.update("INSERT INTO tenant_landlords(tenant_id,user_id) VALUES (?,?)",tenant,accountId(username));}
+ public void requireExclusiveTenant(String username,String tenant){requireTenant(username,tenant);Long id=accountId(username);if(!jdbc.queryForList("SELECT user_id FROM tenant_landlords WHERE tenant_id=? AND user_id<>? UNION SELECT l.user_id FROM contracts c JOIN room_landlords l ON l.room_id=c.room_id WHERE c.tenant_id=? AND l.user_id<>?",tenant,id,tenant,id).isEmpty())throw new ResponseStatusException(HttpStatus.CONFLICT,"Hồ sơ dùng trong hợp đồng của nhiều chủ nhà; không được sửa hoặc xóa ảnh hưởng hợp đồng khác");}
+ @Transactional public void declareRooms(User user,List<com.ntd.csdl.dto.RoomDTO> list){
+  if(user.getRole()!=UserEnum.ADMIN)throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Chỉ chủ nhà được khai báo phòng");
+  if(list==null||list.isEmpty()||list.size()>200)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Khai báo từ 1 đến 200 phòng");
+  Set<String> codes=new HashSet<>();
+  for(var d:list){String code=d.getRoomId()==null?"":d.getRoomId().trim();String id="L"+user.getId()+"-"+code;
+   if(!code.matches("[A-Za-z0-9_-]{1,12}")||id.length()>20||!codes.add(code.toLowerCase(Locale.ROOT))||d.getFloor()==null||d.getFloor()<0||d.getArea()==null||!Float.isFinite(d.getArea())||d.getArea()<=0||d.getRoomType()==null||d.getRoomType().isBlank()||d.getRoomType().length()>50||d.getBasePrice()==null||d.getBasePrice().signum()<=0||d.getBasePrice().precision()>18||d.getBasePrice().scale()>2)
+    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Phòng cần mã riêng không trùng (1–12 ký tự), tầng từ 0, diện tích và giá dương, loại phòng tối đa 50 ký tự");
+  }
+  jdbc.update("INSERT INTO landlord_properties(user_id,room_limit) VALUES (?,?)",user.getId(),list.size());
+  for(var d:list){Room room=Room.builder().roomId("L"+user.getId()+"-"+d.getRoomId().trim()).floor(d.getFloor()).area(d.getArea()).roomType(d.getRoomType().trim()).basePrice(d.getBasePrice()).status("AVAILABLE").build();rooms.saveAndFlush(room);jdbc.update("INSERT INTO room_landlords(room_id,user_id) VALUES (?,?)",room.getRoomId(),user.getId());}
+ }
  public Long accountId(String username){return users.findByUsername(username).orElseThrow().getId();}
  public boolean owns(String username,String room){return Objects.equals(accountId(username),owner(room));}
  public Long owner(String room){return jdbc.query("SELECT user_id FROM room_landlords WHERE room_id=?",(rs,n)->rs.getLong(1),room).stream().findFirst().orElse(null);}

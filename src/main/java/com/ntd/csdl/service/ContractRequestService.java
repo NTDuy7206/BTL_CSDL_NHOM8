@@ -34,6 +34,7 @@ public class ContractRequestService {
     }
     @Transactional
     public ContractRequestResponseDTO create(String username,ContractRequestCreateDTO dto) {
+        landlords.requireSelected(username,dto.getRoomId());
         RentalWorkflowService.dates(dto.getRequestedStartDate(),dto.getRequestedEndDate());
         if(dto.getRequestedStartDate().isBefore(LocalDate.now()))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Ngày bắt đầu không được trong quá khứ");

@@ -13,3 +13,5 @@ console.log('7 dashboard room-isolation checks passed');
 assert.equal(roomGroups(rooms,[{...contract,actualCheckOut:'2026-10-29'}],'USER','2026-10-29').rented.length,0);
 assert.equal(roomGroups(rooms,[{...contract,startDate:'2026-11-01',actualCheckIn:'2026-10-28'}],'USER','2026-10-29').rented.length,1);
 console.log('2 actual check-in/check-out dashboard checks passed');
+
+assert.equal(roomGroups(rooms.slice(1),[contract],'USER','2026-10-29').rented.length,0,'other landlord rooms excluded from dashboard even when own old contract exists');

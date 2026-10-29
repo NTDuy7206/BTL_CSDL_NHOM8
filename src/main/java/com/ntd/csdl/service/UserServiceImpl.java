@@ -67,7 +67,7 @@ public class UserServiceImpl implements  UserService
         users.setRole(requestedRole);
         try {
             User saved=userRepository.saveAndFlush(users);
-            if(requestedRole==UserEnum.ADMIN)landlords.setup(saved,usersDTO.getRoomCount(),List.of());
+            if(requestedRole==UserEnum.ADMIN)landlords.declareRooms(saved,usersDTO.getRooms());
             return saved;
         } catch (DataIntegrityViolationException ex) {
             // The database constraint also protects against two simultaneous registrations.
