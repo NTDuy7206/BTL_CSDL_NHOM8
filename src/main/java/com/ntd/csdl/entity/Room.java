@@ -19,6 +19,13 @@ public class Room {
     @Transient
     private String landlordName;
 
+    @Transient
+    private Boolean occupied;
+    @Transient
+    private Boolean occupancyKnown;
+    @Transient
+    private Boolean availableForRent;
+
     @Id
     @Column(name = "room_id", length = 20)
     private String roomId;

@@ -433,3 +433,6 @@ Các bảng bổ sung `finance_receipts`, `utility_disbursements`, `landlord_exp
 | POST `/api/finance/receipts/{id}` | Bổ sung receivedOn cho báo cáo PAID thuộc chủ nhà hiện tại |
 
 Kiểm tra tài chính: `FinanceTests` dùng schema bổ sung thực tế trên DB kiểm thử H2, kiểm tra số tiền lẻ, ngày/tháng/năm, phân quyền dữ liệu, thu cũ, chống trùng và hai yêu cầu đồng thời. Chưa kiểm thử kết nối với ngân hàng/nhà cung cấp vì ứng dụng chỉ ghi nhận thủ công.
+
+### Đồng bộ tình trạng phòng giữa ADMIN và USER
+Danh mục phòng trả thêm `occupied`, `occupancyKnown`, `availableForRent`, tính từ ngày hiệu lực và ngày nhận/trả thực tế trên máy chủ. Cùng một phòng có cùng tình trạng trống/đang ở khi xem từ hai vai trò. ADMIN chỉ nhận danh sách phòng của mình; USER có thể xem danh mục niêm yết của nhiều chủ nhà, nên tổng phạm vi không nhất thiết bằng một ADMIN. USER vẫn chỉ xem hợp đồng, hóa đơn và phòng mình đang thuê; API công khai tình trạng phòng không trả danh tính người thuê hay hợp đồng của khách khác. Phòng trống chưa cấu hình/bảo trì hiện “Chưa mở cho thuê” và không cho gửi yêu cầu.

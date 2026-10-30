@@ -28,3 +28,10 @@ summary=roomGroups(inventory,[...six,{contractId:'missing',room:inventory[6],sta
 summary=roomGroups(inventory,[{...six[0],actualCheckOut:'2026-10-29'}],'ADMIN','2026-10-29');assert.equal(summary.rented.length,0);assert.equal(summary.vacant.length,65);
 summary=roomGroups(inventory,[{...six[0],startDate:'2026-11-01',actualCheckIn:'2026-10-28'}],'ADMIN','2026-10-29');assert.equal(summary.rented.length,1);
 console.log('65-room inventory: 59 vacant + 6 occupied, active vs historical contracts, conflicts and incomplete dates passed');
+
+const publicRooms=inventory.map((r,i)=>({...r,occupied:i<6,occupancyKnown:true,availableForRent:false}));
+const tenantSummary=roomGroups(publicRooms,[],'USER','2026-10-30'),ownerSummary=roomGroups(publicRooms,six,'ADMIN','2026-10-30');
+assert.equal(tenantSummary.vacant.length,59);assert.equal(ownerSummary.vacant.length,59);assert.equal(tenantSummary.rented.length,0,'tenant must not inherit six other tenants contracts');assert.equal(ownerSummary.rented.length,6);
+console.log('ADMIN / USER public vacancy parity and private tenant-contract isolation passed');
+
+const {available}=await import('../frontend/src/data/permissions.js');assert.equal(available({status:'AVAILABLE',occupied:true,availableForRent:false}),false);assert.equal(available({status:'UNCONFIGURED',occupied:false,availableForRent:false}),false);assert.equal(available({status:'AVAILABLE',occupied:false,availableForRent:true}),true);
