@@ -6,7 +6,7 @@ import StatCard from '../components/StatCard.jsx'
 import Icon from '../components/Icon.jsx'
 import { visibleModules } from '../data/permissions.js'
 import {roomGroups} from '../data/roomGroups.js'
-import DemoDataNotice from '../components/DemoDataNotice.jsx'
+
 
 const highlights = [
   { key: 'rooms', label: 'Tổng số phòng', icon: 'building', accent: 'blue', note: 'Phòng & mặt bằng' },
@@ -42,7 +42,7 @@ export default function DashboardPage({ request, user, onNavigate }) {
   const [contracts,setContracts]=useState([])
   const [contractsUnavailable,setContractsUnavailable]=useState(false)
   const [busy, setBusy] = useState(true)
-  const [dataVersion,setDataVersion]=useState(0)
+
 
   useEffect(() => {
     let mounted = true
@@ -63,7 +63,7 @@ export default function DashboardPage({ request, user, onNavigate }) {
     })
     update();const timer=setInterval(update,60000)
     return () => { mounted = false;clearInterval(timer) }
-  }, [request,user?.role,dataVersion])
+  }, [request,user?.role])
 
   const valid = Object.values(counts).filter(value => value !== null).length
   const {vacant:vacantRooms,rented:rentedRooms,unknown,activeContracts,conflictingRooms}=roomGroups(rooms,contracts,user?.role,new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Ho_Chi_Minh'}));
@@ -73,9 +73,8 @@ export default function DashboardPage({ request, user, onNavigate }) {
   return <div className="page-stack">
     <section className="content-card workflow-card"><KeywordSearch value={keyword} onChange={setKeyword} label="Tìm phòng trong tổng quan" placeholder="Nhập một phần mã hoặc loại phòng…"/></section>
     {user?.role==='ADMIN'&&!busy&&rooms.length===0&&<ScopeNotice moduleKey="contracts" request={request} onNavigate={onNavigate}/>}
-    <DemoDataNotice user={user} request={request} onDone={()=>setDataVersion(v=>v+1)}/>
     <section className="welcome-banner"><div><span className="welcome-tag">TỔNG QUAN HỆ THỐNG</span><h2>Xin chào, {user?.username || 'bạn'} <span>✦</span></h2><p>Theo dõi nhanh hoạt động và dữ liệu của tòa nhà hôm nay.</p></div><div className="welcome-graphic"><div className="graphic-circle circle-one"/><div className="graphic-circle circle-two"/><Icon name="building" size={82} strokeWidth={1.2}/></div></section>
-    <div className="section-heading"><div><h2>Chỉ số chính</h2><p>Số liệu được lấy trực tiếp từ các phân hệ</p></div><button className="text-action" onClick={() => onNavigate('rooms')}>Xem phòng <Icon name="chevron" size={15}/></button></div>
+    <div className="section-heading"><div><h2>Chỉ số chính</h2></div><button className="text-action" onClick={() => onNavigate('rooms')}>Xem phòng <Icon name="chevron" size={15}/></button></div>
     <section className="stat-grid">{highlights.filter(item=>user?.role==='ADMIN'||item.key!=='tenants').map(item => <StatCard key={item.key} {...item} label={item.key==='rented'&&user?.role==='USER'?'Phòng tôi đang thuê':item.label} note={user?.role==='USER'&&item.key==='rented'?'Theo hợp đồng của tài khoản hiện tại':user?.role==='USER'&&item.key==='vacant'?'Theo tình trạng ở thực tế từ máy chủ':item.note} value={busy ? '…' : values[item.key] === null ? '—' : values[item.key] ?? 0}/>)}</section>
     <div className="section-heading room-section-heading"><div><h2>Tình trạng phòng</h2><p>{user?.role==='USER'?'Phòng trống được xác định cùng cách với chủ nhà; phòng tôi đang thuê chỉ lấy từ hợp đồng của bạn. Phòng chưa mở cho thuê chưa thể đăng ký.':'Danh sách phòng thuộc chủ nhà đang đăng nhập.'}</p></div></div>
     {user?.role==='ADMIN'&&!busy&&!occupancyUnavailable&&<section className="content-card"><p>{rooms.length} phòng = {vacantRooms.length} phòng trống + {rentedRooms.length} phòng đã thuê{unknown.length?` + ${unknown.length} phòng chưa xác định`:''}. {activeContracts.length} hợp đồng đang hiệu lực / {contracts.length} hợp đồng trong lịch sử.</p><p>Phòng trống chưa cấu hình hoặc đang bảo trì vẫn cần được chủ nhà hoàn thiện trước khi mở đăng ký thuê.</p>{unknown.length>0&&<div className="alert alert-error">Có hợp đồng thiếu ngày bắt đầu/kết thúc. Vui lòng kiểm tra tại Hợp đồng; các phòng này chưa được tính là trống.</div>}{conflictingRooms.length>0&&<div className="alert alert-error">Có nhiều hợp đồng đồng thời hiệu lực tại phòng: {conflictingRooms.map(r=>r.roomId).join(', ')}. Cần đối soát hợp đồng, không tự xóa dữ liệu.</div>}</section>}
@@ -84,7 +83,7 @@ export default function DashboardPage({ request, user, onNavigate }) {
       <RoomGroup title={user?.role==='USER'?'Phòng tôi đang thuê':'Phòng đã thuê'} kind="rented" target={user?.role==='USER'?'contracts':'rooms'} actionLabel={user?.role==='USER'?'Xem hợp đồng của tôi':'Quản lý phòng'} rooms={rentedRooms.filter(r=>matchesKeyword(r,keyword))} loading={busy} unavailable={occupancyUnavailable} onNavigate={onNavigate}/>
     </section>
     <div className="dashboard-lower"><section className="content-card module-card"><div className="card-heading"><div><h2>Phân hệ quản lý</h2><p>Truy cập nhanh đến các khu vực dữ liệu</p></div><span className="module-count">{modules.length} phân hệ</span></div><div className="module-grid">{modules.map((module, index) => <button className="module-tile" key={module.key} onClick={() => onNavigate(module.key)}><span className={`tile-icon tile-color-${index % 5}`}><Icon name={module.icon} size={19}/></span><span className="tile-text"><b>{module.title}</b><small>{counts[module.key] === null ? 'Chưa kết nối' : busy ? 'Đang tải' : `${counts[module.key] ?? 0} bản ghi${module.key==='contracts'?' · gồm lịch sử':''}`}</small></span><Icon name="chevron" className="tile-chevron" size={17}/></button>)}</div></section>
-      <section className="content-card system-card"><div className="card-heading"><div><h2>Tình trạng kết nối</h2><p>Trạng thái truy cập các API dữ liệu</p></div><span className={`connection-mark ${valid === modules.length ? 'online' : ''}`}><i/></span></div><div className="connection-summary"><div className="connection-number">{busy ? '…' : `${valid}/${modules.length}`}</div><div><b>{valid === modules.length ? 'Đang hoạt động' : 'Đã kiểm tra'}</b><span>phân hệ có phản hồi</span></div></div><div className="progress-track"><div className="progress-value" style={{ width: `${busy ? 0 : valid / modules.length * 100}%` }}/></div><div className="system-foot"><span><i className="dot dot-green"/> Spring Boot API</span><span>{window.location.host}</span></div><div className="system-foot"><span><i className="dot dot-blue"/> Database</span><span>MySQL</span></div><div className="system-tip"><Icon name="incident" size={16}/><span>Thống kê của chủ nhà dùng ngày hiệu lực và ngày nhận/trả thực tế của hợp đồng. Hợp đồng hết hạn vẫn được giữ trong lịch sử.</span></div></section>
+      <section className="content-card system-card"><div className="card-heading"><div><h2>Tình trạng kết nối</h2><p>Trạng thái truy cập các API dữ liệu</p></div><span className={`connection-mark ${valid === modules.length ? 'online' : ''}`}><i/></span></div><div className="connection-summary"><div className="connection-number">{busy ? '…' : `${valid}/${modules.length}`}</div><div><b>{valid === modules.length ? 'Đang hoạt động' : 'Đã kiểm tra'}</b><span>phân hệ có phản hồi</span></div></div><div className="progress-track"><div className="progress-value" style={{ width: `${busy ? 0 : valid / modules.length * 100}%` }}/></div><div className="system-foot"><span><i className="dot dot-green"/> Spring Boot API</span><span>{window.location.host}</span></div><div className="system-foot"><span><i className="dot dot-blue"/> Database</span><span>MySQL</span></div></section>
     </div>
   </div>
 }
