@@ -35,15 +35,17 @@ const incident=await call('/incidents',user.token,'POST',{roomId:room1,incidentC
 assert.equal(incident.status,'PENDING');assert.notEqual(incident.incidentId,'forged')
 await call('/incidents',other.token,'POST',{roomId:room1,incidentContent:'Other room'},403)
 await call('/incidents/'+incident.incidentId,user.token,'PUT',{status:'COMPLETED'},403)
+// Manual invoice fixture for ownership/payment testing, using a closed month.
+const closedMonth=new Date();closedMonth.setDate(1);closedMonth.setMonth(closedMonth.getMonth()-1)
 const invoiceId='INV'+suffix
-await call('/invoices',admin.token,'POST',{invoiceId,month:1,year:2027,rentAmount:3000000,electricityAmount:100000,waterAmount:50000,fineAmount:0,contractId:approved.contractId},201)
+await call('/invoices',admin.token,'POST',{invoiceId,month:closedMonth.getMonth()+1,year:closedMonth.getFullYear(),rentAmount:3000000,electricityAmount:100000,waterAmount:50000,fineAmount:0,contractId:approved.contractId},201)
 assert.equal((await call('/invoices',user.token)).length,1)
 assert.equal((await call('/invoices',other.token)).length,0)
 await call('/invoices/'+invoiceId,other.token,'GET',null,403)
 await call('/payment-reports',other.token,'POST',{invoiceId,paymentMethod:'BANK_TRANSFER',transactionReference:'TEST'},403)
-const payment=await call('/payment-reports',user.token,'POST',{invoiceId,transactionReference:'LOCAL-TEST'},201)
+const payment=await call('/payment-reports',user.token,'POST',{invoiceId,paymentMethod:'CASH',transactionReference:'LOCAL-TEST'},201)
 assert.equal(payment.amount,3150000)
-await call('/payment-reports',user.token,'POST',{invoiceId,transactionReference:'AGAIN'},409)
+await call('/payment-reports',user.token,'POST',{invoiceId,paymentMethod:'CASH',transactionReference:'AGAIN'},409)
 await call('/payment-reports/'+payment.paymentReportId+'/status',user.token,'PATCH',{status:'PAID'},403)
 await call('/payment-reports/'+payment.paymentReportId+'/status',admin.token,'PATCH',{status:'PAID'})
 const tenant2={...person,cccd:'D'+suffix,fullName:'Trần Khách Mới'}

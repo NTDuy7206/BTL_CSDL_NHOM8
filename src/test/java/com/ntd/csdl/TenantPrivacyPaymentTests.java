@@ -32,6 +32,7 @@ class TenantPrivacyPaymentTests {
   invoice=Invoice.builder().invoiceId("I1").contract(c1).totalAmount(new BigDecimal("3000000")).build();when(invoices.lockById("I1")).thenReturn(Optional.of(invoice));
   for(int i=1;i<=3;i++){User u=new User();u.setId((long)i);u.setUsername("user"+i);u.setRole(UserEnum.USER);when(users.findByUsername(u.getUsername())).thenReturn(Optional.of(u));}
   when(reports.save(any(PaymentReport.class))).thenAnswer(i->{PaymentReport r=i.getArgument(0);r.setPaymentReportId(1L);return r;});
+  invoice.setYear(StayService.today().minusMonths(1).getYear());invoice.setMonth(StayService.today().minusMonths(1).getMonthValue());
   payments=new PaymentReportService(reports,invoices,users,rentals,landlords,mock(FinanceService.class));
  }
  @Test void eachAccountOnlyGetsItsOwnContract(){assertEquals("C1",rentals.mine("user1").getFirst().getContractId());assertEquals("C2",rentals.mine("user2").getFirst().getContractId());assertTrue(rentals.mine("user3").isEmpty());assertThrows(ResponseStatusException.class,()->rentals.requireOwner("user2",c1));}
@@ -49,5 +50,9 @@ class TenantPrivacyPaymentTests {
   when(reports.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(first,second));when(landlords.owns("ownerA","R1")).thenReturn(true);when(landlords.owns("ownerB","R2")).thenReturn(true);
   assertEquals(List.of(11L),payments.getForAccount("ownerA",false).stream().map(PaymentReportResponseDTO::getPaymentReportId).toList());assertEquals(List.of(12L),payments.getForAccount("ownerB",false).stream().map(PaymentReportResponseDTO::getPaymentReportId).toList());
   when(reports.lockById(11L)).thenReturn(Optional.of(first));doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"Wrong owner")).when(landlords).requireOwner("ownerB","R1");var update=new PaymentReportStatusDTO();update.setStatus("PAID");assertThrows(ResponseStatusException.class,()->payments.updateStatus(11L,update,"ownerB"));assertEquals(PaymentReportStatus.PENDING,first.getStatus());
+ }
+ @Test void tenantCannotSubmitOrSeePayableInvoiceBeforeServerMonthEnd(){
+  invoice.setYear(2026);invoice.setMonth(10);when(invoices.findByContractTenantTenantId("T1")).thenReturn(List.of(invoice));
+  try(var clock=mockStatic(StayService.class)){clock.when(StayService::today).thenReturn(LocalDate.of(2026,10,30));assertTrue(payments.payableInvoices("user1").isEmpty());assertThrows(ResponseStatusException.class,()->payments.create("user1",dto("CASH")));clock.when(StayService::today).thenReturn(LocalDate.of(2026,10,31));assertEquals(1,payments.payableInvoices("user1").size());assertEquals("PENDING",payments.create("user1",dto("CASH")).getStatus());when(reports.existsByPayerUsernameAndInvoiceInvoiceIdAndStatusIn(anyString(),anyString(),anyList())).thenReturn(true);assertTrue(payments.payableInvoices("user1").isEmpty());}
  }
 }

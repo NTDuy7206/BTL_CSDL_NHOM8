@@ -26,6 +26,9 @@ public class PaymentReportController {
         return service.getForAccount(authentication.getName(), tenant);
     }
 
+    @GetMapping("/payable-invoices")
+    public Object payable(Authentication auth){return service.payableInvoices(auth.getName());}
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PaymentReportResponseDTO create(Authentication authentication, @Valid @RequestBody PaymentReportCreateDTO dto) {

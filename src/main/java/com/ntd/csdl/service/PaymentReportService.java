@@ -35,6 +35,9 @@ public class PaymentReportService {
         return reports.stream().filter(r->tenant||landlords.owns(username,r.getInvoice().getContract().getRoom().getRoomId())).map(PaymentReportResponseDTO::new).toList();
     }
 
+    @Transactional(readOnly=true)
+    public List<Invoice> payableInvoices(String username){String tenant=rentals.tenantId(username);if(tenant==null)return List.of();return invoiceRepository.findByContractTenantTenantId(tenant).stream().filter(i->BillingCalendar.due(i.getYear(),i.getMonth(),StayService.today())).filter(i->!reportRepository.existsByPayerUsernameAndInvoiceInvoiceIdAndStatusIn(username,i.getInvoiceId(),List.of(PaymentReportStatus.PENDING,PaymentReportStatus.PAID))).toList();}
+
     @Transactional
     public PaymentReportResponseDTO create(String username, PaymentReportCreateDTO dto) {
         String method=dto.getPaymentMethod()==null?"":dto.getPaymentMethod().trim().toUpperCase(java.util.Locale.ROOT);
@@ -44,6 +47,7 @@ public class PaymentReportService {
         Invoice invoice = invoiceRepository.lockById(dto.getInvoiceId().trim())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hóa đơn"));
         rentals.requireOwner(username, invoice.getContract());
+        BillingCalendar.requireDue(invoice.getYear(),invoice.getMonth(),StayService.today());
         BigDecimal amount = invoice.getTotalAmount();
         if (amount == null || amount.signum() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hóa đơn chưa có số tiền hợp lệ");

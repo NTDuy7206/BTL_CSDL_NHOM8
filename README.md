@@ -212,7 +212,7 @@ Phòng khai báo đầy đủ khi đăng ký mới sẵn sàng cho thuê (AVAILA
 | Nhận/trả sớm | Lưu ngày thực tế riêng; không sửa mất ngày trong hợp đồng. Không cho chồng lấn người thuê khác |
 | Tính tiền thuê | Giá đã chốt × ngày ở thực tế trong tháng ÷ số ngày của tháng; ngày trả phòng không tính tiền thuê |
 | Điện/nước | Chênh lệch công tơ × đơn giá. Đổi khách giữa tháng cần chỉ số nhận/trả của từng người |
-| Cuối tháng | Chốt từ 23:55 ngày cuối tháng, giờ Việt Nam; tác vụ kiểm tra mỗi phút khi ứng dụng đang chạy |
+| Cuối tháng | Chốt từ ngày cuối tháng theo LocalDate, giờ Việt Nam; tác vụ kiểm tra mỗi phút khi ứng dụng đang chạy |
 | Thiếu dữ liệu | Chưa tự lập hóa đơn; hiện cảnh báo cho chủ nhà và thử lại khi bổ sung |
 | Chống trùng | Khóa giao dịch và đánh dấu theo hợp đồng/tháng/năm; hóa đơn đã thu/đang đối soát không tự bị ghi đè |
 | Phòng hết hạn | Cập nhật về AVAILABLE khi không còn hợp đồng hiệu lực; không đánh trống khi ngày cần xác minh còn thiếu |
@@ -439,3 +439,10 @@ Danh mục phòng trả thêm `occupied`, `occupancyKnown`, `availableForRent`, 
 
 ### Xác nhận tiền khách thuê
 ADMIN vào Thanh toán, phần đầu trang là Chờ xác nhận với thẻ từng khoản và nút Xác nhận đã nhận tiền / Yêu cầu kiểm tra lại. Nhập ngày thực thu trước khi xác nhận. Điện/nước của nhà cung cấp ở dưới; khoản đã xử lý nằm trong tab riêng. Menu Thanh toán có số khoản đang chờ; danh sách và số chờ cập nhật mỗi 30 giây. USER cũng được cập nhật trạng thái báo thanh toán khi ở trang Thanh toán. Chỉ chủ nhà sở hữu phòng trên hóa đơn nhận và xác nhận báo cáo, không chuyển yêu cầu sang ADMIN khác.
+
+### Đến hạn thanh toán theo LocalDate và chuyển lịch sử
+Máy chủ lấy LocalDate theo Asia/Ho_Chi_Minh: một kỳ chỉ đến hạn từ ngày cuối cùng của tháng đó (tháng nhuận tính theo YearMonth), không phụ thuộc đồng hồ trình duyệt. Tác vụ lập hóa đơn kiểm tra mỗi phút; thiếu công tơ/đơn giá/nhận-trả thực tế thì giữ cảnh báo và thử lại, không đoán dữ liệu. USER chỉ nhận danh sách hóa đơn đến hạn chưa có báo cáo PENDING/PAID tại `/api/payment-reports/payable-invoices`; POST báo thanh toán cũng kiểm tra ngày ở server. Không còn khoản cần trả thì ẩn form, báo đã gửi/đã trả chỉ xuất hiện trong lịch sử.
+
+ADMIN có tab Cần thanh toán và Lịch sử riêng cho điện/nước nhà cung cấp. Kỳ chưa đến hạn không sinh thẻ cần trả; kỳ cũ quá hạn chưa trả vẫn được hiển thị. Mỗi khoản điện/nước đã ghi nhận biến mất khỏi Cần thanh toán, không tự tạo lại khi sang tháng; chứng từ vẫn ở Lịch sử và báo cáo thu/chi. Ngày thực trả không được trước ngày cuối kỳ hoặc sau ngày máy chủ. Phần đối chiếu từng hóa đơn nằm trong mục thu gọn; không thay đổi hay xóa hóa đơn cũ.
+
+Công thức: điện = chênh lệch công tơ kWh × đơn giá điện; nước = chênh lệch công tơ m³ × đơn giá nước. Nhận/trả giữa kỳ lấy công tơ nhận/trả thực tế. Sáu hóa đơn mẫu DEMO_P01–06 có 31+32+33+34+35+36 = 201 kWh × 3.500 = 703.500 đ; nước 6 × 5 m³ × 15.000 = 450.000 đ. Các giá này là dữ liệu minh họa, không phải biểu giá nhà cung cấp. Đối chiếu chỉ số và đơn giá thật trước khi chốt; khoản thực trả nhà cung cấp nhập theo chứng từ của họ.
