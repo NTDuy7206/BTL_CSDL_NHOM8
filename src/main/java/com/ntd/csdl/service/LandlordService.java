@@ -43,7 +43,7 @@ public class LandlordService {
   var today=StayService.today();var occupancy=new HashMap<String,Map<String,Object>>();
   for(var row:jdbc.queryForList("SELECT c.room_id,SUM(CASE WHEN "+StayService.activeSql()+" THEN 1 ELSE 0 END) AS active_count,SUM(CASE WHEN s.check_out IS NULL AND (COALESCE(s.check_in,c.start_date) IS NULL OR c.end_date IS NULL) THEN 1 ELSE 0 END) AS unknown_count FROM contracts c LEFT JOIN contract_stays s ON s.contract_id=c.contract_id GROUP BY c.room_id",today,today,today))occupancy.put((String)row.get("room_id"),row);
   for(var row:catalog){var counts=occupancy.get(row.get("roomId"));boolean occupied=counts!=null&&((Number)counts.get("active_count")).intValue()>0,known=occupied||counts==null||((Number)counts.get("unknown_count")).intValue()==0;
-   row.put("occupied",occupied);row.put("occupancyKnown",known);row.put("availableForRent",known&&!occupied&&RentalWorkflowService.available((String)row.get("status")));
+   row.put("occupied",occupied);row.put("occupancyKnown",known);row.put("availableForRent",known&&!occupied&&RentalWorkflowService.available((String)row.get("status"))&&row.get("area") instanceof Number&&((Number)row.get("area")).doubleValue()>0&&row.get("basePrice")!=null&&new BigDecimal(row.get("basePrice").toString()).signum()>0);
   }return catalog;
  }
  public void requireRentable(String room){var match=catalog().stream().filter(r->Objects.equals(r.get("roomId"),room)).findFirst().orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Phòng chưa được niêm yết"));if(!Boolean.TRUE.equals(match.get("availableForRent")))throw new ResponseStatusException(HttpStatus.CONFLICT,"Phòng đang có khách, chưa mở cho thuê hoặc cần xác minh hợp đồng");}

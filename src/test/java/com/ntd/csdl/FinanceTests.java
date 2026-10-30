@@ -22,7 +22,7 @@ class FinanceTests {
   jdbc.execute("CREATE TABLE user(id BIGINT PRIMARY KEY)");jdbc.execute("CREATE TABLE room_landlords(room_id VARCHAR(20) PRIMARY KEY,user_id BIGINT)");jdbc.execute("CREATE TABLE contracts(contract_id VARCHAR(20) PRIMARY KEY,room_id VARCHAR(20))");
   jdbc.execute("CREATE TABLE invoices(invoice_id VARCHAR(20) PRIMARY KEY,contract_id VARCHAR(20),year INT,month INT,electricity_amount DECIMAL(18,2),water_amount DECIMAL(18,2))");
   jdbc.execute("CREATE TABLE payment_reports(payment_report_id BIGINT PRIMARY KEY,invoice_id VARCHAR(20),amount DECIMAL(18,2),status VARCHAR(20),created_at TIMESTAMP)");
-  String schema=Files.readString(Path.of("src/main/resources/schema.sql"));schema=schema.substring(schema.indexOf("CREATE TABLE IF NOT EXISTS finance_receipts"));
+  String schema=Files.readString(Path.of("src/main/resources/schema.sql"));schema=schema.substring(schema.indexOf("CREATE TABLE IF NOT EXISTS finance_receipts"),schema.indexOf("CREATE TABLE IF NOT EXISTS room_listings"));
   for(String statement:schema.split(";")){if(!statement.isBlank())jdbc.execute(statement.replaceAll("ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci", ""));}
   jdbc.update("INSERT INTO user VALUES(1),(2),(3)");jdbc.update("INSERT INTO room_landlords VALUES('R1',1),('R2',2)");jdbc.update("INSERT INTO contracts VALUES('C1','R1'),('C2','R2')");
   jdbc.update("INSERT INTO invoices VALUES('I1','C1',2026,10,100,50),('I2','C1',2026,10,200,75),('I3','C2',2026,10,900,600),('I4','C1',2026,11,400,125),('I5','C1',2025,12,30,15)");

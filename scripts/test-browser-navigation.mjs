@@ -21,3 +21,6 @@ assert.equal(called,1,'new tab / modified clicks retain native link behavior');a
 console.log('Browser navigation: Back/Forward, direct links, reload, role guards and normal link behavior passed')
 
 assert.equal(pageFromHash('#/profits',user),'dashboard');assert.equal(pageFromHash('#/profits',admin),'profits');
+
+const {roomRoute}=await import('../frontend/src/data/browserNavigation.js');
+visitPage(browser,storage,user,'rooms',{roomId:'R1'});assert.equal(browser.location.hash,'#/rooms?room=R1');assert.equal(initialPage(browser,storage,user),'rooms');assert.equal(roomRoute(browser.location.hash).roomId,'R1');visitPage(browser,storage,user,'rental-requests',{roomId:'R1',apply:true});assert.equal(roomRoute(browser.location.hash).apply,true);index--;assert.equal(roomRoute(browser.location.hash).roomId,'R1');assert.equal(initialPage(browser,storage,user),'rooms');

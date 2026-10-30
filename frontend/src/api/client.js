@@ -1,7 +1,7 @@
-export async function request(path, { token = '', ...options } = {}) {
+export async function request(path, { token = '', responseType, ...options } = {}) {
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
   const headers = {
-    Accept: 'application/json',
+    Accept: responseType==='blob'?'image/*':'application/json',
     ...(options.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
@@ -12,6 +12,7 @@ export async function request(path, { token = '', ...options } = {}) {
   } catch {
     throw new Error('Không kết nối được máy chủ. Hãy kiểm tra Spring Boot và thử lại.')
   }
+  if(response.ok&&responseType==='blob')return response.blob()
   const raw = await response.text()
   let payload = null
   try { payload = raw ? JSON.parse(raw) : null } catch { payload = raw }

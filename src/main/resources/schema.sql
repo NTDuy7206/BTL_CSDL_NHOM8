@@ -132,3 +132,13 @@ CREATE TABLE IF NOT EXISTS landlord_expenses (
  UNIQUE KEY uq_expense_receipt(landlord_id,reference),
  FOREIGN KEY(landlord_id) REFERENCES user(id),INDEX ix_expense_owner_day(landlord_id,paid_on)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS room_listings (
+ room_id VARCHAR(20) PRIMARY KEY,title VARCHAR(120) NOT NULL,description TEXT NOT NULL,address VARCHAR(250) NOT NULL,
+ FOREIGN KEY(room_id) REFERENCES rooms(room_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS room_photos (
+ id VARCHAR(36) PRIMARY KEY,room_id VARCHAR(20) NOT NULL,mime_type VARCHAR(30) NOT NULL,
+ image_data LONGBLOB NOT NULL,thumbnail_data MEDIUMBLOB NOT NULL,
+ FOREIGN KEY(room_id) REFERENCES rooms(room_id) ON DELETE CASCADE,INDEX ix_room_photos(room_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
