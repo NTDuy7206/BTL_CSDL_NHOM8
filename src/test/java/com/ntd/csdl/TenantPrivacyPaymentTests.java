@@ -33,7 +33,7 @@ class TenantPrivacyPaymentTests {
   for(int i=1;i<=3;i++){User u=new User();u.setId((long)i);u.setUsername("user"+i);u.setRole(UserEnum.USER);when(users.findByUsername(u.getUsername())).thenReturn(Optional.of(u));}
   when(reports.save(any(PaymentReport.class))).thenAnswer(i->{PaymentReport r=i.getArgument(0);r.setPaymentReportId(1L);return r;});
   invoice.setYear(StayService.today().minusMonths(1).getYear());invoice.setMonth(StayService.today().minusMonths(1).getMonthValue());
-  payments=new PaymentReportService(reports,invoices,users,rentals,landlords,mock(FinanceService.class));
+  payments=new PaymentReportService(reports,invoices,users,rentals,landlords,mock(FinanceService.class),mock(PaymentRoutingService.class));
  }
  @Test void eachAccountOnlyGetsItsOwnContract(){assertEquals("C1",rentals.mine("user1").getFirst().getContractId());assertEquals("C2",rentals.mine("user2").getFirst().getContractId());assertTrue(rentals.mine("user3").isEmpty());assertThrows(ResponseStatusException.class,()->rentals.requireOwner("user2",c1));}
  @Test void contractEndpointRejectsAnotherAccountsId(){var service=mock(ContractService.class);when(service.getById("C1")).thenReturn(c1);var ctl=new ContractController(service,stays,landlords,rentals);assertEquals("C1",ctl.getById("C1",auth("user1")).getBody().getContractId());assertEquals(403,assertThrows(ResponseStatusException.class,()->ctl.getById("C1",auth("user2"))).getStatusCode().value());}

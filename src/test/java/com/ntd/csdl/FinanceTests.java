@@ -75,7 +75,7 @@ class FinanceTests {
   assertThrows(ResponseStatusException.class,()->finance.expense("A",amount("1"),StayService.today(),"","test"));
  }
  @Test void confirmationLocksReportAndWritesReceiptExactlyOnce(){
-  var repo=mock(PaymentReportRepository.class);var ledger=mock(FinanceService.class);var service=new PaymentReportService(repo,mock(InvoiceRepository.class),mock(UserRepository.class),mock(RentalWorkflowService.class),owners,ledger);
+  var repo=mock(PaymentReportRepository.class);var ledger=mock(FinanceService.class);var service=new PaymentReportService(repo,mock(InvoiceRepository.class),mock(UserRepository.class),mock(RentalWorkflowService.class),owners,ledger,mock(PaymentRoutingService.class));
   PaymentReport p=new PaymentReport();p.setPaymentReportId(1L);p.setAmount(amount("1000"));p.setStatus(PaymentReportStatus.PENDING);User payer=new User();payer.setId(3L);payer.setUsername("tenant");p.setPayer(payer);p.setInvoice(Invoice.builder().invoiceId("I1").contract(Contract.builder().room(Room.builder().roomId("R1").build()).build()).build());
   when(repo.lockById(1L)).thenReturn(Optional.of(p));var dto=new PaymentReportStatusDTO();dto.setStatus("PAID");dto.setReceivedOn(date("2026-10-05"));service.updateStatus(1L,dto,"A");verify(ledger).confirmReceipt("A",p,date("2026-10-05"));assertEquals(PaymentReportStatus.PAID,p.getStatus());
   assertThrows(ResponseStatusException.class,()->service.updateStatus(1L,dto,"A"));verify(ledger,times(1)).confirmReceipt(anyString(),any(),any());

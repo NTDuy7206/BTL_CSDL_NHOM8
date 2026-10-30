@@ -13,6 +13,12 @@ public class PaymentReportResponseDTO {
     private final Long userId;
     private final String invoiceId;
     private final BigDecimal amount;
+    private final String roomId;
+    private final String contractId;
+    private Long landlordId;
+    private String landlordName;
+    private String routingStatus="UNASSIGNED";
+    public void recipient(Long id,String name,String status){landlordId=id;landlordName=name;routingStatus=status;}
     private final String paymentMethod;
     private final String transactionReference;
     private final String status;
@@ -24,6 +30,8 @@ public class PaymentReportResponseDTO {
         this.userId = report.getPayer().getId();
         this.invoiceId = report.getInvoice().getInvoiceId();
         this.amount = report.getAmount();
+        this.roomId=report.getInvoice().getContract().getRoom().getRoomId();
+        this.contractId=report.getInvoice().getContract().getContractId();
         this.paymentMethod = report.getPaymentMethod();
         this.transactionReference = report.getTransactionReference();
         this.status = report.getStatus().name();

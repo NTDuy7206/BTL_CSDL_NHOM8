@@ -142,3 +142,9 @@ CREATE TABLE IF NOT EXISTS room_photos (
  image_data LONGBLOB NOT NULL,thumbnail_data MEDIUMBLOB NOT NULL,
  FOREIGN KEY(room_id) REFERENCES rooms(room_id) ON DELETE CASCADE,INDEX ix_room_photos(room_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS payment_report_routes (
+ payment_report_id BIGINT PRIMARY KEY,landlord_id BIGINT NOT NULL,
+ FOREIGN KEY(payment_report_id) REFERENCES payment_reports(payment_report_id),
+ FOREIGN KEY(landlord_id) REFERENCES user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

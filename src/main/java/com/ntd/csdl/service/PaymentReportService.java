@@ -26,13 +26,15 @@ public class PaymentReportService {
     private final RentalWorkflowService rentals;
     private final LandlordService landlords;
     private final FinanceService finance;
+    private final PaymentRoutingService routing;
+    private PaymentReportResponseDTO response(PaymentReport report){var dto=new PaymentReportResponseDTO(report);routing.describe(report,dto);return dto;}
 
     @Transactional(readOnly = true)
     public List<PaymentReportResponseDTO> getForAccount(String username, boolean tenant) {
         List<PaymentReport> reports = tenant
                 ? reportRepository.findByPayerUsernameOrderByCreatedAtDesc(username)
                 : reportRepository.findAllByOrderByCreatedAtDesc();
-        return reports.stream().filter(r->tenant||landlords.owns(username,r.getInvoice().getContract().getRoom().getRoomId())).map(PaymentReportResponseDTO::new).toList();
+        return reports.stream().filter(r->tenant||(landlords.owns(username,r.getInvoice().getContract().getRoom().getRoomId())||routing.assignedTo(username,r))).map(this::response).toList();
     }
 
     @Transactional(readOnly=true)
@@ -47,6 +49,7 @@ public class PaymentReportService {
         Invoice invoice = invoiceRepository.lockById(dto.getInvoiceId().trim())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hóa đơn"));
         rentals.requireOwner(username, invoice.getContract());
+        landlords.requireAssigned(invoice.getContract().getRoom().getRoomId());
         BillingCalendar.requireDue(invoice.getYear(),invoice.getMonth(),StayService.today());
         BigDecimal amount = invoice.getTotalAmount();
         if (amount == null || amount.signum() <= 0) {
@@ -67,7 +70,7 @@ public class PaymentReportService {
         report.setTransactionReference(dto.getTransactionReference().trim());
         report.setStatus(PaymentReportStatus.PENDING);
         report.setCreatedAt(LocalDateTime.now());
-        return new PaymentReportResponseDTO(reportRepository.save(report));
+        return response(reportRepository.save(report));
     }
 
     @Transactional
@@ -84,12 +87,12 @@ public class PaymentReportService {
 
         PaymentReport report = reportRepository.lockById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy báo cáo thanh toán"));
-        landlords.requireOwner(username,report.getInvoice().getContract().getRoom().getRoomId());
+        if(!routing.assignedTo(username,report))landlords.requireOwner(username,report.getInvoice().getContract().getRoom().getRoomId());
         if (report.getStatus() != PaymentReportStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Báo cáo thanh toán này đã được xử lý");
         }
         if(status==PaymentReportStatus.PAID)finance.confirmReceipt(username,report,dto.getReceivedOn());
         report.setStatus(status);
-        return new PaymentReportResponseDTO(report);
+        return response(report);
     }
 }

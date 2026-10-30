@@ -18,6 +18,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PaymentReportController {
     private final PaymentReportService service;
+    private final com.ntd.csdl.service.PaymentRoutingService routing;
+    public record Recipient(Long landlordId){}
+    @PostMapping("/{id}/recipient") public void recipient(Authentication auth,@PathVariable Long id,@RequestBody Recipient body){routing.assign(auth.getName(),id,body.landlordId());}
 
     @GetMapping
     public List<PaymentReportResponseDTO> get(Authentication authentication) {

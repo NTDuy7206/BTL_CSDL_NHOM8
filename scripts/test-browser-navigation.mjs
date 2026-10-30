@@ -24,3 +24,5 @@ assert.equal(pageFromHash('#/profits',user),'dashboard');assert.equal(pageFromHa
 
 const {roomRoute}=await import('../frontend/src/data/browserNavigation.js');
 visitPage(browser,storage,user,'rooms',{roomId:'R1'});assert.equal(browser.location.hash,'#/rooms?room=R1');assert.equal(initialPage(browser,storage,user),'rooms');assert.equal(roomRoute(browser.location.hash).roomId,'R1');visitPage(browser,storage,user,'rental-requests',{roomId:'R1',apply:true});assert.equal(roomRoute(browser.location.hash).apply,true);index--;assert.equal(roomRoute(browser.location.hash).roomId,'R1');assert.equal(initialPage(browser,storage,user),'rooms');
+
+visitPage(browser,storage,admin,'payments',{invoiceId:'DM123'});assert.equal(browser.location.hash,'#/payments?invoice=DM123');assert.equal(roomRoute(browser.location.hash).invoiceId,'DM123');visitPage(browser,storage,admin,'payments');assert.equal(roomRoute(browser.location.hash).invoiceId,'');
