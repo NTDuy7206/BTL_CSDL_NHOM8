@@ -188,3 +188,5 @@
 @media(prefers-reduced-motion:reduce){.sidebar,.app-main{transition:none}}
 
 .finance-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:20px 0}.finance-cards>div{background:#f5f7ff;border:1px solid #e1e7fa;border-radius:12px;padding:20px;min-width:0}.finance-cards strong{display:block;font-size:24px;color:#2948b1;margin:10px 0;overflow-wrap:anywhere}.finance-cards p,.finance-cards span{font-size:14px;color:#526079}.finance-cards h3{margin-top:0}@media(max-width:850px){.finance-cards{grid-template-columns:1fr}}
+
+.payment-review-list{display:grid;gap:16px;margin-top:16px}.payment-review-card{border:1px solid #dbe4ff;background:#fafbff;border-radius:12px;padding:20px}.payment-review-card h3{margin:0;overflow-wrap:anywhere}.payment-review-card>strong{display:block;font-size:24px;margin:14px 0;color:#2948b1}.payment-review-card p{overflow-wrap:anywhere}.payment-review-card .workflow-buttons{flex-wrap:wrap}.payment-review-card .button{white-space:normal}

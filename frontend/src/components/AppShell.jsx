@@ -6,7 +6,7 @@ function NavLink({target,page,onNavigate,children,label}){
  return <a href={pageHref(target)} className={`nav-link ${page===target?'selected':''}`} aria-current={page===target?'page':undefined} aria-label={label} title={label} onClick={event=>followPageLink(event,onNavigate,target)}>{children}</a>
 }
 
-export function Sidebar({ page, user, profile, onNavigate, onLogout, open, onClose, role, collapsed=false,onToggle, pendingRequests = 0 }) {
+export function Sidebar({ page, user, profile, onNavigate, onLogout, open, onClose, role, collapsed=false,onToggle, pendingRequests = 0,pendingPayments=0 }) {
   return <>
     {open && <button className="sidebar-scrim" aria-label="Đóng menu" onClick={onClose} />}
     <aside id="app-sidebar" aria-label="Điều hướng chính" className={`sidebar ${open ? 'sidebar-open' : ''}`}>
@@ -17,7 +17,7 @@ export function Sidebar({ page, user, profile, onNavigate, onLogout, open, onClo
       </div>
       {['USER','ADMIN'].includes(role) && <div className="nav-section"><div className="nav-heading">GIAO DỊCH</div>
         <NavLink target="rental-requests" page={page} onNavigate={onNavigate} label={role==='USER'?'Đăng ký thuê':'Yêu cầu thuê'}><Icon name="contract"/><span>{role==='USER'?'Đăng ký thuê':'Yêu cầu thuê'}</span>{role!=='USER'&&pendingRequests>0&&<b className="nav-badge">{pendingRequests>99?'99+':pendingRequests}</b>}</NavLink>
-        <NavLink target="payments" page={page} onNavigate={onNavigate} label="Thanh toán"><Icon name="invoice"/><span>Thanh toán</span></NavLink>
+        <NavLink target="payments" page={page} onNavigate={onNavigate} label="Thanh toán"><Icon name="invoice"/><span>Thanh toán</span>{role==='ADMIN'&&pendingPayments>0&&<b className="nav-badge">{pendingPayments>99?'99+':pendingPayments}</b>}</NavLink>
         {role==='ADMIN'&&<NavLink target="profits" page={page} onNavigate={onNavigate} label="Lợi nhuận"><Icon name="meter"/><span>Lợi nhuận</span></NavLink>}
       </div>}
       {role==='ADMIN'&&<div className="nav-section"><div className="nav-heading">QUẢN TRỊ</div><NavLink target="accounts" page={page} onNavigate={onNavigate} label="Tài khoản"><Icon name="users"/><span>Tài khoản</span></NavLink></div>}

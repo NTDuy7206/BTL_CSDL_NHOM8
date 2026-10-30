@@ -43,4 +43,11 @@ class TenantPrivacyPaymentTests {
  @Test void anotherTenantCannotPayThisInvoice(){assertEquals(403,assertThrows(ResponseStatusException.class,()->payments.create("user2",dto("CASH"))).getStatusCode().value());verify(reports,never()).save(any());}
  @Test void unknownOrMissingPaymentMethodIsRejected(){for(String m:Arrays.asList(null,"","CARD"))assertEquals(400,assertThrows(ResponseStatusException.class,()->payments.create("user1",dto(m))).getStatusCode().value());verify(reports,never()).save(any());}
  @Test void duplicatePendingPaymentIsRejected(){when(reports.existsByPayerUsernameAndInvoiceInvoiceIdAndStatusIn(anyString(),anyString(),anyList())).thenReturn(true);assertEquals(409,assertThrows(ResponseStatusException.class,()->payments.create("user1",dto("BANK_TRANSFER"))).getStatusCode().value());verify(reports,never()).save(any());}
+ @Test void pendingPaymentsAppearOnlyForTheOwningLandlord(){
+  PaymentReport first=new PaymentReport();first.setPaymentReportId(11L);first.setInvoice(invoice);first.setPayer(users.findByUsername("user1").orElseThrow());first.setAmount(new BigDecimal("3000000"));
+  PaymentReport second=new PaymentReport();second.setPaymentReportId(12L);second.setInvoice(Invoice.builder().invoiceId("I2").contract(c2).build());second.setPayer(users.findByUsername("user2").orElseThrow());second.setAmount(new BigDecimal("2000000"));
+  when(reports.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(first,second));when(landlords.owns("ownerA","R1")).thenReturn(true);when(landlords.owns("ownerB","R2")).thenReturn(true);
+  assertEquals(List.of(11L),payments.getForAccount("ownerA",false).stream().map(PaymentReportResponseDTO::getPaymentReportId).toList());assertEquals(List.of(12L),payments.getForAccount("ownerB",false).stream().map(PaymentReportResponseDTO::getPaymentReportId).toList());
+  when(reports.lockById(11L)).thenReturn(Optional.of(first));doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"Wrong owner")).when(landlords).requireOwner("ownerB","R1");var update=new PaymentReportStatusDTO();update.setStatus("PAID");assertThrows(ResponseStatusException.class,()->payments.updateStatus(11L,update,"ownerB"));assertEquals(PaymentReportStatus.PENDING,first.getStatus());
+ }
 }

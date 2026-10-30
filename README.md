@@ -436,3 +436,6 @@ Kiểm tra tài chính: `FinanceTests` dùng schema bổ sung thực tế trên 
 
 ### Đồng bộ tình trạng phòng giữa ADMIN và USER
 Danh mục phòng trả thêm `occupied`, `occupancyKnown`, `availableForRent`, tính từ ngày hiệu lực và ngày nhận/trả thực tế trên máy chủ. Cùng một phòng có cùng tình trạng trống/đang ở khi xem từ hai vai trò. ADMIN chỉ nhận danh sách phòng của mình; USER có thể xem danh mục niêm yết của nhiều chủ nhà, nên tổng phạm vi không nhất thiết bằng một ADMIN. USER vẫn chỉ xem hợp đồng, hóa đơn và phòng mình đang thuê; API công khai tình trạng phòng không trả danh tính người thuê hay hợp đồng của khách khác. Phòng trống chưa cấu hình/bảo trì hiện “Chưa mở cho thuê” và không cho gửi yêu cầu.
+
+### Xác nhận tiền khách thuê
+ADMIN vào Thanh toán, phần đầu trang là Chờ xác nhận với thẻ từng khoản và nút Xác nhận đã nhận tiền / Yêu cầu kiểm tra lại. Nhập ngày thực thu trước khi xác nhận. Điện/nước của nhà cung cấp ở dưới; khoản đã xử lý nằm trong tab riêng. Menu Thanh toán có số khoản đang chờ; danh sách và số chờ cập nhật mỗi 30 giây. USER cũng được cập nhật trạng thái báo thanh toán khi ở trang Thanh toán. Chỉ chủ nhà sở hữu phòng trên hóa đơn nhận và xác nhận báo cáo, không chuyển yêu cầu sang ADMIN khác.

@@ -34,6 +34,7 @@ export default function App() {
   const [paymentInvoiceId,setPaymentInvoiceId]=useState('')
   const tokenRef=useRef(token);tokenRef.current=token
   const [pendingRequests,setPendingRequests]=useState(0)
+  const [pendingPayments,setPendingPayments]=useState(0)
   const activeModule=useMemo(()=>visibleModules(user?.role).find(module=>module.key===page),[page,user?.role])
   const notify=useCallback((message,type='success')=>{setToast({message,type});window.setTimeout(()=>setToast(null),3600)},[])
   const request=useCallback(async(path,options={})=>{
@@ -63,16 +64,16 @@ export default function App() {
   const canManage=role==='ADMIN'
 
   useEffect(()=>{
-    if(!canManage){setPendingRequests(0);return}
+    if(!canManage){setPendingRequests(0);setPendingPayments(0);return}
     let active=true
-    const refresh=()=>request('/api/contract-requests').then(rows=>{if(active)setPendingRequests(Array.isArray(rows)?rows.filter(row=>row.status==='PENDING').length:0)}).catch(()=>{})
+    const refresh=()=>Promise.allSettled([request('/api/contract-requests'),request('/api/payment-reports')]).then(([contracts,payments])=>{if(!active)return;if(contracts.status==='fulfilled'&&Array.isArray(contracts.value))setPendingRequests(contracts.value.filter(row=>row.status==='PENDING').length);if(payments.status==='fulfilled'&&Array.isArray(payments.value))setPendingPayments(payments.value.filter(row=>row.status==='PENDING').length)})
     refresh()
-    const timer=window.setInterval(refresh,45000)
+    const timer=window.setInterval(refresh,30000)
     return()=>{active=false;window.clearInterval(timer)}
   },[request,canManage])
 
   const pageTitle=page==='rental-requests'?(role==='USER'?'Đăng ký thuê phòng':'Yêu cầu thuê'):page==='profits'?'Lợi nhuận':page==='payments'?'Thanh toán':title
 
   if(!token)return <><AuthPage onLogin={login} onRegister={register}/><Toast toast={toast}/></>
-  return <div className={`app-frame ${collapsed?'sidebar-collapsed':''}`}><Sidebar collapsed={collapsed} onToggle={toggleSidebar} page={page} user={user} profile={profile} onNavigate={navigate} onLogout={logout} open={mobileNav} onClose={()=>setMobileNav(false)} role={role} pendingRequests={pendingRequests}/><div className="app-main"><Topbar title={pageTitle} onMenu={toggleSidebar} collapsed={collapsed} mobileOpen={mobileNav} onRefresh={()=>setRefreshKey(v=>v+1)}/><main className="content-area" key={`${user?.id||user?.username}-${page}-${refreshKey}`}><BillingNotice request={request} role={role} onNavigate={navigate}/>{page==='profits'&&canManage?<ProfitsPage request={request} notify={notify}/>:page==='accounts'&&canManage?<AccountsPage request={request}/>:page==='rental-requests'?<ContractRequestsPage request={request} role={role} notify={notify}/>:page==='payments'?<PaymentsPage request={request} role={role} notify={notify} initialInvoiceId={paymentInvoiceId}/>:activeModule?.key==='incidents'&&!canManage?<IncidentReportPage module={activeModule} request={request} notify={notify}/>:activeModule?<EntityPage onNavigate={navigate} module={activeModule} request={request} notify={notify} readOnly={!canManage} onPay={!canManage&&activeModule.key==='invoices'?invoice=>{setPaymentInvoiceId(invoice.invoiceId);navigate('payments')}:undefined}/>:page==='profile'?<ProfilePage request={request} profile={profile} user={user} onProfileUpdated={setProfile} notify={notify}/>:<DashboardPage request={request} user={user} onNavigate={navigate}/>}</main><footer className="app-footer"><span>© 2026 HomeBase · Nhóm 8</span><span>Hệ thống quản lý tòa nhà và phòng cho thuê</span></footer></div><Toast toast={toast}/></div>
+  return <div className={`app-frame ${collapsed?'sidebar-collapsed':''}`}><Sidebar collapsed={collapsed} onToggle={toggleSidebar} page={page} user={user} profile={profile} onNavigate={navigate} onLogout={logout} open={mobileNav} onClose={()=>setMobileNav(false)} role={role} pendingRequests={pendingRequests} pendingPayments={pendingPayments}/><div className="app-main"><Topbar title={pageTitle} onMenu={toggleSidebar} collapsed={collapsed} mobileOpen={mobileNav} onRefresh={()=>setRefreshKey(v=>v+1)}/><main className="content-area" key={`${user?.id||user?.username}-${page}-${refreshKey}`}><BillingNotice request={request} role={role} onNavigate={navigate}/>{page==='profits'&&canManage?<ProfitsPage request={request} notify={notify}/>:page==='accounts'&&canManage?<AccountsPage request={request}/>:page==='rental-requests'?<ContractRequestsPage request={request} role={role} notify={notify}/>:page==='payments'?<PaymentsPage request={request} role={role} notify={notify} initialInvoiceId={paymentInvoiceId}/>:activeModule?.key==='incidents'&&!canManage?<IncidentReportPage module={activeModule} request={request} notify={notify}/>:activeModule?<EntityPage onNavigate={navigate} module={activeModule} request={request} notify={notify} readOnly={!canManage} onPay={!canManage&&activeModule.key==='invoices'?invoice=>{setPaymentInvoiceId(invoice.invoiceId);navigate('payments')}:undefined}/>:page==='profile'?<ProfilePage request={request} profile={profile} user={user} onProfileUpdated={setProfile} notify={notify}/>:<DashboardPage request={request} user={user} onNavigate={navigate}/>}</main><footer className="app-footer"><span>© 2026 HomeBase · Nhóm 8</span><span>Hệ thống quản lý tòa nhà và phòng cho thuê</span></footer></div><Toast toast={toast}/></div>
 }
