@@ -198,3 +198,5 @@
 .legacy-payment-recipient{display:grid;gap:10px;min-width:240px;margin-top:10px}.legacy-payment-recipient select{padding:10px;border:1px solid #dbe3f2;border-radius:8px;background:white}
 
 .room-back-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;align-self:flex-start;width:fit-content;min-height:44px;padding:12px 18px;text-decoration:none;border:1px solid #ccd6ef;border-radius:10px;background:#fff;color:#3157cd;font-weight:700;box-shadow:0 2px 6px #142c580a}.room-back-button:hover{background:#edf2ff;border-color:#4168ed}.room-back-button:focus-visible{outline:3px solid #4168ed;outline-offset:3px}
+
+.room-photo{position:relative}.room-photo-sample{position:absolute;left:12px;bottom:12px;padding:5px 9px;border-radius:6px;background:#172442d9;color:#fff;font-size:12px;font-weight:600;pointer-events:none}
