@@ -11,7 +11,7 @@ import {roomGroups} from '../data/roomGroups.js'
 const highlights = [
   { key: 'rooms', label: 'Tổng số phòng', icon: 'building', accent: 'blue', note: 'Phòng & mặt bằng' },
   { key: 'vacant', label: 'Phòng đang trống', icon: 'check', accent: 'green', note: 'Không có hợp đồng đang hiệu lực' },
-  { key: 'rented', label: 'Phòng đã thuê', icon: 'contract', accent: 'violet', note: 'Có hợp đồng đang hiệu lực' },
+  { key: 'rented', label: 'Phòng đang thuê', icon: 'contract', accent: 'violet', note: 'Có hợp đồng đang hiệu lực' },
   { key: 'tenants', label: 'Khách thuê', icon: 'users', accent: 'violet', note: 'Hồ sơ người thuê' },
   { key: 'contracts', label: 'Hợp đồng đang hiệu lực', icon: 'contract', accent: 'orange', note: 'Đã trừ hợp đồng hết hạn / trả phòng' },
   { key: 'invoices', label: 'Hóa đơn', icon: 'invoice', accent: 'green', note: 'Theo dõi thu phí' },
@@ -40,13 +40,14 @@ export default function DashboardPage({ request, user, onNavigate }) {
   const [counts, setCounts] = useState({})
   const [rooms, setRooms] = useState([])
   const [contracts,setContracts]=useState([])
+  const [rentalRequests,setRentalRequests]=useState([])
   const [contractsUnavailable,setContractsUnavailable]=useState(false)
   const [busy, setBusy] = useState(true)
 
 
   useEffect(() => {
     let mounted = true
-    const update=()=>Promise.all(modules.map(async module => {
+    const update=()=>Promise.all([...modules,{key:'rentalRequests',path:'/api/contract-requests'}].map(async module => {
       try {
         const result = await request(module.path)
         return [module.key, Array.isArray(result) ? result : null]
@@ -55,18 +56,22 @@ export default function DashboardPage({ request, user, onNavigate }) {
       }
     })).then(results => {
       if (!mounted) return
-      setCounts(Object.fromEntries(results.map(([key, rows]) => [key, rows === null ? null : rows.length])))
+      setRentalRequests(results.find(([key])=>key==='rentalRequests')?.[1]??null)
+      setCounts(Object.fromEntries(results.filter(([key])=>key!=='rentalRequests').map(([key, rows]) => [key, rows === null ? null : rows.length])))
       setRooms(results.find(([key]) => key === 'rooms')?.[1] || [])
       const own=results.find(([key])=>key==='contracts')?.[1];setContracts(own||[]);setContractsUnavailable(own==null)
     }).finally(() => {
       if (mounted) setBusy(false)
     })
-    update();const timer=setInterval(update,60000)
-    return () => { mounted = false;clearInterval(timer) }
+    update();const timer=setInterval(update,15000);const onFocus=()=>{if(!document.hidden)update()};window.addEventListener('focus',onFocus);document.addEventListener('visibilitychange',onFocus)
+    return () => { mounted = false;clearInterval(timer);window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onFocus) }
   }, [request,user?.role])
 
+  const todayVN=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh'}).format(new Date());
+  const upcoming=contracts.filter(c=>!c.actualCheckOut&&(c.actualCheckIn||c.startDate)>todayVN);
+  const pending=(rentalRequests||[]).filter(r=>r.status==='PENDING');
   const valid = Object.values(counts).filter(value => value !== null).length
-  const {vacant:vacantRooms,rented:rentedRooms,unknown,activeContracts,conflictingRooms}=roomGroups(rooms,contracts,user?.role,new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Ho_Chi_Minh'}));
+  const {vacant:vacantRooms,rented:rentedRooms,unknown,activeContracts,conflictingRooms}=roomGroups(rooms,contracts,user?.role,todayVN);
   const occupancyUnavailable=counts.rooms===null||contractsUnavailable;
   const values={...counts,contracts:occupancyUnavailable?null:activeContracts.length,vacant:(user?.role==='ADMIN'?occupancyUnavailable:counts.rooms===null)?null:vacantRooms.length,rented:occupancyUnavailable?null:rentedRooms.length};
 
@@ -76,6 +81,7 @@ export default function DashboardPage({ request, user, onNavigate }) {
     <section className="welcome-banner"><div><span className="welcome-tag">TỔNG QUAN HỆ THỐNG</span><h2>Xin chào, {user?.username || 'bạn'} <span>✦</span></h2><p>Theo dõi nhanh hoạt động và dữ liệu của tòa nhà hôm nay.</p></div><div className="welcome-graphic"><div className="graphic-circle circle-one"/><div className="graphic-circle circle-two"/><Icon name="building" size={82} strokeWidth={1.2}/></div></section>
     <div className="section-heading"><div><h2>Chỉ số chính</h2></div><button className="text-action" onClick={() => onNavigate('rooms')}>Xem phòng <Icon name="chevron" size={15}/></button></div>
     <section className="stat-grid">{highlights.filter(item=>user?.role==='ADMIN'||item.key!=='tenants').map(item => <StatCard key={item.key} {...item} label={item.key==='rented'&&user?.role==='USER'?'Phòng tôi đang thuê':item.label} note={user?.role==='USER'&&item.key==='rented'?'Theo hợp đồng của tài khoản hiện tại':user?.role==='USER'&&item.key==='vacant'?'Theo tình trạng ở thực tế từ máy chủ':item.note} value={busy ? '…' : values[item.key] === null ? '—' : values[item.key] ?? 0}/>)}</section>
+    <section className="stat-grid"><StatCard label="Yêu cầu thuê chờ duyệt" icon="contract" accent="orange" value={busy?'…':rentalRequests===null?'—':pending.length} note="Chưa tạo hợp đồng"/><StatCard label="Hợp đồng sắp bắt đầu" icon="contract" accent="blue" value={busy?'…':contractsUnavailable?'—':upcoming.length} note="Đã duyệt, chưa đến ngày thuê"/></section>
     <div className="section-heading room-section-heading"><div><h2>Tình trạng phòng</h2><p>{user?.role==='USER'?'Phòng trống được xác định cùng cách với chủ nhà; phòng tôi đang thuê chỉ lấy từ hợp đồng của bạn. Phòng chưa mở cho thuê chưa thể đăng ký.':'Danh sách phòng thuộc chủ nhà đang đăng nhập.'}</p></div></div>
     {user?.role==='ADMIN'&&!busy&&!occupancyUnavailable&&<section className="content-card"><p>{rooms.length} phòng = {vacantRooms.length} phòng trống + {rentedRooms.length} phòng đã thuê{unknown.length?` + ${unknown.length} phòng chưa xác định`:''}. {activeContracts.length} hợp đồng đang hiệu lực / {contracts.length} hợp đồng trong lịch sử.</p><p>Phòng trống chưa cấu hình hoặc đang bảo trì vẫn cần được chủ nhà hoàn thiện trước khi mở đăng ký thuê.</p>{unknown.length>0&&<div className="alert alert-error">Có hợp đồng thiếu ngày bắt đầu/kết thúc. Vui lòng kiểm tra tại Hợp đồng; các phòng này chưa được tính là trống.</div>}{conflictingRooms.length>0&&<div className="alert alert-error">Có nhiều hợp đồng đồng thời hiệu lực tại phòng: {conflictingRooms.map(r=>r.roomId).join(', ')}. Cần đối soát hợp đồng, không tự xóa dữ liệu.</div>}</section>}
     <section className="room-groups-grid">
