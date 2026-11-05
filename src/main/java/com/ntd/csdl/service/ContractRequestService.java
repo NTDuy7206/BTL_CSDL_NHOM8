@@ -20,11 +20,13 @@ public class ContractRequestService {
     private final RentalWorkflowService rentals;
     private final JdbcTemplate jdbc;
     private final LandlordService landlords;
+    private final DepositService deposits;
     private ContractRequestResponseDTO response(ContractRequest request) {
         ContractRequestResponseDTO dto=new ContractRequestResponseDTO(request);
         jdbc.query("SELECT tenant_id,requested_end_date,contract_id FROM rental_request_details WHERE request_id=?",
             (org.springframework.jdbc.core.RowCallbackHandler)rs->{dto.setTenant(tenants.findById(rs.getString(1)).orElse(null));dto.setRequestedEndDate(rs.getDate(2).toLocalDate());dto.setContractId(rs.getString(3));},
             request.getRequestId());
+        dto.setDeposit(deposits.details(request.getRequestId()));
         return dto;
     }
     @Transactional(readOnly=true)
@@ -36,7 +38,7 @@ public class ContractRequestService {
     public ContractRequestResponseDTO create(String username,ContractRequestCreateDTO dto) {
         landlords.requireRentable(dto.getRoomId());
         RentalWorkflowService.dates(dto.getRequestedStartDate(),dto.getRequestedEndDate());
-        if(dto.getRequestedStartDate().isBefore(LocalDate.now()))
+        if(dto.getRequestedStartDate().isBefore(StayService.today()))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Ngày bắt đầu không được trong quá khứ");
         User applicant=userRepository.findByUsername(username).orElseThrow();
         RentalDTO rental=new RentalDTO();rental.setTenant(dto.getTenant());
@@ -54,6 +56,7 @@ public class ContractRequestService {
         request=requestRepository.saveAndFlush(request);
         jdbc.update("INSERT INTO rental_request_details(request_id,tenant_id,requested_end_date) VALUES (?,?,?)",
             request.getRequestId(),tenant.getTenantId(),dto.getRequestedEndDate());
+        deposits.initialize(request.getRequestId(),dto.getRoomId());
         return response(request);
     }
     @Transactional
@@ -66,16 +69,18 @@ public class ContractRequestService {
         landlords.requireOwner(username,request.getRoom().getRoomId());
         if(request.getStatus()!=ContractRequestStatus.PENDING)
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Yêu cầu đã được xử lý");
+        if(status.equals("REJECTED"))deposits.reject(id);
         if(status.equals("APPROVED")) {
             ContractRequestResponseDTO details=response(request);
             if(details.getTenant()==null || details.getRequestedEndDate()==null)
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"Yêu cầu cũ thiếu thông tin khách thuê. Vui lòng từ chối và yêu cầu gửi lại");
-            if(details.getRequestedEndDate().isBefore(LocalDate.now()))
+            if(details.getRequestedEndDate().isBefore(StayService.today()))
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"Thời gian thuê đã hết, vui lòng gửi yêu cầu mới");
             String linked=rentals.tenantId(request.getApplicant().getUsername());
             if(!Objects.equals(linked,details.getTenant().getTenantId()))throw new ResponseStatusException(HttpStatus.CONFLICT,"Hồ sơ yêu cầu không khớp tài khoản gửi. Khách cần gửi yêu cầu mới");
+            if(!deposits.prepareApproval(id))return response(request);
             Contract contract=rentals.book(details.getTenant(),request.getRoom().getRoomId(),
-                request.getRequestedStartDate(),details.getRequestedEndDate(),BigDecimal.ZERO);
+                request.getRequestedStartDate(),details.getRequestedEndDate(),deposits.amount(id));
             jdbc.update("UPDATE rental_request_details SET contract_id=? WHERE request_id=?",contract.getContractId(),id);
         }
         request.setStatus(ContractRequestStatus.valueOf(status));

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Icon from '../components/Icon.jsx'
+import BankProfile from '../components/BankProfile.jsx'
 
 export default function ProfilePage({ request, profile, user, onProfileUpdated, notify }) {
   const [values, setValues] = useState({ displayName: '', email: '', phone: '' })
@@ -83,5 +84,6 @@ export default function ProfilePage({ request, profile, user, onProfileUpdated, 
         <div className="profile-form-footer"><span>Thông tin hồ sơ chỉ hiển thị trong tài khoản của bạn.</span><button className="button button-primary" disabled={busy}>{busy?<span className="spinner small-spinner"/>:null}Lưu thay đổi</button></div>
       </form>
     </section>
+    {user?.role==='ADMIN'&&<BankProfile request={request} notify={notify}/>}
   </div>
 }
