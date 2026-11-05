@@ -23,6 +23,13 @@ public class GlobalExceptionHandler {
     }
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<String> conflict(org.springframework.dao.DataIntegrityViolationException ex) {
+        Throwable cause=ex.getMostSpecificCause();
+        if(cause instanceof java.sql.SQLException sql){
+            if(sql.getErrorCode()==1452)return ResponseEntity.badRequest().body("Bản ghi tham chiếu chưa tồn tại. Kiểm tra hợp đồng, phòng hoặc tài khoản chủ nhà đã chọn.");
+            if(sql.getErrorCode()==1451)return ResponseEntity.status(HttpStatus.CONFLICT).body("Bản ghi đang được sử dụng trong dữ liệu liên quan, không thể xóa.");
+            if(sql.getErrorCode()==1048||sql.getErrorCode()==1364)return ResponseEntity.badRequest().body("Thiếu thông tin bắt buộc. Vui lòng điền đầy đủ các trường.");
+            if(sql.getErrorCode()==1406)return ResponseEntity.badRequest().body("Thông tin vượt quá độ dài cột cho phép. Vui lòng rút ngắn mã hoặc nội dung.");
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT).body("Dữ liệu trùng hoặc còn được liên kết với bản ghi khác. Vui lòng kiểm tra lại.");
     }
 

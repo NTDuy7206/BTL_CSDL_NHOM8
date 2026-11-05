@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS tenant_landlords (
  user_id BIGINT NOT NULL,
  PRIMARY KEY(tenant_id,user_id),
  FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE,
- FOREIGN KEY(user_id) REFERENCES landlord_properties(user_id)
+ FOREIGN KEY(user_id) REFERENCES user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS finance_receipts (

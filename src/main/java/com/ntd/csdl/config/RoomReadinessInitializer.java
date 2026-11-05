@@ -13,6 +13,7 @@ public class RoomReadinessInitializer {
     private final RoomReadinessMigration migration;
     private final RoomSamplePhotoService photos;
     private final DemoPhoneRepairService phones;
+    private final com.ntd.csdl.service.TenantOwnershipSchemaRepair ownership;
     @EventListener(ApplicationReadyEvent.class)
-    public void completeExistingRooms() { migration.apply(); photos.seed(); phones.repair(); }
+    public void completeExistingRooms() { ownership.apply(); migration.apply(); photos.seed(); phones.repair(); }
 }

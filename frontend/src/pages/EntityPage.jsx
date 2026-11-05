@@ -28,6 +28,6 @@ export default function EntityPage({ module, request, notify, readOnly = false, 
     {!readOnly&&!loading&&!error&&rows.length===0&&<ScopeNotice moduleKey={module.key} request={request} onNavigate={onNavigate}/>}
     <DataTable key={workView} module={module} rows={tracked?visibleWork(module.key,rows,workView):rows} loading={loading} error={error} onRetry={load} readOnly={readOnly} onCreate={()=>setEditing(null)} searchValue={keyword} onSearchChange={setKeyword} searchInToolbar={false} onPay={onPay} onStay={module.key==='contracts'&&!readOnly?(row,mode)=>setStay({row,mode}):undefined} onComplete={tracked&&!readOnly&&workView==='pending'?complete:undefined} completing={completing} onEdit={row=>setEditing(row)} onDelete={remove}/>
     {stay&&<StayDialog row={stay.row} mode={stay.mode} request={request} onClose={()=>setStay(null)} onSaved={load}/>}
-    {editing!==undefined&&<RecordDialog key={`${module.key}-${editing?.[module.id]||'new'}`} module={module} record={editing} onClose={()=>setEditing(undefined)} onSave={save}/>}
+    {editing!==undefined&&<RecordDialog request={request} key={`${module.key}-${editing?.[module.id]||'new'}`} module={module} record={editing} onClose={()=>setEditing(undefined)} onSave={save}/>}
   </div>
 }

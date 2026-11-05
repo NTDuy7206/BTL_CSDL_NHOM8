@@ -25,21 +25,9 @@ public class InvoiceService {
         jdbc.queryForList("SELECT contract_id FROM contracts WHERE contract_id=? FOR UPDATE",dto.getContractId());
         if(!jdbc.queryForList("SELECT invoice_id FROM invoices WHERE contract_id=? AND month=? AND year=?",dto.getContractId(),dto.getMonth(),dto.getYear()).isEmpty())throw new IllegalArgumentException("Hợp đồng đã có hóa đơn trong tháng này");
 
-        if (dto.getInvoiceId() == null ||
-                dto.getInvoiceId().isBlank()) {
-
-            throw new RuntimeException(
-                    "Invoice ID không được để trống"
-            );
-        }
-
-        if (invoiceRepository.existsById(
-                dto.getInvoiceId())) {
-
-            throw new RuntimeException(
-                    "Hóa đơn đã tồn tại"
-            );
-        }
+        if(dto.getInvoiceId()==null||dto.getInvoiceId().isBlank())dto.setInvoiceId(RentalWorkflowService.id("HDON"));
+        dto.setInvoiceId(dto.getInvoiceId().trim());
+        if(invoiceRepository.existsById(dto.getInvoiceId()))throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,"Mã hóa đơn đã tồn tại; hãy dùng mã mới");
 
         Contract contract = contractRepository
                 .findById(dto.getContractId())

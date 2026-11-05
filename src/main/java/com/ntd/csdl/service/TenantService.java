@@ -27,19 +27,11 @@ public class TenantService {
     )
     public Tenant create(TenantDTO dto) {
 
-        if (dto.getTenantId() == null ||
-                dto.getTenantId().isBlank()) {
-
-            throw new RuntimeException(
-                    "Tenant ID không được để trống"
-            );
-        }
-
-        if (tenantRepository.existsById(dto.getTenantId())) {
-            throw new RuntimeException(
-                    "Tenant đã tồn tại"
-            );
-        }
+        if(dto.getTenantId()==null||dto.getTenantId().isBlank())dto.setTenantId(RentalWorkflowService.id("KT"));
+        dto.setTenantId(dto.getTenantId().trim());
+        if(tenantRepository.existsById(dto.getTenantId()))throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,"Mã khách thuê đã tồn tại; hãy dùng mã mới");
+        dto.setCccd(dto.getCccd()==null||dto.getCccd().isBlank()?null:dto.getCccd().trim());
+        if(dto.getCccd()!=null&&tenantRepository.findByCccd(dto.getCccd())!=null)throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,"CCCD đã có hồ sơ khách thuê; không thể tạo hai người dùng cùng CCCD");
 
         Tenant tenant = new Tenant();
 
@@ -50,7 +42,7 @@ public class TenantService {
         tenant.setPermanentAddress(dto.getPermanentAddress());
         tenant.setPhoneNumber(dto.getPhoneNumber());
 
-        return tenantRepository.save(tenant);
+        return tenantRepository.saveAndFlush(tenant);
     }
 
     // GET ALL
@@ -89,7 +81,7 @@ public class TenantService {
                         )
                 );
 
-        existing.setCccd(dto.getCccd());
+        existing.setCccd(dto.getCccd()==null||dto.getCccd().isBlank()?null:dto.getCccd().trim());
         existing.setFullName(dto.getFullName());
         existing.setDateOfBirth(dto.getDateOfBirth());
         existing.setPermanentAddress(dto.getPermanentAddress());
