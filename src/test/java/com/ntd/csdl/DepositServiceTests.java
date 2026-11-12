@@ -17,8 +17,8 @@ class DepositServiceTests {
   jdbc.execute("CREATE TABLE rooms(room_id VARCHAR(20) PRIMARY KEY,base_price DECIMAL(18,2))");jdbc.update("INSERT INTO rooms VALUES('R1',2000000)");
   jdbc.execute("CREATE TABLE contracts(contract_id VARCHAR(20) PRIMARY KEY,room_id VARCHAR(20),start_date DATE,end_date DATE)");
   jdbc.execute("CREATE TABLE contract_stays(contract_id VARCHAR(20),check_in DATE,check_out DATE)");
-  jdbc.execute("CREATE TABLE contract_requests(request_id BIGINT PRIMARY KEY,room_id VARCHAR(20),requested_start_date DATE,status VARCHAR(20))");
-  jdbc.update("INSERT INTO contract_requests VALUES(10,'R1','2026-12-01','PENDING'),(11,'R1','2026-12-02','PENDING')");
+  jdbc.execute("CREATE TABLE contract_requests(request_id BIGINT PRIMARY KEY,user_id BIGINT,room_id VARCHAR(20),requested_start_date DATE,status VARCHAR(20))");
+  jdbc.update("INSERT INTO contract_requests VALUES(10,2,'R1','2026-12-01','PENDING'),(11,2,'R1','2026-12-02','PENDING')");
   jdbc.execute("CREATE TABLE rental_request_details(request_id BIGINT PRIMARY KEY,requested_end_date DATE)");jdbc.update("INSERT INTO rental_request_details VALUES(10,'2027-12-01'),(11,'2027-12-02')");
   for(String sql:Files.readString(Path.of("src/main/resources/deposits-schema.sql")).split(";"))if(!sql.isBlank())jdbc.execute(sql);
   var owners=mock(LandlordService.class);when(owners.accountId("A")).thenReturn(1L);when(owners.accountId("B")).thenReturn(2L);when(owners.owner("R1")).thenReturn(1L);
@@ -28,9 +28,10 @@ class DepositServiceTests {
  String code(){return service.details(10).get("paymentCode").toString();}
  @Test void snapshotDepositAndApproveOnlyAfterVerifiedTransfer(){
   assertEquals(new BigDecimal("2000000.00"),service.amount(10));assertFalse(service.prepareApproval(10));
+  assertTrue(service.details(10).get("qrUrl").toString().contains("amount=2000000&"));
   jdbc.update("UPDATE rooms SET base_price=3000000 WHERE room_id='R1'");assertEquals(new BigDecimal("2000000.00"),service.amount(10));
   assertEquals("PAID",service.webhook(1,"Apikey "+key,event(1,"123456789","MBBank","in",code(),"2000000")).get("result"));
-  assertTrue(service.details(10).get("qrUrl").toString().contains("amount=2000000&"));assertTrue(service.prepareApproval(10));assertEquals("DUPLICATE",service.webhook(1,"Apikey "+key,event(1,"123456789","MBBank","in",code(),"2000000")).get("result"));
+  assertTrue(service.prepareApproval(10));assertEquals("DUPLICATE",service.webhook(1,"Apikey "+key,event(1,"123456789","MBBank","in",code(),"2000000")).get("result"));
   assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM deposit_bank_events",Integer.class));
   assertThrows(ResponseStatusException.class,()->service.reject(10));
  }
@@ -53,5 +54,42 @@ class DepositServiceTests {
   jdbc.update("INSERT INTO contracts VALUES('OLD','R1','2026-11-01','2027-01-01')");
   assertThrows(ResponseStatusException.class,()->service.prepareApproval(10));
   assertEquals("REVIEW",service.details(10).get("status"));
+ }
+
+ @Test void depositInvoiceIsVisibleOnlyToItsTenantAndLandlordAndCanBeConfirmedOnce() {
+  assertTrue(service.invoices("B",false).isEmpty());
+  jdbc.update("UPDATE landlord_bank_accounts SET webhook_key_hash=NULL WHERE user_id=1");
+  assertFalse(service.prepareApproval(10));
+  assertEquals(1,service.invoices("B",false).size());
+  assertTrue(service.invoices("A",false).isEmpty());
+  assertTrue(service.invoices("B",true).isEmpty());
+  assertThrows(ResponseStatusException.class,()->service.confirmReceived("A",10));
+  assertThrows(ResponseStatusException.class,()->service.reportTransfer("A",10,"BANK-123"));
+
+  service.reportTransfer("B",10,"BANK-123");
+  service.reportTransfer("B",10,"BANK-456");
+  assertEquals("BANK-123",service.invoices("A",true).getFirst().get("bankReference"));
+  assertEquals("AWAITING_PAYMENT",service.details(10).get("status"));
+  assertFalse(service.prepareApproval(10));
+  assertThrows(ResponseStatusException.class,()->service.confirmReceived("B",10));
+
+  service.confirmReceived("A",10);
+  Object confirmedAt=service.details(10).get("confirmedAt");
+  assertNotNull(confirmedAt);
+  service.confirmReceived("A",10);
+  assertEquals(confirmedAt,service.details(10).get("confirmedAt"));
+  assertEquals("PAID",service.invoices("B",false).getFirst().get("status"));
+  assertTrue(service.prepareApproval(10));
+ }
+
+ @Test void incorrectBankSnapshotCanBeRefreshedBeforeTransfer() {
+  service.prepareApproval(10);
+  jdbc.update("UPDATE rental_deposits SET bank_name='12345' WHERE request_id=10");
+  assertFalse((Boolean)service.details(10).get("bankReady"));
+  assertNull(service.details(10).get("qrUrl"));
+  assertThrows(ResponseStatusException.class,()->service.reportTransfer("B",10,"BANK-123"));
+  assertFalse(service.prepareApproval(10));
+  assertEquals("MBBank",service.details(10).get("bankName"));
+  assertNotNull(service.details(10).get("qrUrl"));
  }
 }

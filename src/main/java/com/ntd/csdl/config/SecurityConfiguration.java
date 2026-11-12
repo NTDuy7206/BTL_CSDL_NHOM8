@@ -31,6 +31,9 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.POST,"/api/deposit-webhooks/sepay/*").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/deposit-invoices").hasAnyRole("USER","ADMIN")
+                        .requestMatchers(HttpMethod.POST,"/api/deposit-invoices/*/report").hasRole("USER")
+                        .requestMatchers(HttpMethod.POST,"/api/deposit-invoices/*/confirm").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST,"/api/payment-reports/*/recipient").hasRole("USER")
                         .requestMatchers(HttpMethod.GET,"/api/room-listings","/api/room-listings/**").hasAnyRole("USER","ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/payment-reports/payable-invoices").hasRole("USER")

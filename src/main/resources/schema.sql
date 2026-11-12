@@ -165,3 +165,10 @@ CREATE TABLE IF NOT EXISTS deposit_bank_events (
  result VARCHAR(30) NOT NULL,received_at DATETIME NOT NULL,
  PRIMARY KEY(landlord_id,provider_id),FOREIGN KEY(landlord_id) REFERENCES user(id),FOREIGN KEY(request_id) REFERENCES rental_deposits(request_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS rental_deposit_reports (
+ request_id BIGINT PRIMARY KEY,
+ bank_reference VARCHAR(100) NOT NULL,
+ reported_at DATETIME NOT NULL,
+ confirmed_at DATETIME NULL,
+ FOREIGN KEY(request_id) REFERENCES rental_deposits(request_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

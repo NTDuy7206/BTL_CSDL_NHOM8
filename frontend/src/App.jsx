@@ -9,6 +9,7 @@ import RoomCatalog from './pages/RoomCatalog.jsx'
 import EntityPage from './pages/EntityPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import ContractRequestsPage from './pages/ContractRequestsPage.jsx'
+import DepositInvoices from './components/DepositInvoices.jsx'
 import BillingNotice from './components/BillingNotice.jsx'
 import ProfitsPage from './pages/ProfitsPage.jsx'
 import PaymentsPage from './pages/PaymentsPage.jsx'
@@ -74,8 +75,45 @@ export default function App() {
     return()=>{active=false;window.clearInterval(timer)}
   },[request,canManage])
 
+  const [depositData,setDepositData] = useState({token: '', rows: [], error: ''})
+  const depositLoad = useRef(0)
+  const reloadDeposits = useCallback(async () => {
+    if (!token) return
+    const loadId = ++depositLoad.current
+    try {
+      const rows = await request('/api/deposit-invoices')
+      if (tokenRef.current === token && loadId === depositLoad.current) setDepositData({token, rows, error: ''})
+    } catch (err) {
+      if (tokenRef.current === token && loadId === depositLoad.current) setDepositData(current => ({token, rows: current.token === token ? current.rows : [], error: err.message}))
+    }
+  }, [token,request])
+  useEffect(() => {
+    if (!token) return
+    reloadDeposits()
+    const timer = window.setInterval(reloadDeposits, 15000)
+    window.addEventListener('focus', reloadDeposits)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', reloadDeposits)
+    }
+  }, [token,reloadDeposits,page,refreshKey])
+  const depositInvoices = depositData.token === token ? depositData.rows : []
+  const depositsToTransfer = depositInvoices.filter(row => row.status === 'AWAITING_PAYMENT' && row.bankReady && !row.reportedAt).length
+  const depositsToConfirm = depositInvoices.filter(row => row.status === 'AWAITING_PAYMENT' && row.reportedAt).length
+  const depositNotice = canManage ? depositsToConfirm : depositsToTransfer
+
   const pageTitle=page==='rental-requests'?(role==='USER'?'Đăng ký thuê phòng':'Yêu cầu thuê'):page==='profits'?'Lợi nhuận':page==='payments'?'Thanh toán':title
 
   if(!token)return <><AuthPage onLogin={login} onRegister={register}/><Toast toast={toast}/></>
-  return <div className={`app-frame ${collapsed?'sidebar-collapsed':''}`}><Sidebar collapsed={collapsed} onToggle={toggleSidebar} page={page} user={user} profile={profile} onNavigate={navigate} onLogout={logout} open={mobileNav} onClose={()=>setMobileNav(false)} role={role} pendingRequests={pendingRequests} pendingPayments={pendingPayments}/><div className="app-main"><Topbar title={pageTitle} onMenu={toggleSidebar} collapsed={collapsed} mobileOpen={mobileNav} onRefresh={()=>setRefreshKey(v=>v+1)}/><main className="content-area" key={`${user?.id||user?.username}-${page}-${refreshKey}-${locationKey}`}>{page==='invoices'&&<BillingNotice request={request} role={role} onNavigate={navigate}/>}{page==='profits'&&canManage?<ProfitsPage request={request} notify={notify}/>:page==='accounts'&&canManage?<AccountsPage request={request}/>:page==='rental-requests'?<ContractRequestsPage request={request} role={role} notify={notify} onNavigate={navigate} route={roomRoute(locationKey)}/>:page==='payments'?<PaymentsPage request={request} role={role} notify={notify} initialInvoiceId={paymentInvoiceId}/>:activeModule?.key==='rooms'?<RoomCatalog request={request} role={role} notify={notify} selectedRoomId={roomRoute(locationKey).roomId} onOpen={id=>navigate('rooms',{roomId:id})} onBack={()=>navigate('rooms')} onRent={id=>navigate('rental-requests',{roomId:id,apply:true})}/>:activeModule?.key==='incidents'&&!canManage?<IncidentReportPage module={activeModule} request={request} notify={notify}/>:activeModule?<EntityPage onNavigate={navigate} module={activeModule} request={request} notify={notify} readOnly={!canManage} onPay={activeModule.key==='invoices'?invoice=>navigate('payments',{invoiceId:invoice.invoiceId}):undefined}/>:page==='profile'?<ProfilePage request={request} profile={profile} user={user} onProfileUpdated={setProfile} notify={notify}/>:<DashboardPage request={request} user={user} onNavigate={navigate}/>}</main><footer className="app-footer"><span>© 2026 HomeBase · Nhóm 8</span><span>Hệ thống quản lý tòa nhà và phòng cho thuê</span></footer></div><Toast toast={toast}/></div>
+  return <div className={`app-frame ${collapsed?'sidebar-collapsed':''}`}><Sidebar collapsed={collapsed} onToggle={toggleSidebar} page={page} user={user} profile={profile} onNavigate={navigate} onLogout={logout} open={mobileNav} onClose={()=>setMobileNav(false)} role={role} pendingRequests={pendingRequests} pendingPayments={pendingPayments}/><div className="app-main"><Topbar title={pageTitle} onMenu={toggleSidebar} collapsed={collapsed} mobileOpen={mobileNav} onRefresh={()=>setRefreshKey(v=>v+1)}/><main className="content-area" key={`${user?.id||user?.username}-${page}-${refreshKey}-${locationKey}`}>{page!=='invoices'&&depositNotice>0&&<section className="content-card workflow-card billing-notice">
+    <div className="workflow-buttons" role="status">
+      <strong>{depositNotice} {canManage?'hóa đơn cọc chờ xác nhận':'hóa đơn cọc cần chuyển khoản'}</strong>
+      <button className="button button-primary" onClick={()=>navigate('invoices')}>Mở hóa đơn cọc</button>
+    </div>
+  </section>}
+  {page==='invoices'&&<>
+    <BillingNotice request={request} role={role} onNavigate={navigate}/>
+    {depositData.token===token&&depositData.error&&<p className="alert alert-error" role="alert">Không tải được hóa đơn cọc. {depositData.error}</p>}
+    <DepositInvoices invoices={depositInvoices} admin={canManage} request={request} onChange={reloadDeposits}/>
+  </>}{page==='profits'&&canManage?<ProfitsPage request={request} notify={notify}/>:page==='accounts'&&canManage?<AccountsPage request={request}/>:page==='rental-requests'?<ContractRequestsPage request={request} role={role} notify={notify} onNavigate={navigate} route={roomRoute(locationKey)}/>:page==='payments'?<PaymentsPage request={request} role={role} notify={notify} initialInvoiceId={paymentInvoiceId}/>:activeModule?.key==='rooms'?<RoomCatalog request={request} role={role} notify={notify} selectedRoomId={roomRoute(locationKey).roomId} onOpen={id=>navigate('rooms',{roomId:id})} onBack={()=>navigate('rooms')} onRent={id=>navigate('rental-requests',{roomId:id,apply:true})}/>:activeModule?.key==='incidents'&&!canManage?<IncidentReportPage module={activeModule} request={request} notify={notify}/>:activeModule?<EntityPage onNavigate={navigate} module={activeModule} request={request} notify={notify} readOnly={!canManage} onPay={activeModule.key==='invoices'?invoice=>navigate('payments',{invoiceId:invoice.invoiceId}):undefined}/>:page==='profile'?<ProfilePage request={request} profile={profile} user={user} onProfileUpdated={setProfile} notify={notify}/>:<DashboardPage request={request} user={user} onNavigate={navigate}/>}</main><footer className="app-footer"><span>© 2026 HomeBase · Nhóm 8</span><span>Hệ thống quản lý tòa nhà và phòng cho thuê</span></footer></div><Toast toast={toast}/></div>
 }

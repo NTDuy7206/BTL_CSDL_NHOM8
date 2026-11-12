@@ -1,8 +1,8 @@
 # Đặt cọc qua chuyển khoản ngân hàng
 
 Phần tích hợp đã chuẩn bị cho SePay Webhooks. Chưa có tài khoản SePay kết nối
-ngân hàng thì hệ thống chưa thể tự xác nhận giao dịch tiền thật. Không có nút
-giả lập thanh toán trên giao diện người thuê.
+ngân hàng thì hệ thống chưa thể tự xác nhận giao dịch tiền thật. Người thuê có
+thể báo mã giao dịch trên hóa đơn cọc để chủ nhà đối chiếu và xác nhận đã nhận.
 
 ## Kết nối cho từng chủ nhà
 
@@ -26,7 +26,10 @@ https://docs.sepay.vn/tao-qr-code-vietqr-dong.html
 
 Yêu cầu mới ghi số cọc cố định bằng giá thuê một tháng tại thời điểm gửi.
 Chủ nhà xem chi tiết, chấp thuận yêu cầu cọc. Hệ thống chốt ngân hàng nhận tiền;
-người thuê mới thấy QR động có số tiền và mã cọc riêng.
+người thuê nhận thông báo trong ứng dụng và thấy QR động trong mục Hóa đơn đặt cọc.
+Sau khi chuyển khoản, người thuê nhập mã trên biên lai và bấm Tôi đã chuyển khoản.
+Chủ nhà đối chiếu tiền vào tài khoản rồi bấm Đã nhận cọc. Báo chuyển khoản chưa
+chuyển hóa đơn sang trạng thái đã nhận tiền.
 
 Webhook hợp lệ phải đồng thời đúng khóa của chủ nhà, tên ngân hàng, số tài khoản,
 giao dịch tiền vào, mã cọc và số tiền chính xác. Mỗi ID giao dịch chỉ xử lý một lần.
