@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,28 +20,54 @@ public class CleaningSupportController {
     private final CleaningSupportService cleaningSupportService;
     private final com.ntd.csdl.service.LandlordService landlords;
 
+    public record TenantCleaningRequest(String roomId, String taskContent) {}
+
+    @GetMapping("/mine")
+    public List<CleaningSupportService.TenantRequest> mine(Authentication auth) {
+        return cleaningSupportService.mine(auth.getName());
+    }
+
+    @PostMapping("/mine")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CleaningSupportService.TenantRequest requestCleaning(@RequestBody TenantCleaningRequest body, Authentication auth) {
+        return cleaningSupportService.requestCleaning(auth.getName(), body.roomId(), body.taskContent());
+    }
+
+    private CleaningSupport owned(String id, Authentication auth) {
+        CleaningSupport support = cleaningSupportService.getById(id);
+        if (support.getRoom() == null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND);
+        landlords.requireOwner(auth.getName(), support.getRoom().getRoomId());
+        return support;
+    }
+
+    private List<CleaningSupport> owned(List<CleaningSupport> supports, Authentication auth) {
+        return supports.stream().filter(support -> support.getRoom() != null &&
+                landlords.owns(auth.getName(), support.getRoom().getRoomId())).toList();
+    }
+
     // GET ALL
     @GetMapping
     public ResponseEntity<List<CleaningSupport>> getAll(org.springframework.security.core.Authentication auth) {
         return ResponseEntity.ok(
-                cleaningSupportService.getAll().stream().filter(r->landlords.owns(auth.getName(),r.getRoom().getRoomId())).toList()
+                owned(cleaningSupportService.getAll(), auth)
         );
     }
 
     // GET BY ID
     @GetMapping("/{id}")
     public ResponseEntity<CleaningSupport> getById(
-            @PathVariable String id) {
+            @PathVariable String id, Authentication auth) {
 
         return ResponseEntity.ok(
-                cleaningSupportService.getById(id)
+                owned(id, auth)
         );
     }
 
     // CREATE
     @PostMapping
     public ResponseEntity<CleaningSupport> create(
-            @Valid @RequestBody CleaningSupportDTO dto) {
+            @Valid @RequestBody CleaningSupportDTO dto, Authentication auth) {
+        landlords.requireOwner(auth.getName(), dto.getRoomId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -51,7 +78,9 @@ public class CleaningSupportController {
     @PutMapping("/{id}")
     public ResponseEntity<CleaningSupport> update(
             @PathVariable String id,
-            @Valid @RequestBody CleaningSupportDTO dto) {
+            @Valid @RequestBody CleaningSupportDTO dto, Authentication auth) {
+        owned(id, auth);
+        landlords.requireOwner(auth.getName(), dto.getRoomId());
 
         return ResponseEntity.ok(
                 cleaningSupportService.update(id, dto)
@@ -61,7 +90,8 @@ public class CleaningSupportController {
     // DELETE
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
-            @PathVariable String id) {
+            @PathVariable String id, Authentication auth) {
+        owned(id, auth);
 
         cleaningSupportService.delete(id);
 
@@ -71,7 +101,8 @@ public class CleaningSupportController {
     // GET BY ROOM
     @GetMapping("/room/{roomId}")
     public ResponseEntity<List<CleaningSupport>> getByRoom(
-            @PathVariable String roomId) {
+            @PathVariable String roomId, Authentication auth) {
+        landlords.requireOwner(auth.getName(), roomId);
 
         return ResponseEntity.ok(
                 cleaningSupportService.getByRoom(roomId)
@@ -81,19 +112,19 @@ public class CleaningSupportController {
     // GET BY EMPLOYEE
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<CleaningSupport>> getByEmployee(
-            @PathVariable String employeeId) {
+            @PathVariable String employeeId, Authentication auth) {
 
         return ResponseEntity.ok(
-                cleaningSupportService.getByEmployee(employeeId)
+                owned(cleaningSupportService.getByEmployee(employeeId), auth)
         );
     }
 
     // GET UNCOMPLETED
     @GetMapping("/uncompleted")
-    public ResponseEntity<List<CleaningSupport>> getUncompleted() {
+    public ResponseEntity<List<CleaningSupport>> getUncompleted(Authentication auth) {
 
         return ResponseEntity.ok(
-                cleaningSupportService.getUncompleted()
+                owned(cleaningSupportService.getUncompleted(), auth)
         );
     }
 
@@ -101,7 +132,7 @@ public class CleaningSupportController {
     @PutMapping("/{id}/complete")
     public ResponseEntity<CleaningSupport> complete(
             @PathVariable String id,org.springframework.security.core.Authentication auth) {
-        landlords.requireOwner(auth.getName(),cleaningSupportService.getById(id).getRoom().getRoomId());
+        owned(id, auth);
 
         return ResponseEntity.ok(
                 cleaningSupportService.complete(id)

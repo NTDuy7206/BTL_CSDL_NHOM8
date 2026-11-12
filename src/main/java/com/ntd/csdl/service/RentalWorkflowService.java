@@ -63,7 +63,7 @@ public class RentalWorkflowService {
     public void requireRoom(String username,String roomId) {
         LocalDate now=StayService.today();String tenant=tenantId(username);
         Integer active=jdbc.queryForObject("SELECT COUNT(*) FROM contracts c LEFT JOIN contract_stays s ON s.contract_id=c.contract_id WHERE c.tenant_id=? AND c.room_id=? AND "+StayService.activeSql(),Integer.class,tenant,roomId,now,now,now);
-        if(active==null||active==0)throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Chỉ được báo cáo sự cố tại phòng bạn đang thuê");
+        if(active==null||active==0)throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Bạn chỉ có thể gửi yêu cầu cho phòng đang thuê");
     }
     // Called inside the same transaction as the request or the final contract.
     public Tenant saveTenant(RentalDTO dto, String username, boolean self) {

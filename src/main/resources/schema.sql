@@ -10,6 +10,14 @@ CREATE TABLE IF NOT EXISTS user_profiles (
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS cleaning_support_requesters (
+    support_id VARCHAR(20) PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    INDEX ix_cleaning_requester (user_id),
+    FOREIGN KEY (support_id) REFERENCES cleaning_supports(support_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS contract_requests (
     request_id BIGINT NOT NULL AUTO_INCREMENT,
     user_id BIGINT NOT NULL,
