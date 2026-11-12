@@ -42,7 +42,24 @@ public class FinanceService {
    for(String type:List.of("ELECTRICITY","WATER")){BigDecimal value=new BigDecimal(row.get(type.equals("ELECTRICITY")?"electricity":"water").toString());boolean paid=payments.stream().anyMatch(p->((Number)p.get("year")).intValue()==y&&((Number)p.get("month")).intValue()==m&&type.equals(p.get("utilityType")));if(value.signum()>0&&!paid)items.add(Map.of("year",y,"month",m,"utilityType",type,"billedAmount",value,"dueDate",YearMonth.of(y,m).atEndOfMonth()));}
   }
   var result=new LinkedHashMap<String,Object>();result.put("year",year);result.put("month",month);result.put("serverDate",StayService.today());result.put("dueDate",YearMonth.of(year,month).atEndOfMonth());result.put("due",BillingCalendar.due(year,month,StayService.today()));result.put("billed",total);result.put("payments",payments);result.put("pending",items);
-  result.put("details",jdbc.queryForList("SELECT i.invoice_id AS invoiceId,c.room_id AS roomId,i.electricity_amount AS electricity,i.water_amount AS water FROM invoices i JOIN contracts c ON c.contract_id=i.contract_id JOIN room_landlords l ON l.room_id=c.room_id WHERE l.user_id=? AND i.year=? AND i.month=? ORDER BY c.room_id,i.invoice_id",owner,year,month));return result;
+  result.put("details", jdbc.queryForList("""
+      SELECT i.invoice_id AS invoiceId, c.room_id AS roomId,
+             i.electricity_amount AS electricity, i.water_amount AS water,
+             rates.electricityPrice, rates.waterPrice
+      FROM invoices i
+      JOIN contracts c ON c.contract_id=i.contract_id
+      JOIN room_landlords l ON l.room_id=c.room_id
+      LEFT JOIN (
+          SELECT room_id, CASE WHEN COUNT(*)=1 THEN MAX(electricity_price) END AS electricityPrice,
+                 CASE WHEN COUNT(*)=1 THEN MAX(water_price) END AS waterPrice
+          FROM utility_readings
+          WHERE year=? AND month=?
+          GROUP BY room_id
+      ) rates ON rates.room_id=c.room_id
+      WHERE l.user_id=? AND i.year=? AND i.month=?
+      ORDER BY c.room_id,i.invoice_id
+      """, year, month, owner, year, month));
+  return result;
  }
  @Transactional public void payUtility(String username,int year,int month,String type,BigDecimal amount,LocalDate date,String provider,String reference){
   period(year,month);BillingCalendar.requireDue(year,month,StayService.today());day(date);if(date.isBefore(YearMonth.of(year,month).atEndOfMonth()))throw bad("Ngày thực trả không được trước ngày cuối kỳ");money(amount);text(provider,120,"Đơn vị cung cấp");text(reference,200,"Mã chứng từ");

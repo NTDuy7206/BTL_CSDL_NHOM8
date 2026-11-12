@@ -21,6 +21,7 @@ class FinanceTests {
   var ds=new DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+";MODE=MySQL;NON_KEYWORDS=USER,YEAR,MONTH;DB_CLOSE_DELAY=-1","sa","");jdbc=new JdbcTemplate(ds);tx=new TransactionTemplate(new DataSourceTransactionManager(ds));
   jdbc.execute("CREATE TABLE user(id BIGINT PRIMARY KEY)");jdbc.execute("CREATE TABLE room_landlords(room_id VARCHAR(20) PRIMARY KEY,user_id BIGINT)");jdbc.execute("CREATE TABLE contracts(contract_id VARCHAR(20) PRIMARY KEY,room_id VARCHAR(20))");
   jdbc.execute("CREATE TABLE invoices(invoice_id VARCHAR(20) PRIMARY KEY,contract_id VARCHAR(20),year INT,month INT,electricity_amount DECIMAL(18,2),water_amount DECIMAL(18,2))");
+  jdbc.execute("CREATE TABLE utility_readings(room_id VARCHAR(20),year INT,month INT,electricity_price DECIMAL(18,2),water_price DECIMAL(18,2))");
   jdbc.execute("CREATE TABLE payment_reports(payment_report_id BIGINT PRIMARY KEY,invoice_id VARCHAR(20),amount DECIMAL(18,2),status VARCHAR(20),created_at TIMESTAMP,payment_method VARCHAR(40) DEFAULT 'CASH')");
   String schema=Files.readString(Path.of("src/main/resources/schema.sql"));schema=schema.substring(schema.indexOf("CREATE TABLE IF NOT EXISTS finance_receipts"),schema.indexOf("CREATE TABLE IF NOT EXISTS room_listings"));
   for(String statement:schema.split(";")){if(!statement.isBlank())jdbc.execute(statement.replaceAll("ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci", ""));}
@@ -35,6 +36,21 @@ class FinanceTests {
   var a=finance.utilities("A",2026,10);var billed=(Map<?,?>)a.get("billed");eq("300",billed.get("electricity"));eq("125",billed.get("water"));eq("425",billed.get("totalUtilities"));eq("2",billed.get("invoiceCount"));
   var b=(Map<?,?>)finance.utilities("B",2026,10).get("billed");eq("900",b.get("electricity"));
   eq("0",totals("A","2026-10-01","2026-10-31","month").get("expenses"));
+ }
+ @Test void utilityDetailsUseRatesForTheInvoicedRoomAndPeriod(){
+  jdbc.update("INSERT INTO utility_readings VALUES ('R1',2026,10,3500,15000),('R1',2026,11,4000,16000),('R2',2026,10,5000,20000)");
+  var october = (List<?>)finance.utilities("A",2026,10).get("details");
+  assertEquals(2, october.size());
+  var first = (Map<?,?>)october.getFirst();
+  assertEquals("R1", first.get("roomId"));
+  eq("3500",first.get("electricityPrice"));
+  eq("15000",first.get("waterPrice"));
+  eq("100",first.get("electricity"));
+
+  jdbc.update("INSERT INTO utility_readings VALUES ('R1',2026,10,3600,15000)");
+  var ambiguous = (List<?>)finance.utilities("A",2026,10).get("details");
+  assertEquals(2, ambiguous.size());
+  assertNull(((Map<?,?>)ambiguous.getFirst()).get("electricityPrice"));
  }
  @Test void exactIncomeExpenseAndNegativeProfitGroupedByActualDayMonthYear(){
   finance.allocateReceipt("A",1L,date("2026-10-05"));finance.allocateReceipt("A",2L,date("2026-10-06"));finance.allocateReceipt("B",3L,date("2026-10-05"));finance.allocateReceipt("A",5L,date("2025-12-31"));
