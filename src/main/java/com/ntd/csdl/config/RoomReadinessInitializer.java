@@ -13,5 +13,14 @@ public class RoomReadinessInitializer {
     private final DemoPhoneRepairService phones;
     private final com.ntd.csdl.service.TenantOwnershipSchemaRepair ownership;
     @EventListener(ApplicationReadyEvent.class)
-    public void completeExistingRooms() { ownership.apply(); migration.apply(); migration.applyDemoRates(); phones.repair(); }
+    public void completeExistingRooms() {
+        ownership.apply();
+        migration.apply();
+        migration.applyDemoRates();
+        int repriced = migration.applyListedRates();
+        if (repriced > 0) {
+            System.getLogger(getClass().getName()).log(System.Logger.Level.INFO, "Đã cập nhật giá niêm yết của {0} phòng", repriced);
+        }
+        phones.repair();
+    }
 }

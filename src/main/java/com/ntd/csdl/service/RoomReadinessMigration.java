@@ -14,6 +14,45 @@ public class RoomReadinessMigration {
     private final JdbcTemplate jdbc;
     private final LandlordService landlords;
     private static final String KEY = "room-readiness-20261030-v1";
+    private static final int OLD_DEFAULT_RATE = 2_000_000;
+
+    @Transactional
+    public int applyListedRates() {
+        String seed = "listed-room-default-rates-v1";
+        jdbc.update("INSERT INTO demo_seed_history(seed_key,completed) VALUES (?,false) ON DUPLICATE KEY UPDATE seed_key=seed_key", seed);
+        if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT completed FROM demo_seed_history WHERE seed_key=? FOR UPDATE", Boolean.class, seed))) return 0;
+
+        int changed = 0;
+        for (var room : jdbc.queryForList("""
+                SELECT r.room_id,r.room_type FROM rooms r JOIN room_landlords l ON l.room_id=r.room_id
+                WHERE r.area>0 AND r.base_price=? AND r.room_type IS NOT NULL
+                ORDER BY r.room_id
+                """, OLD_DEFAULT_RATE)) {
+            String id = (String)room.get("room_id");
+            String type = (String)room.get("room_type");
+            int newRate = listedRate(type);
+            if (newRate == 0) continue;
+
+            changed += jdbc.update("""
+                    UPDATE rooms SET base_price=?
+                    WHERE room_id=? AND area>0 AND room_type=? AND base_price=?
+                      AND NOT EXISTS (SELECT 1 FROM contract_requests WHERE room_id=? AND status='PENDING')
+                    """, newRate, id, type, OLD_DEFAULT_RATE, id);
+        }
+        jdbc.update("UPDATE demo_seed_history SET completed=true WHERE seed_key=?", seed);
+        return changed;
+    }
+
+    private static int listedRate(String type) {
+        if (VipRentalService.isVip(type)) return 5_500_000;
+        String normalized = Normalizer.normalize(type.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").replace('đ', 'd').trim().replaceAll("\\s+", " ");
+        return switch (normalized) {
+            case "studio", "phong studio", "phong tieu chuan", "tieu chuan", "standard", "phong thuong", "thuong" -> 2_500_000;
+            case "can ho", "can ho 1 phong ngu", "1 phong ngu", "1pn", "1br" -> 3_600_000;
+            default -> 0;
+        };
+    }
 
     @Transactional
     public void applyDemoRates() {
