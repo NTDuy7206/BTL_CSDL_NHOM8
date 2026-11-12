@@ -11,23 +11,26 @@ import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Serv
   LocalDate end = StayService.date(contract.get("end_date"));
   if (!BillingCalendar.rentalDue(month.getYear(), month.getMonthValue(), end, today)) return "NOT_DUE";
 
-  String result = bill(contractId, month);
-  if (!"NEEDS_READING".equals(result)) return result;
+  BigDecimal vipBalance = VipRentalService.balanceForContract(jdbc, contractId);
+  BigDecimal vipRent = vipBalance == null ? null : month.equals(YearMonth.from(end)) ? vipBalance : BigDecimal.ZERO;
+  String result = bill(contractId, month, vipRent);
+  boolean vipFinal = vipRent != null && vipRent.signum() > 0;
+  if (!"NEEDS_READING".equals(result) && !(vipFinal && "SKIPPED".equals(result))) return result;
   if (!jdbc.queryForList("SELECT invoice_id FROM invoices WHERE contract_id=? AND year=? AND month=?",
       contractId, month.getYear(), month.getMonthValue()).isEmpty()) return result;
 
   var stays = jdbc.queryForList("SELECT * FROM contract_stays WHERE contract_id=?", contractId);
-  if (stays.isEmpty()) return result;
-  var stay = stays.getFirst();
+  if (stays.isEmpty() && !vipFinal) return result;
+  var stay = stays.isEmpty() ? Map.<String,Object>of() : stays.getFirst();
   BigDecimal monthlyRent = money(stay.get("monthly_rent"));
-  if (monthlyRent == null || monthlyRent.signum() <= 0) return result;
+  if (!vipFinal && (monthlyRent == null || monthlyRent.signum() <= 0)) return result;
 
   LocalDate start = StayService.date(stay.get("check_in"));
   if (start == null) start = StayService.date(contract.get("start_date"));
   LocalDate checkout = StayService.date(stay.get("check_out"));
   if (checkout != null) end = checkout.minusDays(1);
   if (start == null || end == null) return result;
-  BigDecimal rent = BillingMath.rent(monthlyRent, start, end, month);
+  BigDecimal rent = vipRent == null ? BillingMath.rent(monthlyRent, start, end, month) : vipRent;
   if (rent.signum() <= 0) return result;
 
   // Leave the period open for meter data until a payment report is submitted.
@@ -41,6 +44,13 @@ import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Serv
  }
  @Transactional(isolation=org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
  public String bill(String id,YearMonth month){
+  BigDecimal balance=VipRentalService.balanceForContract(jdbc,id);
+  if(balance==null)return bill(id,month,null);
+  LocalDate end=jdbc.queryForObject("SELECT end_date FROM contracts WHERE contract_id=? FOR UPDATE",LocalDate.class,id);
+  return bill(id,month,month.equals(YearMonth.from(end))?balance:BigDecimal.ZERO);
+ }
+
+ private String bill(String id,YearMonth month,BigDecimal vipRent){
   var rows=jdbc.queryForList("SELECT c.*,r.base_price FROM contracts c JOIN rooms r ON r.room_id=c.room_id WHERE c.contract_id=? FOR UPDATE",id);if(rows.isEmpty())return "SKIPPED";var c=rows.getFirst();
   if(!jdbc.queryForList("SELECT invoice_id FROM automatic_bills WHERE contract_id=? AND year=? AND month=?",id,month.getYear(),month.getMonthValue()).isEmpty())return "EXISTS";
   var stays=jdbc.queryForList("SELECT * FROM contract_stays WHERE contract_id=?",id);Map<String,Object> stay=stays.isEmpty()?Map.of():stays.getFirst();LocalDate start=StayService.date(stay.get("check_in"));if(start==null)start=StayService.date(c.get("start_date"));LocalDate checkout=StayService.date(stay.get("check_out")),end=checkout==null?StayService.date(c.get("end_date")):checkout.minusDays(1);
@@ -63,7 +73,8 @@ import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Serv
    else if(checkout!=null&&checkout.equals(month.plusMonths(1).atDay(1))){ee=number(stay.get("check_out_electric"));we=number(stay.get("check_out_water"));}
    BigDecimal electricity=BillingMath.usage(es,ee,money(r.get("electricity_price")),"điện (kWh)"),water=BillingMath.usage(ws,we,money(r.get("water_price")),"nước (m³)");
    if(es<number(r.get("electricity_start_index"))||ee>number(r.get("electricity_end_index"))||ws<number(r.get("water_start_index"))||we>number(r.get("water_end_index")))throw new IllegalArgumentException("Chỉ số nhận/trả phòng nằm ngoài chỉ số tháng");
-   BigDecimal rent=!old.isEmpty()&&old.getFirst().get("rent_amount")!=null?money(old.getFirst().get("rent_amount")):BillingMath.rent(money(stay.get("monthly_rent")),start,end,month),fine=BigDecimal.ZERO;String invoiceId;
+   BigDecimal rent=vipRent!=null?vipRent:!old.isEmpty()&&old.getFirst().get("rent_amount")!=null?money(old.getFirst().get("rent_amount")):BillingMath.rent(money(stay.get("monthly_rent")),start,end,month),fine=BigDecimal.ZERO;String invoiceId;
+   if(vipRent!=null&&old.isEmpty()&&rent.add(electricity).add(water).signum()==0){clear(id,month);return "SKIPPED";}
    if(old.isEmpty()){invoiceId=RentalWorkflowService.id("TD");jdbc.update("INSERT INTO invoices(invoice_id,month,year,rent_amount,electricity_amount,water_amount,fine_amount,total_amount,contract_id) VALUES (?,?,?,?,?,?,?,?,?)",invoiceId,month.getMonthValue(),month.getYear(),rent,electricity,water,fine,rent.add(electricity).add(water),id);}
    else{var oldInvoice=old.getFirst();invoiceId=(String)oldInvoice.get("invoice_id");if(oldInvoice.get("rent_amount")!=null)rent=money(oldInvoice.get("rent_amount"));fine=Optional.ofNullable(money(oldInvoice.get("fine_amount"))).orElse(BigDecimal.ZERO);jdbc.update("UPDATE invoices SET rent_amount=?,electricity_amount=?,water_amount=?,total_amount=? WHERE invoice_id=?",rent,electricity,water,rent.add(electricity).add(water).add(fine),invoiceId);}
    mark(id,month,invoiceId);clear(id,month);

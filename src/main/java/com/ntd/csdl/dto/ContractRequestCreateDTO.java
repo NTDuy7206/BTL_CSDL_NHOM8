@@ -21,4 +21,7 @@ public class ContractRequestCreateDTO {
 
     @Size(max = 500, message = "Lời nhắn không được vượt quá 500 ký tự")
     private String message;
+
+    @Size(max = 36)
+    private String vipDepositId;
 }

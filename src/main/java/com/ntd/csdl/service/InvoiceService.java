@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.YearMonth;
 import java.util.List;
 
 @Service
@@ -37,6 +38,7 @@ public class InvoiceService {
                         )
                 );
 
+        applyVipRent(dto, contract);
         Invoice invoice = new Invoice();
 
         invoice.setInvoiceId(dto.getInvoiceId());
@@ -88,6 +90,16 @@ public class InvoiceService {
                 : value;
     }
 
+    private void applyVipRent(InvoiceDTO dto, Contract contract) {
+        BigDecimal balance = VipRentalService.balanceForContract(jdbc, contract.getContractId());
+        if (balance == null) return;
+        YearMonth period = YearMonth.of(dto.getYear(), dto.getMonth());
+        if (period.isBefore(YearMonth.from(contract.getStartDate())) || period.isAfter(YearMonth.from(contract.getEndDate()))) {
+            throw new IllegalArgumentException("Kỳ hóa đơn nằm ngoài thời hạn hợp đồng VIP");
+        }
+        dto.setRentAmount(period.equals(YearMonth.from(contract.getEndDate())) ? balance : BigDecimal.ZERO);
+    }
+
     // READ ALL
     public List<Invoice> getAll() {
         return invoiceRepository.findAll();
@@ -125,6 +137,7 @@ public class InvoiceService {
                         )
                 );
 
+        applyVipRent(dto, contract);
         existing.setMonth(dto.getMonth());
         existing.setYear(dto.getYear());
         existing.setRentAmount(dto.getRentAmount());

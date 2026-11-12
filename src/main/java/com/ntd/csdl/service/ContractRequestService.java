@@ -21,11 +21,13 @@ public class ContractRequestService {
     private final JdbcTemplate jdbc;
     private final LandlordService landlords;
     private final DepositService deposits;
+    private final VipRentalService vipRentals;
     private ContractRequestResponseDTO response(ContractRequest request) {
         ContractRequestResponseDTO dto=new ContractRequestResponseDTO(request);
         jdbc.query("SELECT tenant_id,requested_end_date,contract_id FROM rental_request_details WHERE request_id=?",
             (org.springframework.jdbc.core.RowCallbackHandler)rs->{dto.setTenant(tenants.findById(rs.getString(1)).orElse(null));dto.setRequestedEndDate(rs.getDate(2).toLocalDate());dto.setContractId(rs.getString(3));},
             request.getRequestId());
+        dto.setVipPayment(vipRentals.forRequest(request.getRequestId()));
         return dto;
     }
     @Transactional(readOnly=true)
@@ -46,13 +48,19 @@ public class ContractRequestService {
             r.getStatus()==ContractRequestStatus.PENDING && r.getRoom().getRoomId().equals(dto.getRoomId())))
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Bạn đã có yêu cầu đang chờ cho phòng này");
         landlords.requireAssigned(dto.getRoomId());
-        Room room=roomRepository.findById(dto.getRoomId()).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy phòng"));
+        Room room=roomRepository.lockById(dto.getRoomId()).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy phòng"));
         if(!RentalWorkflowService.available(room.getStatus()))
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Phòng không còn trống");
         ContractRequest request=new ContractRequest();request.setApplicant(applicant);request.setRoom(room);
         request.setRequestedStartDate(dto.getRequestedStartDate());request.setMessage(dto.getMessage());
         request.setStatus(ContractRequestStatus.PENDING);request.setCreatedAt(LocalDateTime.now());
         request=requestRepository.saveAndFlush(request);
+        if(VipRentalService.isVip(room.getRoomType())) {
+            vipRentals.attach(dto.getVipDepositId(),applicant.getId(),room.getRoomId(),
+                dto.getRequestedStartDate(),dto.getRequestedEndDate(),request.getRequestId());
+        } else if(dto.getVipDepositId()!=null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Phòng đã đổi loại. Vui lòng tải lại thông tin trước khi gửi");
+        }
         jdbc.update("INSERT INTO rental_request_details(request_id,tenant_id,requested_end_date) VALUES (?,?,?)",
             request.getRequestId(),tenant.getTenantId(),dto.getRequestedEndDate());
         return response(request);
@@ -76,8 +84,10 @@ public class ContractRequestService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"Thời gian thuê đã hết, vui lòng gửi yêu cầu mới");
             String linked=rentals.tenantId(request.getApplicant().getUsername());
             if(!Objects.equals(linked,details.getTenant().getTenantId()))throw new ResponseStatusException(HttpStatus.CONFLICT,"Hồ sơ yêu cầu không khớp tài khoản gửi. Khách cần gửi yêu cầu mới");
+            var vip=details.getVipPayment();
+            BigDecimal deposit=vip==null?deposits.closeForRentalApproval(id):vip.depositAmount();
             Contract contract=rentals.book(details.getTenant(),request.getRoom().getRoomId(),
-                request.getRequestedStartDate(),details.getRequestedEndDate(),deposits.closeForRentalApproval(id));
+                request.getRequestedStartDate(),details.getRequestedEndDate(),deposit,vip==null?null:vip.monthlyRent());
             jdbc.update("UPDATE rental_request_details SET contract_id=? WHERE request_id=?",contract.getContractId(),id);
         }
         request.setStatus(ContractRequestStatus.valueOf(status));

@@ -20,6 +20,7 @@ public class ContractService {
     private final ContractRepository contractRepository;
     private final RoomRepository roomRepository;
     private final TenantRepository tenantRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     // CREATE CONTRACT
     public Contract create(ContractDTO dto) {
@@ -66,7 +67,9 @@ public class ContractService {
     //UpDate
 
 
+    @org.springframework.transaction.annotation.Transactional
     public Contract update(String id, ContractDTO dto) {
+        jdbc.queryForList("SELECT contract_id FROM contracts WHERE contract_id=? FOR UPDATE", id);
 
         Contract existing = contractRepository.findById(id)
                 .orElseThrow(() ->
@@ -80,6 +83,12 @@ public class ContractService {
                 .orElseThrow(() ->
                         new RuntimeException("Không tìm thấy tenant"));
 
+        if (VipRentalService.balanceForContract(jdbc, id) != null &&
+                (!java.util.Objects.equals(existing.getStartDate(), dto.getStartDate()) ||
+                 !java.util.Objects.equals(existing.getEndDate(), dto.getEndDate()) || dto.getDeposit() == null ||
+                 existing.getDeposit().compareTo(dto.getDeposit()) != 0)) {
+            throw new IllegalArgumentException("Ngày thuê và tiền cọc của hợp đồng VIP đã được chốt");
+        }
         existing.setStartDate(dto.getStartDate());
         existing.setEndDate(dto.getEndDate());
         existing.setDeposit(dto.getDeposit());

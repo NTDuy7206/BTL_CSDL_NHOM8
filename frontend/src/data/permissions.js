@@ -9,6 +9,8 @@ export function visibleModules(role) {
   return module
  })
 }
+export const isVipRoom = room => /\bVIP\b/i.test(room?.roomType || '')
+
 export function available(room) {
  if(typeof room.availableForRent==='boolean')return room.availableForRent
  if(room.occupied===true||room.occupancyKnown===false)return false

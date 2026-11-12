@@ -13,6 +13,8 @@ class StayBillingTests {
  "CREATE TABLE billing_alerts(contract_id VARCHAR(20),year INT,month INT,message VARCHAR(500),PRIMARY KEY(contract_id,year,month))",
  "CREATE TABLE tenant_accounts(user_id BIGINT PRIMARY KEY,tenant_id VARCHAR(20) UNIQUE)",
  "CREATE TABLE invoice_notifications(invoice_id VARCHAR(20) PRIMARY KEY,user_id BIGINT,message VARCHAR(300),seen BOOLEAN)",
+ "CREATE TABLE rental_request_details(request_id BIGINT PRIMARY KEY,contract_id VARCHAR(20))",
+ "CREATE TABLE vip_rental_deposits(request_id BIGINT PRIMARY KEY,total_rent DECIMAL(18,2),deposit_amount DECIMAL(18,2))",
  "CREATE TABLE payment_reports(payment_report_id BIGINT PRIMARY KEY,invoice_id VARCHAR(20),status VARCHAR(30))"))jdbc.execute(sql);
  jdbc.update("INSERT INTO rooms VALUES('R1','OCCUPIED',9999999)");jdbc.update("INSERT INTO tenant_accounts VALUES(1,'T1'),(2,'T2')");landlords=mock(LandlordService.class);stays=new StayService(jdbc,landlords);bills=new MonthlyBillingService(jdbc);
  }
@@ -40,6 +42,21 @@ class StayBillingTests {
   assertNull(jdbc.queryForObject("SELECT electricity_amount FROM invoices",BigDecimal.class));
  }
  @Test void negativeUsageNeverProducesAnInvoice(){janFixture();jdbc.update("UPDATE utility_readings SET electricity_end_index=200");assertEquals("NEEDS_READING",bill("C1"));assertEquals(0,count("invoices"));}
+ @Test void vipRentIsChargedOnceAtTheEndWhileUtilitiesRemainMonthly(){
+  janFixture();
+  jdbc.update("UPDATE contracts SET end_date='2026-02-14' WHERE contract_id='C1'");
+  jdbc.update("INSERT INTO rental_request_details VALUES(1,'C1')");
+  jdbc.update("INSERT INTO vip_rental_deposits VALUES(1,4650000,2325000)");
+  var january=YearMonth.of(2026,1);var february=YearMonth.of(2026,2);
+  assertEquals("CREATED",tx.execute(t->bills.billDue("C1",january,LocalDate.of(2026,1,31))));
+  assertEquals(new BigDecimal("0.00"),jdbc.queryForObject("SELECT rent_amount FROM invoices WHERE month=1",BigDecimal.class));
+  assertEquals(new BigDecimal("500000.00"),jdbc.queryForObject("SELECT total_amount FROM invoices WHERE month=1",BigDecimal.class));
+  assertEquals("NOT_DUE",tx.execute(t->bills.billDue("C1",february,LocalDate.of(2026,2,13))));
+  assertEquals("CREATED",tx.execute(t->bills.billDue("C1",february,LocalDate.of(2026,2,14))));
+  tx.execute(t->bills.billDue("C1",february,LocalDate.of(2026,2,14)));
+  assertEquals(2,count("invoices"));
+  assertEquals(new BigDecimal("2325000.00"),jdbc.queryForObject("SELECT rent_amount FROM invoices WHERE month=2",BigDecimal.class));
+ }
  @Test void turnoverUsesSeparateMeterSnapshotsAndProratesBothTenants(){janFixture();jdbc.update("UPDATE contract_stays SET check_out='2026-01-16',check_out_electric=350,check_out_water=15");contract("C2","T2",LocalDate.of(2026,1,16),LocalDate.of(2026,1,31));jdbc.update("INSERT INTO contract_stays VALUES('C2','2026-01-16',null,350,15,null,null,3100000)");bill("C1");bill("C2");assertEquals(new BigDecimal("1500000.00"),jdbc.queryForObject("SELECT rent_amount FROM invoices WHERE contract_id='C1'",BigDecimal.class));assertEquals(new BigDecimal("1600000.00"),jdbc.queryForObject("SELECT rent_amount FROM invoices WHERE contract_id='C2'",BigDecimal.class));assertEquals(new BigDecimal("350000.00"),jdbc.queryForObject("SELECT SUM(electricity_amount) FROM invoices",BigDecimal.class));assertEquals(2,count("invoice_notifications"));}
  @Test void incompleteTurnoverMetersAreFlagged(){janFixture();jdbc.update("UPDATE contract_stays SET check_out='2026-01-16'");assertEquals("NEEDS_READING",bill("C1"));assertEquals(0,count("invoices"));}
  @Test void paidInvoiceIsNeverChanged(){janFixture();jdbc.update("INSERT INTO invoices VALUES('OLD','C1',2026,1,3100000,0,0,0,3100000)");jdbc.update("INSERT INTO payment_reports VALUES(1,'OLD','PAID')");assertEquals("MANUAL",bill("C1"));assertEquals(new BigDecimal("3100000.00"),jdbc.queryForObject("SELECT total_amount FROM invoices",BigDecimal.class));assertEquals(1,count("invoices"));}

@@ -33,6 +33,23 @@ CREATE TABLE IF NOT EXISTS contract_requests (
     CONSTRAINT fk_contract_requests_room FOREIGN KEY (room_id) REFERENCES rooms (room_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS vip_rental_deposits (
+    deposit_id VARCHAR(36) PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    room_id VARCHAR(20) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    monthly_rent DECIMAL(18,2) NOT NULL,
+    total_rent DECIMAL(18,2) NOT NULL,
+    deposit_amount DECIMAL(18,2) NOT NULL,
+    paid_at DATETIME NOT NULL,
+    request_id BIGINT UNIQUE,
+    INDEX ix_vip_deposit_draft (user_id,room_id,start_date,end_date),
+    FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE,
+    FOREIGN KEY (room_id) REFERENCES rooms(room_id) ON DELETE CASCADE,
+    FOREIGN KEY (request_id) REFERENCES contract_requests(request_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS payment_reports (
     payment_report_id BIGINT NOT NULL AUTO_INCREMENT,
     payer_user_id BIGINT NOT NULL,

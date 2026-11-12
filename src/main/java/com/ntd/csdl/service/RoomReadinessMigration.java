@@ -16,6 +16,27 @@ public class RoomReadinessMigration {
     private static final String KEY = "room-readiness-20261030-v1";
 
     @Transactional
+    public void applyDemoRates() {
+        String seed = "demo-room-types-and-rates-v1";
+        jdbc.update("INSERT INTO demo_seed_history(seed_key,completed) VALUES (?,false) ON DUPLICATE KEY UPDATE seed_key=seed_key", seed);
+        if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT completed FROM demo_seed_history WHERE seed_key=? FOR UPDATE", Boolean.class, seed))) return;
+        updateDemoRate("DEMO_P11", "Studio", 3_100_000, "Studio", 2_500_000);
+        updateDemoRate("DEMO_P12", "Căn hộ 1 phòng ngủ", 3_200_000, "Căn hộ 1 phòng ngủ", 3_600_000);
+        updateDemoRate("DEMO_P13", "Studio", 3_300_000, "VIP", 5_500_000);
+        jdbc.update("UPDATE demo_seed_history SET completed=true WHERE seed_key=?", seed);
+    }
+
+    private void updateDemoRate(String id, String oldType, int oldRate, String newType, int newRate) {
+        jdbc.update("""
+                UPDATE rooms SET room_type=?,base_price=?
+                WHERE room_id=? AND room_type=? AND base_price=? AND status='AVAILABLE'
+                  AND NOT EXISTS (SELECT 1 FROM contracts WHERE room_id=?)
+                  AND NOT EXISTS (SELECT 1 FROM contract_requests WHERE room_id=?)
+                  AND NOT EXISTS (SELECT 1 FROM vip_rental_deposits WHERE room_id=?)
+                """, newType, newRate, id, oldType, oldRate, id, id, id);
+    }
+
+    @Transactional
     public int apply() {
         jdbc.update("INSERT INTO demo_seed_history(seed_key,completed) VALUES (?,false) ON DUPLICATE KEY UPDATE seed_key=seed_key", KEY);
         if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT completed FROM demo_seed_history WHERE seed_key=? FOR UPDATE", Boolean.class, KEY))) return 0;

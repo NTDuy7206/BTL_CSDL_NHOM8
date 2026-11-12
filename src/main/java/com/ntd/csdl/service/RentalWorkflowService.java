@@ -98,6 +98,10 @@ public class RentalWorkflowService {
         return tenant;
     }
     public Contract book(Tenant tenant,String roomId,LocalDate start,LocalDate end,BigDecimal deposit) {
+        return book(tenant,roomId,start,end,deposit,null);
+    }
+
+    public Contract book(Tenant tenant,String roomId,LocalDate start,LocalDate end,BigDecimal deposit,BigDecimal quotedMonthlyRent) {
         dates(start,end);
         Room room=rooms.lockById(roomId).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy phòng"));
         // A request may have loaded the Room earlier into Hibernate's first-level cache.
@@ -108,7 +112,7 @@ public class RentalWorkflowService {
         if(overlap) throw new ResponseStatusException(HttpStatus.CONFLICT,"Phòng đã có hợp đồng trong thời gian này");
         Contract contract=Contract.builder().contractId(id("HD")).tenant(tenant).room(room).startDate(start).endDate(end).deposit(deposit).build();
         contract=contracts.saveAndFlush(contract);
-        jdbc.update("INSERT INTO contract_stays(contract_id,monthly_rent) VALUES (?,?)",contract.getContractId(),room.getBasePrice());
+        jdbc.update("INSERT INTO contract_stays(contract_id,monthly_rent) VALUES (?,?)",contract.getContractId(),quotedMonthlyRent==null?room.getBasePrice():quotedMonthlyRent);
         room.setStatus("OCCUPIED");rooms.save(room);
         return contract;
     }
