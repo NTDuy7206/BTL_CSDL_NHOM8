@@ -11,7 +11,6 @@ public class ContractRequestResponseDTO {
     @lombok.Setter private com.ntd.csdl.entity.Tenant tenant;
     @lombok.Setter private LocalDate requestedEndDate;
     @lombok.Setter private String contractId;
-    @lombok.Setter private java.util.Map<String,Object> deposit;
     private final Long requestId;
     private final String username;
     private final String roomId;

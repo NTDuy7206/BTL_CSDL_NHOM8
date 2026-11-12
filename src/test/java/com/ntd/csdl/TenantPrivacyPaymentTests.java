@@ -44,6 +44,20 @@ class TenantPrivacyPaymentTests {
  @Test void anotherTenantCannotPayThisInvoice(){assertEquals(403,assertThrows(ResponseStatusException.class,()->payments.create("user2",dto("CASH"))).getStatusCode().value());verify(reports,never()).save(any());}
  @Test void unknownOrMissingPaymentMethodIsRejected(){for(String m:Arrays.asList(null,"","CARD"))assertEquals(400,assertThrows(ResponseStatusException.class,()->payments.create("user1",dto(m))).getStatusCode().value());verify(reports,never()).save(any());}
  @Test void duplicatePendingPaymentIsRejected(){when(reports.existsByPayerUsernameAndInvoiceInvoiceIdAndStatusIn(anyString(),anyString(),anyList())).thenReturn(true);assertEquals(409,assertThrows(ResponseStatusException.class,()->payments.create("user1",dto("BANK_TRANSFER"))).getStatusCode().value());verify(reports,never()).save(any());}
+ @Test void simulationNeedsNoBankReferenceAndDoesNotCreateRealReceipt() {
+  var finance = mock(FinanceService.class);
+  payments = new PaymentReportService(reports,invoices,users,rentals,landlords,finance,mock(PaymentRoutingService.class));
+  var input = dto("SIMULATED");
+  input.setTransactionReference(null);
+  assertEquals("PENDING", payments.create("user1",input).getStatus());
+  var saved = org.mockito.ArgumentCaptor.forClass(PaymentReport.class);
+  verify(reports).save(saved.capture());
+  when(reports.lockById(1L)).thenReturn(Optional.of(saved.getValue()));
+  var decision = new PaymentReportStatusDTO();
+  decision.setStatus("PAID");
+  assertEquals("PAID", payments.updateStatus(1L,decision,"ownerA").getStatus());
+  verifyNoInteractions(finance);
+ }
  @Test void pendingPaymentsAppearOnlyForTheOwningLandlord(){
   PaymentReport first=new PaymentReport();first.setPaymentReportId(11L);first.setInvoice(invoice);first.setPayer(users.findByUsername("user1").orElseThrow());first.setAmount(new BigDecimal("3000000"));
   PaymentReport second=new PaymentReport();second.setPaymentReportId(12L);second.setInvoice(Invoice.builder().invoiceId("I2").contract(c2).build());second.setPayer(users.findByUsername("user2").orElseThrow());second.setAmount(new BigDecimal("2000000"));

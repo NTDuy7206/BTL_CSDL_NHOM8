@@ -26,7 +26,7 @@ public class InvoiceController {
     public ResponseEntity<List<Invoice>> getAll(org.springframework.security.core.Authentication auth) {
         String tenantId=rentals.tenantId(auth.getName());
         return ResponseEntity.ok(
-                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? invoiceService.getAll().stream().filter(i->landlords.owns(auth.getName(),i.getContract().getRoom().getRoomId())).toList() : (tenantId==null ? List.of() : invoices.findByContractTenantTenantId(tenantId))
+                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? invoiceService.getAll().stream().filter(i->landlords.owns(auth.getName(),i.getContract().getRoom().getRoomId())).toList() : (tenantId==null ? List.of() : invoices.findByContractTenantTenantId(tenantId).stream().filter(i -> com.ntd.csdl.service.BillingCalendar.rentalDue(i, com.ntd.csdl.service.StayService.today())).toList())
         );
     }
 
@@ -35,7 +35,12 @@ public class InvoiceController {
             @PathVariable String id, org.springframework.security.core.Authentication auth) {
         Invoice invoice=invoiceService.getById(id);
         if(com.ntd.csdl.service.RentalWorkflowService.admin(auth))landlords.requireOwner(auth.getName(),invoice.getContract().getRoom().getRoomId());
-        else rentals.requireOwner(auth.getName(),invoice.getContract());
+        else {
+            rentals.requireOwner(auth.getName(),invoice.getContract());
+            if (!com.ntd.csdl.service.BillingCalendar.rentalDue(invoice, com.ntd.csdl.service.StayService.today())) {
+                throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND, "Hóa đơn chưa đến hạn");
+            }
+        }
         return ResponseEntity.ok(invoice);
     }
 

@@ -38,19 +38,27 @@ public class PaymentReportService {
     }
 
     @Transactional(readOnly=true)
-    public List<Invoice> payableInvoices(String username){String tenant=rentals.tenantId(username);if(tenant==null)return List.of();return invoiceRepository.findByContractTenantTenantId(tenant).stream().filter(i->BillingCalendar.due(i.getYear(),i.getMonth(),StayService.today())).filter(i->!reportRepository.existsByPayerUsernameAndInvoiceInvoiceIdAndStatusIn(username,i.getInvoiceId(),List.of(PaymentReportStatus.PENDING,PaymentReportStatus.PAID))).toList();}
+    public List<Invoice> payableInvoices(String username){String tenant=rentals.tenantId(username);if(tenant==null)return List.of();return invoiceRepository.findByContractTenantTenantId(tenant).stream().filter(i->BillingCalendar.rentalDue(i,StayService.today())).filter(i->!reportRepository.existsByPayerUsernameAndInvoiceInvoiceIdAndStatusIn(username,i.getInvoiceId(),List.of(PaymentReportStatus.PENDING,PaymentReportStatus.PAID))).toList();}
 
     @Transactional
     public PaymentReportResponseDTO create(String username, PaymentReportCreateDTO dto) {
         String method=dto.getPaymentMethod()==null?"":dto.getPaymentMethod().trim().toUpperCase(java.util.Locale.ROOT);
-        if(!List.of("BANK_TRANSFER","CASH").contains(method))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Chọn phương thức chuyển khoản hoặc tiền mặt");
+        if (!List.of("SIMULATED", "BANK_TRANSFER", "CASH").contains(method)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phương thức thanh toán không hợp lệ");
+        }
+        boolean simulated = "SIMULATED".equals(method);
+        if (!simulated && (dto.getTransactionReference() == null || dto.getTransactionReference().isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng nhập mã giao dịch");
+        }
         User payer = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản"));
         Invoice invoice = invoiceRepository.lockById(dto.getInvoiceId().trim())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hóa đơn"));
         rentals.requireOwner(username, invoice.getContract());
         landlords.requireAssigned(invoice.getContract().getRoom().getRoomId());
-        BillingCalendar.requireDue(invoice.getYear(),invoice.getMonth(),StayService.today());
+        if (!BillingCalendar.rentalDue(invoice, StayService.today())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Hóa đơn chưa đến hạn thanh toán");
+        }
         BigDecimal amount = invoice.getTotalAmount();
         if (amount == null || amount.signum() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hóa đơn chưa có số tiền hợp lệ");
@@ -67,7 +75,7 @@ public class PaymentReportService {
         report.setInvoice(invoice);
         report.setAmount(amount);
         report.setPaymentMethod(method);
-        report.setTransactionReference(dto.getTransactionReference().trim());
+        report.setTransactionReference(simulated ? "Thanh toán giả lập" : dto.getTransactionReference().trim());
         report.setStatus(PaymentReportStatus.PENDING);
         report.setCreatedAt(LocalDateTime.now());
         return response(reportRepository.save(report));
@@ -91,7 +99,9 @@ public class PaymentReportService {
         if (report.getStatus() != PaymentReportStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Báo cáo thanh toán này đã được xử lý");
         }
-        if(status==PaymentReportStatus.PAID)finance.confirmReceipt(username,report,dto.getReceivedOn());
+        if (status == PaymentReportStatus.PAID && !"SIMULATED".equals(report.getPaymentMethod())) {
+            finance.confirmReceipt(username,report,dto.getReceivedOn());
+        }
         report.setStatus(status);
         return response(report);
     }

@@ -1,5 +1,9 @@
 # Đặt cọc qua chuyển khoản ngân hàng
 
+Tài liệu lưu lịch sử của luồng cọc trước đây. Bản hiện tại duyệt yêu cầu thuê
+trực tiếp, lập hóa đơn đến kỳ và xác nhận thanh toán giả lập. Phần cấu hình
+SePay bên dưới áp dụng cho bản cũ.
+
 Phần tích hợp đã chuẩn bị cho SePay Webhooks. Chưa có tài khoản SePay kết nối
 ngân hàng thì hệ thống chưa thể tự xác nhận giao dịch tiền thật. Người thuê có
 thể báo mã giao dịch trên hóa đơn cọc để chủ nhà đối chiếu và xác nhận đã nhận.

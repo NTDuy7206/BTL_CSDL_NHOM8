@@ -24,6 +24,21 @@ class StayBillingTests {
  @Test void fullMonthUsesAgreedRateAndNotCurrentRoomPrice(){janFixture();assertEquals("CREATED",bill("C1"));assertEquals(new BigDecimal("3600000.00"),jdbc.queryForObject("SELECT total_amount FROM invoices",BigDecimal.class));assertEquals(1,count("invoice_notifications"));assertEquals(1L,jdbc.queryForObject("SELECT user_id FROM invoice_notifications",Long.class));}
  @Test void rerunDoesNotDuplicateInvoicesOrNotifications(){janFixture();bill("C1");assertEquals("EXISTS",bill("C1"));assertEquals(1,count("invoices"));assertEquals(1,count("invoice_notifications"));}
  @Test void missingReadingsWaitAndRetryAfterInput(){janFixture();jdbc.update("DELETE FROM utility_readings");assertEquals("NEEDS_READING",bill("C1"));assertEquals(0,count("invoices"));assertEquals(1,count("billing_alerts"));jdbc.update("INSERT INTO utility_readings VALUES('M1','R1',2026,1,300,400,10,20,3500,15000)");assertEquals("CREATED",bill("C1"));assertEquals(0,count("billing_alerts"));}
+ @Test void finalPeriodBillsRentOnContractEndEvenWithoutMeterData() {
+  janFixture();
+  jdbc.update("UPDATE contracts SET end_date='2026-01-15' WHERE contract_id='C1'");
+  jdbc.update("UPDATE contract_stays SET check_in=NULL WHERE contract_id='C1'");
+  jdbc.update("DELETE FROM utility_readings");
+  var month = YearMonth.of(2026,1);
+  assertEquals("NOT_DUE", tx.execute(t->bills.billDue("C1",month,LocalDate.of(2026,1,14))));
+  assertEquals("CREATED", tx.execute(t->bills.billDue("C1",month,LocalDate.of(2026,1,15))));
+  tx.execute(t->bills.billDue("C1",month,LocalDate.of(2026,1,15)));
+  assertEquals(1,count("invoices"));
+  assertEquals(1,count("invoice_notifications"));
+  assertEquals(1,count("billing_alerts"));
+  assertEquals(new BigDecimal("1500000.00"),jdbc.queryForObject("SELECT total_amount FROM invoices",BigDecimal.class));
+  assertNull(jdbc.queryForObject("SELECT electricity_amount FROM invoices",BigDecimal.class));
+ }
  @Test void negativeUsageNeverProducesAnInvoice(){janFixture();jdbc.update("UPDATE utility_readings SET electricity_end_index=200");assertEquals("NEEDS_READING",bill("C1"));assertEquals(0,count("invoices"));}
  @Test void turnoverUsesSeparateMeterSnapshotsAndProratesBothTenants(){janFixture();jdbc.update("UPDATE contract_stays SET check_out='2026-01-16',check_out_electric=350,check_out_water=15");contract("C2","T2",LocalDate.of(2026,1,16),LocalDate.of(2026,1,31));jdbc.update("INSERT INTO contract_stays VALUES('C2','2026-01-16',null,350,15,null,null,3100000)");bill("C1");bill("C2");assertEquals(new BigDecimal("1500000.00"),jdbc.queryForObject("SELECT rent_amount FROM invoices WHERE contract_id='C1'",BigDecimal.class));assertEquals(new BigDecimal("1600000.00"),jdbc.queryForObject("SELECT rent_amount FROM invoices WHERE contract_id='C2'",BigDecimal.class));assertEquals(new BigDecimal("350000.00"),jdbc.queryForObject("SELECT SUM(electricity_amount) FROM invoices",BigDecimal.class));assertEquals(2,count("invoice_notifications"));}
  @Test void incompleteTurnoverMetersAreFlagged(){janFixture();jdbc.update("UPDATE contract_stays SET check_out='2026-01-16'");assertEquals("NEEDS_READING",bill("C1"));assertEquals(0,count("invoices"));}

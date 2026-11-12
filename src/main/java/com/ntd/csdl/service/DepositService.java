@@ -129,6 +129,16 @@ public class DepositService {
    if(!jdbc.queryForList("SELECT c.contract_id FROM contracts c LEFT JOIN contract_stays s ON s.contract_id=c.contract_id WHERE c.room_id=? AND (COALESCE(s.check_in,c.start_date)<=? AND ((s.check_out IS NULL AND c.end_date>=?) OR s.check_out>?) OR s.check_out IS NULL AND (COALESCE(s.check_in,c.start_date) IS NULL OR c.end_date IS NULL))",dates.get("room_id"),dates.get("requested_end_date"),dates.get("requested_start_date"),dates.get("requested_start_date")).isEmpty())throw bad("Phòng đã có hợp đồng trong thời gian này; không yêu cầu chuyển cọc");
    if(!jdbc.queryForList("SELECT d.request_id FROM rental_deposits d JOIN contract_requests c ON c.request_id=d.request_id JOIN rental_request_details r ON r.request_id=c.request_id WHERE c.room_id=? AND d.request_id<>? AND d.status IN ('AWAITING_PAYMENT','PAID') AND c.status='PENDING' AND c.requested_start_date<=? AND r.requested_end_date>=?",dates.get("room_id"),request,dates.get("requested_end_date"),dates.get("requested_start_date")).isEmpty())throw bad("Phòng đang có yêu cầu cọc khác trong thời gian này; không thu thêm cọc chồng lịch");
    var b=bank(((Number)d.get("landlord_id")).longValue());if(!validBank(b))throw bad("Chủ nhà cần cập nhật đúng tên ngân hàng, số tài khoản và tên chủ tài khoản trong Thông tin cá nhân");jdbc.update("UPDATE rental_deposits SET status='AWAITING_PAYMENT',bank_name=?,account_number=?,account_holder=? WHERE request_id=?",b.get("bank_name"),b.get("account_number"),b.get("account_holder"),request);}return false;}
+ @Transactional
+ public BigDecimal closeForRentalApproval(long request) {
+  var rows = jdbc.queryForList("SELECT amount,status FROM rental_deposits WHERE request_id=? FOR UPDATE", request);
+  if (rows.isEmpty()) return BigDecimal.ZERO;
+  var previous = rows.getFirst();
+  if ("PAID".equals(previous.get("status"))) return new BigDecimal(previous.get("amount").toString());
+  jdbc.update("UPDATE rental_deposits SET status='CANCELLED' WHERE request_id=?", request);
+  return BigDecimal.ZERO;
+ }
+
  public BigDecimal amount(long request){return jdbc.queryForList("SELECT amount FROM rental_deposits WHERE request_id=?",request).stream().map(r->new BigDecimal(r.get("amount").toString())).findFirst().orElse(BigDecimal.ZERO);}
  @Transactional public void reject(long request){var rows=jdbc.queryForList("SELECT status FROM rental_deposits WHERE request_id=? FOR UPDATE",request);if(!rows.isEmpty()&&"PAID".equals(rows.getFirst().get("status")))throw bad("Đã nhận cọc. Cần đối soát và hoàn cọc trước khi hủy; hệ thống không tự hoàn tiền");jdbc.update("UPDATE rental_deposits SET status='CANCELLED' WHERE request_id=?",request);}
  @Transactional public Map<String,Object> webhook(long owner,String authorization,Event e){

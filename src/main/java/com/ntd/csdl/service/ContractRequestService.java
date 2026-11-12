@@ -26,7 +26,6 @@ public class ContractRequestService {
         jdbc.query("SELECT tenant_id,requested_end_date,contract_id FROM rental_request_details WHERE request_id=?",
             (org.springframework.jdbc.core.RowCallbackHandler)rs->{dto.setTenant(tenants.findById(rs.getString(1)).orElse(null));dto.setRequestedEndDate(rs.getDate(2).toLocalDate());dto.setContractId(rs.getString(3));},
             request.getRequestId());
-        dto.setDeposit(deposits.details(request.getRequestId()));
         return dto;
     }
     @Transactional(readOnly=true)
@@ -56,7 +55,6 @@ public class ContractRequestService {
         request=requestRepository.saveAndFlush(request);
         jdbc.update("INSERT INTO rental_request_details(request_id,tenant_id,requested_end_date) VALUES (?,?,?)",
             request.getRequestId(),tenant.getTenantId(),dto.getRequestedEndDate());
-        deposits.initialize(request.getRequestId(),dto.getRoomId());
         return response(request);
     }
     @Transactional
@@ -78,9 +76,8 @@ public class ContractRequestService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"Thời gian thuê đã hết, vui lòng gửi yêu cầu mới");
             String linked=rentals.tenantId(request.getApplicant().getUsername());
             if(!Objects.equals(linked,details.getTenant().getTenantId()))throw new ResponseStatusException(HttpStatus.CONFLICT,"Hồ sơ yêu cầu không khớp tài khoản gửi. Khách cần gửi yêu cầu mới");
-            if(!deposits.prepareApproval(id))return response(request);
             Contract contract=rentals.book(details.getTenant(),request.getRoom().getRoomId(),
-                request.getRequestedStartDate(),details.getRequestedEndDate(),deposits.amount(id));
+                request.getRequestedStartDate(),details.getRequestedEndDate(),deposits.closeForRentalApproval(id));
             jdbc.update("UPDATE rental_request_details SET contract_id=? WHERE request_id=?",contract.getContractId(),id);
         }
         request.setStatus(ContractRequestStatus.valueOf(status));

@@ -92,4 +92,10 @@ class DepositServiceTests {
   assertEquals("MBBank",service.details(10).get("bankName"));
   assertNotNull(service.details(10).get("qrUrl"));
  }
+
+ @Test void oldUnpaidDepositDoesNotBlockRentalApproval() {
+  service.prepareApproval(10);
+  assertEquals(BigDecimal.ZERO, service.closeForRentalApproval(10));
+  assertEquals("CANCELLED", service.details(10).get("status"));
+ }
 }
