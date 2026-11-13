@@ -31,6 +31,19 @@ CREATE TABLE IF NOT EXISTS employee_payroll (
     FOREIGN KEY (employee_id) REFERENCES employee_accounts(employee_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS staff_applications (
+    application_id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    applicant_id BIGINT NOT NULL,
+    landlord_id BIGINT NOT NULL,
+    status VARCHAR(12) NOT NULL DEFAULT 'PENDING',
+    message VARCHAR(500),
+    submitted_on DATE NOT NULL,
+    INDEX ix_staff_applications_landlord (landlord_id,status),
+    INDEX ix_staff_applications_applicant (applicant_id,status),
+    FOREIGN KEY (applicant_id) REFERENCES `user`(id),
+    FOREIGN KEY (landlord_id) REFERENCES `user`(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS cleaning_support_requesters (
     support_id VARCHAR(20) PRIMARY KEY,
     user_id BIGINT NOT NULL,

@@ -38,19 +38,24 @@ public class StaffService {
     public void link(String admin, String employeeId, String username) {
         long owner = landlords.accountId(admin);
         if (username == null || username.isBlank()) throw error(HttpStatus.BAD_REQUEST, "Nhập tên tài khoản nhân viên");
+        var accounts = jdbc.queryForList("SELECT id FROM `user` WHERE username=? AND role=2 FOR UPDATE", Long.class, username.trim());
+        if (accounts.isEmpty()) throw error(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản vai trò Nhân viên");
+        linkAccount(owner, employeeId, accounts.getFirst());
+        jdbc.update("UPDATE staff_applications SET status=CASE WHEN landlord_id=? THEN 'APPROVED' ELSE 'CLOSED' END WHERE applicant_id=? AND status='PENDING'",
+                owner, accounts.getFirst());
+    }
+
+    private void linkAccount(long owner, String employeeId, long account) {
         if (jdbc.queryForList("SELECT employee_id FROM employees WHERE employee_id=? FOR UPDATE", employeeId).isEmpty()) {
             throw error(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ nhân viên");
         }
-        var accounts = jdbc.queryForList("SELECT id FROM `user` WHERE username=? AND role=2 FOR UPDATE", Long.class, username.trim());
-        if (accounts.isEmpty()) throw error(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản vai trò Nhân viên");
-        long account = accounts.getFirst();
-        var link = jdbc.queryForList("SELECT employee_id,landlord_id,account_id FROM employee_accounts WHERE employee_id=? OR account_id=?",
-                employeeId, account);
+        var link = jdbc.queryForList("SELECT employee_id,landlord_id,account_id FROM employee_accounts WHERE employee_id=? FOR UPDATE",
+                employeeId);
         if (!link.isEmpty()) {
             var row = link.getFirst();
-            if (link.size() == 1 && employeeId.equals(row.get("employee_id")) && Long.valueOf(owner).equals(row.get("landlord_id"))) {
+            if (Long.valueOf(owner).equals(row.get("landlord_id"))) {
                 if (Long.valueOf(account).equals(row.get("account_id"))) return;
-                if (row.get("account_id") == null) {
+                if (row.get("account_id") == null && !hasEmployeeProfile(account)) {
                     jdbc.update("UPDATE employee_accounts SET account_id=?,linked_on=? WHERE employee_id=?",
                             account, StayService.today(), employeeId);
                     return;
@@ -59,6 +64,68 @@ public class StaffService {
             throw error(HttpStatus.CONFLICT, "Tài khoản hoặc hồ sơ đã được liên kết");
         }
         throw error(HttpStatus.FORBIDDEN, "Hãy tạo hồ sơ nhân viên thuộc chủ nhà này trước khi liên kết");
+    }
+
+    private boolean hasEmployeeProfile(long account) {
+        return !jdbc.queryForList("SELECT employee_id FROM employee_accounts WHERE account_id=? FOR UPDATE", account).isEmpty();
+    }
+
+    public List<Map<String, Object>> hiringLandlords() {
+        return jdbc.queryForList("""
+                SELECT u.id,u.username,COALESCE(NULLIF(p.display_name,''),u.username) AS displayName
+                FROM `user` u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.role=1
+                ORDER BY displayName,u.id
+                """);
+    }
+
+    public Map<String, Object> applicationPage(String username) {
+        boolean linked = !jdbc.queryForList("SELECT employee_id FROM employee_accounts WHERE account_id=?",
+                landlords.accountId(username)).isEmpty();
+        return Map.of("linked", linked, "landlords", linked ? List.of() : hiringLandlords(),
+                "applications", applications(username, true));
+    }
+
+    public List<Map<String, Object>> applications(String username, boolean applicant) {
+        return jdbc.queryForList("""
+                SELECT a.application_id AS id, a.status, a.message, a.submitted_on AS submittedOn,
+                       u.username, COALESCE(NULLIF(p.display_name,''),u.username) AS displayName
+                FROM staff_applications a JOIN `user` u ON u.id=a.%s LEFT JOIN user_profiles p ON p.user_id=u.id
+                WHERE a.%s=? ORDER BY CASE WHEN a.status='PENDING' THEN 0 ELSE 1 END, a.application_id DESC
+                """.formatted(applicant ? "landlord_id" : "applicant_id", applicant ? "applicant_id" : "landlord_id"),
+                landlords.accountId(username));
+    }
+
+    @Transactional
+    public void apply(String username, long owner, String message) {
+        long account = landlords.accountId(username);
+        jdbc.queryForList("SELECT id FROM `user` WHERE id=? FOR UPDATE", account);
+        if (hasEmployeeProfile(account)) throw error(HttpStatus.CONFLICT, "Bạn đã liên kết với chủ nhà");
+        if (jdbc.queryForList("SELECT id FROM `user` WHERE id=? AND role=1", owner).isEmpty()) {
+            throw error(HttpStatus.NOT_FOUND, "Không tìm thấy chủ nhà");
+        }
+        if (message != null && message.length() > 500) throw error(HttpStatus.BAD_REQUEST, "Lời nhắn tối đa 500 ký tự");
+        if (!jdbc.queryForList("SELECT application_id FROM staff_applications WHERE applicant_id=? AND landlord_id=? AND status='PENDING'",
+                account, owner).isEmpty()) throw error(HttpStatus.CONFLICT, "Bạn đã gửi đơn cho chủ nhà này");
+        jdbc.update("INSERT INTO staff_applications(applicant_id,landlord_id,message,submitted_on) VALUES (?,?,?,?)",
+                account, owner, message == null ? null : message.trim(), StayService.today());
+    }
+
+    @Transactional
+    public void decide(String admin, long id, boolean approve, String employeeId) {
+        long owner = landlords.accountId(admin);
+        var applicants = jdbc.queryForList("SELECT applicant_id FROM staff_applications WHERE application_id=? AND landlord_id=?",
+                Long.class, id, owner);
+        if (applicants.isEmpty()) throw error(HttpStatus.NOT_FOUND, "Không tìm thấy đơn xin việc của chủ nhà này");
+        long account = applicants.getFirst();
+        jdbc.queryForList("SELECT id FROM `user` WHERE id=? FOR UPDATE", account);
+        int changed = jdbc.update("UPDATE staff_applications SET status=? WHERE application_id=? AND landlord_id=? AND status='PENDING'",
+                approve ? "APPROVED" : "REJECTED", id, owner);
+        if (changed != 1) throw error(HttpStatus.CONFLICT, "Đơn đã được xử lý");
+        if (approve) {
+            if (employeeId == null || employeeId.isBlank()) throw error(HttpStatus.BAD_REQUEST, "Chọn hồ sơ nhân viên để duyệt đơn");
+            linkAccount(owner, employeeId, account);
+            jdbc.update("UPDATE staff_applications SET status='CLOSED' WHERE applicant_id=? AND status='PENDING'", account);
+        }
     }
 
     public void checkProfileAccess(String admin, String employeeId) {

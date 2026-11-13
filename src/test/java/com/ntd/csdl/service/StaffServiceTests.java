@@ -16,6 +16,39 @@ import org.springframework.web.server.ResponseStatusException;
 
 class StaffServiceTests {
     @Test
+    void approvalLinksOnlyTheChosenLandlordsProfileAndClosesOtherApplications() {
+        var ds = new DriverManagerDataSource("jdbc:h2:mem:" + UUID.randomUUID()
+                + ";MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", "");
+        var jdbc = new JdbcTemplate(ds);
+        var tx = new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(ds));
+        jdbc.execute("CREATE TABLE `user`(id BIGINT PRIMARY KEY, role INT, username VARCHAR(30))");
+        jdbc.execute("CREATE TABLE user_profiles(user_id BIGINT, display_name VARCHAR(30))");
+        jdbc.execute("CREATE TABLE employees(employee_id VARCHAR(20) PRIMARY KEY)");
+        jdbc.execute("CREATE TABLE employee_accounts(employee_id VARCHAR(20) PRIMARY KEY, landlord_id BIGINT, account_id BIGINT UNIQUE, linked_on DATE)");
+        jdbc.execute("CREATE TABLE staff_applications(application_id BIGINT AUTO_INCREMENT PRIMARY KEY, applicant_id BIGINT, landlord_id BIGINT, status VARCHAR(12) DEFAULT 'PENDING', message VARCHAR(500), submitted_on DATE)");
+        jdbc.update("INSERT INTO `user` VALUES (1,1,'owner'),(2,1,'other'),(3,2,'staff')");
+        jdbc.update("INSERT INTO employees VALUES ('E1'),('E2')");
+        jdbc.update("INSERT INTO employee_accounts(employee_id,landlord_id) VALUES ('E1',1),('E2',2)");
+        var landlords = mock(LandlordService.class);
+        when(landlords.accountId("owner")).thenReturn(1L);
+        when(landlords.accountId("other")).thenReturn(2L);
+        when(landlords.accountId("staff")).thenReturn(3L);
+        var service = new StaffService(jdbc, landlords);
+        tx.executeWithoutResult(s -> service.apply("staff", 1, "Xin việc"));
+        assertThrows(ResponseStatusException.class, () -> tx.executeWithoutResult(s -> service.apply("staff", 1, null)));
+        tx.executeWithoutResult(s -> service.apply("staff", 2, null));
+        assertEquals(2, service.applications("staff", true).size());
+        assertEquals(1, service.applications("owner", false).size());
+        assertThrows(ResponseStatusException.class, () -> tx.executeWithoutResult(s -> service.decide("other", 1, true, "E2")));
+        assertThrows(ResponseStatusException.class, () -> tx.executeWithoutResult(s -> service.decide("owner", 1, true, "E2")));
+        assertEquals("PENDING", service.applications("owner", false).getFirst().get("status"));
+        tx.executeWithoutResult(s -> service.decide("owner", 1, true, "E1"));
+        assertEquals(3L, jdbc.queryForObject("SELECT account_id FROM employee_accounts WHERE employee_id='E1'", Long.class));
+        assertEquals(List.of("APPROVED", "CLOSED"), jdbc.queryForList("SELECT status FROM staff_applications ORDER BY application_id", String.class));
+        assertThrows(ResponseStatusException.class, () -> tx.executeWithoutResult(s -> service.apply("staff", 2, null)));
+    }
+
+    @Test
     void employeeCanOnlyFinishWorkAssignedInTheirLandlordsRooms() {
         var jdbc = new JdbcTemplate(new DriverManagerDataSource(
                 "jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", ""));

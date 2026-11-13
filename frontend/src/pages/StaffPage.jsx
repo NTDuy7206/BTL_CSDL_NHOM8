@@ -38,7 +38,7 @@ function WorkList({kind,rows,submit,busy}) {
   </section>
 }
 
-export default function StaffPage({mode,request,notify}) {
+export default function StaffPage({mode,request,notify,onNavigate}) {
   const [data,setData]=useState(null), [employeeId,setEmployee]=useState(''), [username,setUsername]=useState('')
   const [busy,setBusy]=useState(false), [error,setError]=useState('')
   const load=useCallback(async()=>{
@@ -71,7 +71,7 @@ export default function StaffPage({mode,request,notify}) {
       <div className="workflow-list">{data.filter(row=>row.username).map(row=><p key={row.employeeId}>{row.employeeId} · {row.fullName} · {row.username}</p>)}</div>
     </section>}
     {mode==='admin-payroll'&&data&&<Payroll rows={data} admin submit={submit} busy={busy}/>}
-    {data?.linked===false&&<section className="content-card workflow-card"><h2>Chờ liên kết hồ sơ</h2><p>Gửi tên đăng nhập cho chủ nhà để liên kết hồ sơ và nhận công việc.</p></section>}
+    {data?.linked===false&&<section className="content-card workflow-card"><h2>Chưa liên kết với chủ nhà</h2><button className="button button-primary" onClick={()=>onNavigate('staff-applications')}>Xin việc</button></section>}
     {data?.linked&&mode==='employee-payroll'&&<>
       <section className="content-card workflow-card"><h2>Lương dự kiến</h2>
         {data.employee.baseSalary>0&&data.employee.estimatedSalary!=null?<p>{money(data.employee.baseSalary)} × {Number(data.employee.multiplier).toLocaleString('vi-VN')} ({data.employee.seniority} năm thâm niên) = <strong>{money(data.employee.estimatedSalary)}</strong></p>:<p>Chủ nhà cần cập nhật lương cơ bản và thâm niên.</p>}
