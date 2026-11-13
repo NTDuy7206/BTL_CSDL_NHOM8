@@ -42,7 +42,7 @@ public class EmployeeService {
         employee.setDateOfBirth(dto.getDateOfBirth());
         employee.setPhoneNumber(dto.getPhoneNumber());
 
-        return employeeRepository.save(employee);
+        return employeeRepository.saveAndFlush(employee);
     }
 
     public List<Employee> getAll() {

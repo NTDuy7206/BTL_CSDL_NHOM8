@@ -3,6 +3,8 @@ package com.ntd.csdl.controller;
 import com.ntd.csdl.dto.EmployeeDTO;
 import com.ntd.csdl.entity.Employee;
 import com.ntd.csdl.service.EmployeeService;
+import com.ntd.csdl.service.StaffService;
+import org.springframework.security.core.Authentication;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,36 +19,39 @@ import java.util.List;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final StaffService staff;
 
     @GetMapping
-    public ResponseEntity<List<Employee>> getAll() {
-        return ResponseEntity.ok(
-                employeeService.getAll()
-        );
+    public List<?> getAll(Authentication auth) {
+        return visible(auth, employeeService.getAll());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Employee> getById(
-            @PathVariable String id) {
-
-        return ResponseEntity.ok(
-                employeeService.getById(id)
-        );
+    public Object getById(@PathVariable String id, Authentication auth) {
+        if (com.ntd.csdl.service.RentalWorkflowService.admin(auth)) {
+            staff.checkProfileAccess(auth.getName(), id);
+            return employeeService.getById(id);
+        }
+        return StaffService.PublicEmployee.of(employeeService.getById(id));
     }
 
     @PostMapping
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<Employee> create(
-            @Valid @RequestBody EmployeeDTO dto) {
+            @Valid @RequestBody EmployeeDTO dto, Authentication auth) {
+        Employee employee = employeeService.create(dto);
+        staff.claimNewProfile(auth.getName(), employee.getEmployeeId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(employeeService.create(dto));
+                .body(employee);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Employee> update(
             @PathVariable String id,
-            @Valid @RequestBody EmployeeDTO dto) {
+            @Valid @RequestBody EmployeeDTO dto, Authentication auth) {
+        staff.checkProfileAccess(auth.getName(), id);
 
         return ResponseEntity.ok(
                 employeeService.update(id, dto)
@@ -55,19 +60,21 @@ public class EmployeeController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
-            @PathVariable String id) {
+            @PathVariable String id, Authentication auth) {
 
+        staff.checkProfileAccess(auth.getName(), id);
         employeeService.delete(id);
 
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Employee>> searchByName(
-            @RequestParam String name) {
+    public List<?> searchByName(@RequestParam String name, Authentication auth) {
+        return visible(auth, employeeService.searchByName(name));
+    }
 
-        return ResponseEntity.ok(
-                employeeService.searchByName(name)
-        );
+    private List<?> visible(Authentication auth, List<Employee> employees) {
+        if (com.ntd.csdl.service.RentalWorkflowService.admin(auth)) return staff.visibleProfiles(auth.getName(), employees);
+        return employees.stream().map(StaffService.PublicEmployee::of).toList();
     }
 }

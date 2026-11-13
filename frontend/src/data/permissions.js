@@ -2,8 +2,10 @@ import { modules } from './modules.js'
 const tenantModules = new Set(['employees','rooms','contracts','invoices','incidents','cleaning-supports','rules','violations'])
 export function visibleModules(role) {
  if (role === 'ADMIN') return modules
+ if (role === 'EMPLOYEE') return []
  return modules.filter(module => tenantModules.has(module.key)).map(module => {
   if (module.key === 'cleaning-supports') return {...module, path: `${module.path}/mine`}
+  if (module.key === 'employees') return {...module, columns: ['employeeId','fullName','position']}
   if (module.key === 'contracts') return {...module, title: 'Hợp đồng của tôi'}
   if (module.key === 'invoices') return {...module, title: 'Hóa đơn của tôi'}
   return module

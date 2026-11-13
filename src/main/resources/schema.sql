@@ -10,6 +10,27 @@ CREATE TABLE IF NOT EXISTS user_profiles (
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS employee_accounts (
+    employee_id VARCHAR(20) PRIMARY KEY,
+    landlord_id BIGINT NOT NULL,
+    account_id BIGINT UNIQUE,
+    linked_on DATE,
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE,
+    FOREIGN KEY (landlord_id) REFERENCES `user`(id),
+    FOREIGN KEY (account_id) REFERENCES `user`(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS employee_payroll (
+    employee_id VARCHAR(20) NOT NULL,
+    period DATE NOT NULL,
+    base_salary DECIMAL(18,2) NOT NULL,
+    seniority INT NOT NULL,
+    multiplier DECIMAL(3,2) NOT NULL,
+    paid_on DATE,
+    PRIMARY KEY (employee_id,period),
+    FOREIGN KEY (employee_id) REFERENCES employee_accounts(employee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS cleaning_support_requesters (
     support_id VARCHAR(20) PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -73,7 +94,10 @@ CREATE TABLE IF NOT EXISTS demo_seed_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 UPDATE user SET role=1 WHERE role=4;
-UPDATE user SET role=0 WHERE role IN (2,3);
+UPDATE user SET role=0 WHERE role=3 OR (role=2 AND NOT EXISTS (
+    SELECT 1 FROM demo_seed_history WHERE seed_key='employee-role-v1' AND completed=TRUE
+));
+INSERT IGNORE INTO demo_seed_history(seed_key,completed) VALUES ('employee-role-v1',TRUE);
 CREATE TABLE IF NOT EXISTS tenant_accounts (
     user_id BIGINT NOT NULL PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL UNIQUE,

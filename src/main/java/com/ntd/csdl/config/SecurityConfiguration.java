@@ -30,6 +30,11 @@ public class SecurityConfiguration {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/staff/me", "/api/staff/me/**").hasRole("EMPLOYEE")
+                        .requestMatchers("/api/staff/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/profile").hasAnyRole("USER", "ADMIN", "EMPLOYEE")
+                        .requestMatchers(HttpMethod.PUT, "/api/profile").hasAnyRole("USER", "ADMIN", "EMPLOYEE")
+                        .requestMatchers(HttpMethod.POST, "/api/profile/avatar").hasAnyRole("USER", "ADMIN", "EMPLOYEE")
                         .requestMatchers(HttpMethod.GET, "/api/contract-requests/vip-deposit").hasRole("USER")
                         .requestMatchers(HttpMethod.POST, "/api/contract-requests/vip-deposit").hasRole("USER")
                         .requestMatchers(HttpMethod.GET, "/api/cleaning-supports/mine").hasRole("USER")

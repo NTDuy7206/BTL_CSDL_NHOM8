@@ -19,6 +19,7 @@ public class CleaningSupportController {
 
     private final CleaningSupportService cleaningSupportService;
     private final com.ntd.csdl.service.LandlordService landlords;
+    private final com.ntd.csdl.service.StaffService staff;
 
     public record TenantCleaningRequest(String roomId, String taskContent) {}
 
@@ -68,6 +69,7 @@ public class CleaningSupportController {
     public ResponseEntity<CleaningSupport> create(
             @Valid @RequestBody CleaningSupportDTO dto, Authentication auth) {
         landlords.requireOwner(auth.getName(), dto.getRoomId());
+        staff.checkAssignment(auth.getName(), dto.getEmployeeId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -79,8 +81,11 @@ public class CleaningSupportController {
     public ResponseEntity<CleaningSupport> update(
             @PathVariable String id,
             @Valid @RequestBody CleaningSupportDTO dto, Authentication auth) {
-        owned(id, auth);
+        var current = owned(id, auth);
         landlords.requireOwner(auth.getName(), dto.getRoomId());
+        if (current.getEmployee() == null || !current.getEmployee().getEmployeeId().equals(dto.getEmployeeId())) {
+            staff.checkAssignment(auth.getName(), dto.getEmployeeId());
+        }
 
         return ResponseEntity.ok(
                 cleaningSupportService.update(id, dto)

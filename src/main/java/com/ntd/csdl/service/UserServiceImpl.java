@@ -51,10 +51,6 @@ public class UserServiceImpl implements  UserService
             } catch (IllegalArgumentException exception) {
                 throw new com.ntd.csdl.exception.UserException("Vai trò không hợp lệ");
             }
-            if (requestedRole != UserEnum.ADMIN && requestedRole != UserEnum.USER) {
-                throw new com.ntd.csdl.exception.UserException("Chỉ được đăng ký vai trò chủ nhà hoặc khách thuê");
-            }
-
         }
 
         if (userRepository.existsByUsername(usersDTO.getUsername())) {
