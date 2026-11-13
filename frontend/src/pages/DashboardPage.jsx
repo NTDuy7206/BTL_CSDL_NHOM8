@@ -5,7 +5,8 @@ import{matchesKeyword}from '../data/search.js'
 import StatCard from '../components/StatCard.jsx'
 import Icon from '../components/Icon.jsx'
 import { visibleModules } from '../data/permissions.js'
-import {roomGroups} from '../data/roomGroups.js'
+import {contractsByRoom,roomGroups} from '../data/roomGroups.js'
+import RoomRentalPeriod from '../components/RoomRentalPeriod.jsx'
 
 
 const highlights = [
@@ -17,7 +18,7 @@ const highlights = [
   { key: 'invoices', label: 'Hóa đơn', icon: 'invoice', accent: 'green' },
 ]
 
-function RoomGroup({ title, kind, rooms, loading, unavailable, onNavigate,target='rooms',actionLabel='Xem phòng' }) {
+function RoomGroup({ title, kind, rooms, loading, unavailable, rentalContracts, onNavigate,target='rooms',actionLabel='Xem phòng' }) {
   const shown = rooms
   return <section className={`content-card room-group room-group-${kind}`}>
     <div className="card-heading room-group-heading">
@@ -26,8 +27,8 @@ function RoomGroup({ title, kind, rooms, loading, unavailable, onNavigate,target
     </div>
     {shown.length ? <div className="room-list room-list-scroll" tabIndex="0" role="region" aria-label={title}>{shown.map(room => <article className="room-list-item" key={room.roomId}>
       <span className="room-list-icon"><Icon name="building" size={17}/></span>
-      <div className="room-list-main"><b>{room.roomId || 'Phòng chưa có mã'}</b><span>{[room.landlordName ? `Chủ nhà: ${room.landlordName}` : null, room.availableForRent===false&&!room.occupied?'Chưa mở cho thuê':null, room.roomType, room.floor != null ? `Tầng ${room.floor}` : null, room.area != null ? `${room.area} m²` : null].filter(Boolean).join(' · ') || room.status}</span></div>
-      <span className="room-list-price">{room.basePrice != null ? `${Number(room.basePrice).toLocaleString('vi-VN')} ₫` : ''}</span>
+      <div className="room-list-main"><b>{room.roomId || 'Phòng chưa có mã'}</b><span>{[room.landlordName ? `Chủ nhà: ${room.landlordName}` : null, room.availableForRent===false&&!room.occupied?'Chưa mở cho thuê':null, room.roomType, room.floor != null ? `Tầng ${room.floor}` : null, room.area != null ? `${room.area} m²` : null].filter(Boolean).join(' · ') || room.status}</span>{rentalContracts&&<RoomRentalPeriod contracts={rentalContracts.get(room.roomId)} unavailable={unavailable}/>}</div>
+      <span className="room-list-price">{room.basePrice != null ? `${Number(room.basePrice).toLocaleString('vi-VN')} ₫/đêm` : ''}</span>
     </article>)}</div> : <div className="room-empty-state">{loading ? 'Đang tải…' : unavailable ? 'Không tải được danh sách phòng. Hãy kiểm tra kết nối API.' : 'Chưa có phòng thuộc nhóm này.'}</div>}
     {rooms.length > shown.length && <p className="room-list-more">Hiển thị {shown.length} trong {rooms.length} phòng</p>}
     <button className="text-action room-group-action" onClick={() => onNavigate(target)}>{actionLabel} <Icon name="chevron" size={15}/></button>
@@ -72,6 +73,7 @@ export default function DashboardPage({ request, user, onNavigate }) {
   const pending=(rentalRequests||[]).filter(r=>r.status==='PENDING');
   const valid = Object.values(counts).filter(value => value !== null).length
   const {vacant:vacantRooms,rented:rentedRooms,unknown,activeContracts,conflictingRooms}=roomGroups(rooms,contracts,user?.role,todayVN);
+  const adminRentalContracts=user?.role==='ADMIN'?contractsByRoom(activeContracts):null
   const occupancyUnavailable=counts.rooms===null||contractsUnavailable;
   const values={...counts,contracts:occupancyUnavailable?null:activeContracts.length,vacant:(user?.role==='ADMIN'?occupancyUnavailable:counts.rooms===null)?null:vacantRooms.length,rented:occupancyUnavailable?null:rentedRooms.length};
 
@@ -86,7 +88,7 @@ export default function DashboardPage({ request, user, onNavigate }) {
     {user?.role==='ADMIN'&&!busy&&!occupancyUnavailable&&(unknown.length>0||conflictingRooms.length>0)&&<section className="content-card">{unknown.length>0&&<div className="alert alert-error">Có hợp đồng thiếu ngày bắt đầu/kết thúc. Vui lòng kiểm tra tại Hợp đồng; các phòng này chưa được tính là trống.</div>}{conflictingRooms.length>0&&<div className="alert alert-error">Có nhiều hợp đồng đồng thời hiệu lực tại phòng: {conflictingRooms.map(r=>r.roomId).join(', ')}. Cần đối soát hợp đồng, không tự xóa dữ liệu.</div>}</section>}
     <section className="room-groups-grid">
       <RoomGroup title="Phòng đang trống" kind="vacant" rooms={vacantRooms.filter(r=>matchesKeyword(r,keyword))} loading={busy} unavailable={user?.role==='ADMIN'?occupancyUnavailable:counts.rooms===null} onNavigate={onNavigate}/>
-      <RoomGroup title={user?.role==='USER'?'Phòng tôi đang thuê':'Phòng đã thuê'} kind="rented" target={user?.role==='USER'?'contracts':'rooms'} actionLabel={user?.role==='USER'?'Xem hợp đồng của tôi':'Quản lý phòng'} rooms={rentedRooms.filter(r=>matchesKeyword(r,keyword))} loading={busy} unavailable={occupancyUnavailable} onNavigate={onNavigate}/>
+      <RoomGroup title={user?.role==='USER'?'Phòng tôi đang thuê':'Phòng đã thuê'} kind="rented" target={user?.role==='USER'?'contracts':'rooms'} actionLabel={user?.role==='USER'?'Xem hợp đồng của tôi':'Quản lý phòng'} rooms={rentedRooms.filter(r=>matchesKeyword(r,keyword))} rentalContracts={adminRentalContracts} loading={busy} unavailable={occupancyUnavailable} onNavigate={onNavigate}/>
     </section>
     <div className="dashboard-lower"><section className="content-card module-card"><div className="card-heading"><div><h2>Phân hệ quản lý</h2></div><span className="module-count">{modules.length} phân hệ</span></div><div className="module-grid">{modules.map((module, index) => <button className="module-tile" key={module.key} onClick={() => onNavigate(module.key)}><span className={`tile-icon tile-color-${index % 5}`}><Icon name={module.icon} size={19}/></span><span className="tile-text"><b>{module.title}</b><small>{counts[module.key] === null ? 'Chưa kết nối' : busy ? 'Đang tải' : `${counts[module.key] ?? 0} bản ghi${module.key==='contracts'?' · gồm lịch sử':''}`}</small></span><Icon name="chevron" className="tile-chevron" size={17}/></button>)}</div></section>
       <section className="content-card system-card"><div className="card-heading"><div><h2>Tình trạng kết nối</h2></div><span className={`connection-mark ${valid === modules.length ? 'online' : ''}`}><i/></span></div><div className="connection-summary"><div className="connection-number">{busy ? '…' : `${valid}/${modules.length}`}</div><div><b>{valid === modules.length ? 'Đang hoạt động' : 'Đã kiểm tra'}</b><span>phân hệ có phản hồi</span></div></div><div className="progress-track"><div className="progress-value" style={{ width: `${busy ? 0 : valid / modules.length * 100}%` }}/></div><div className="system-foot"><span><i className="dot dot-green"/> Spring Boot API</span><span>{window.location.host}</span></div><div className="system-foot"><span><i className="dot dot-blue"/> Database</span><span>MySQL</span></div></section>

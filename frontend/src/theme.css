@@ -12,6 +12,15 @@
 
 .auth-topline .theme-toggle { letter-spacing: normal; }
 
+.room-rental-period {
+  display: block;
+  margin-block: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.room-list-main .room-rental-period { white-space: normal; }
+
 @media (max-width: 520px) {
   .topbar .theme-toggle { width: 38px; padding-inline: 0; justify-content: center; }
   .topbar .theme-toggle span { display: none; }
