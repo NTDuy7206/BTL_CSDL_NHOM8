@@ -20,6 +20,15 @@ public class IncidentService {
     private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @org.springframework.transaction.annotation.Transactional
+    public Incident report(IncidentDTO dto, String username) {
+        Incident incident = create(dto);
+        incidentRepository.flush();
+        jdbc.update("INSERT INTO incident_reporters(incident_id,user_id) VALUES (?,?)",
+                incident.getIncidentId(), landlords.accountId(username));
+        return incident;
+    }
+
+    @org.springframework.transaction.annotation.Transactional
     public Incident complete(String id,String username){
         jdbc.queryForList("SELECT incident_id FROM incidents WHERE incident_id=? FOR UPDATE",id);
         Incident incident=incidentRepository.findById(id).orElseThrow(()->new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,"Không tìm thấy sự cố"));
@@ -96,11 +105,8 @@ public class IncidentService {
     public Incident getById(String id) {
 
         return incidentRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Không tìm thấy sự cố"
-                        )
-                );
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy bản ghi"));
     }
 
     // =========================

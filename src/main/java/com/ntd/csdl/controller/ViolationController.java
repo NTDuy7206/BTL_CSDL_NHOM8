@@ -3,6 +3,7 @@ package com.ntd.csdl.controller;
 import com.ntd.csdl.dto.ViolationDTO;
 import com.ntd.csdl.entity.Violation;
 import com.ntd.csdl.service.ViolationService;
+import com.ntd.csdl.service.RentalRecordAccess;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,20 +21,21 @@ public class ViolationController {
 
     private final ViolationService violationService;
     private final LandlordService landlords;
+    private final RentalRecordAccess access;
 
     @GetMapping
-    public ResponseEntity<List<Violation>> getAll() {
+    public ResponseEntity<List<Violation>> getAll(Authentication auth) {
         return ResponseEntity.ok(
-                violationService.getAll()
+                access.violations(auth,violationService.getAll())
         );
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Violation> getById(
-            @PathVariable String id) {
+            @PathVariable String id, Authentication auth) {
 
         return ResponseEntity.ok(
-                violationService.getById(id)
+                RentalRecordAccess.requireVisible(access.violations(auth,List.of(violationService.getById(id))))
         );
     }
 

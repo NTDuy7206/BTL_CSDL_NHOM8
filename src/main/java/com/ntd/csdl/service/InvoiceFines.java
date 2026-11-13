@@ -24,17 +24,10 @@ public final class InvoiceFines {
                 FROM violations v
                 WHERE v.room_id=? AND v.violation_date>=? AND v.violation_date<? AND v.actual_fine>0
                   AND NOT EXISTS (SELECT 1 FROM invoice_violation_charges f WHERE f.violation_id=v.violation_id)
-                  AND ? = (
-                      SELECT CASE WHEN COUNT(*)=1 THEN MIN(c.contract_id) END
-                      FROM contracts c LEFT JOIN contract_stays s ON s.contract_id=c.contract_id
-                      WHERE c.room_id=v.room_id AND COALESCE(s.check_in,c.start_date)<=v.violation_date
-                        AND ((s.check_out IS NOT NULL AND s.check_out>v.violation_date)
-                            OR (s.check_out IS NULL AND (c.end_date>v.violation_date
-                                OR (c.end_date=v.violation_date AND NOT EXISTS
-                                    (SELECT 1 FROM nightly_contract_rates n WHERE n.contract_id=c.contract_id)))))
-                  )
+                  AND ? = (%s)
                 ORDER BY v.violation_date,v.violation_id
-                """, InvoiceFines::charge, roomId, month.atDay(1), month.plusMonths(1).atDay(1), contractId);
+                """.formatted(RentalRecordAccess.VIOLATION_CONTRACT), InvoiceFines::charge, roomId,
+                month.atDay(1), month.plusMonths(1).atDay(1), contractId);
     }
 
     static BigDecimal total(List<Charge> charges) {

@@ -11,6 +11,7 @@ public class QueryController {
  private final LandlordService landlords;
  private final StaffService staff;
  private final StayService stays;
+ private final RentalRecordAccess recordAccess;
  private final RoomService rooms;private final TenantService tenants;private final EmployeeService employees;
  private final ContractService contracts;private final InvoiceService invoices;private final IncidentService incidents;
  private final IncidentResolutionService resolutions;private final CleaningSupportService cleaning;
@@ -29,8 +30,8 @@ public class QueryController {
     case "contracts/room" -> contracts.getByRoom(value(value));
     case "invoices/contract" -> invoices.getByContract(value(value));
     case "invoices/total" -> java.util.Map.of("label","Tổng giá trị hóa đơn (không phải tiền đã thu)","amount",invoices.getAll().stream().filter(i->landlords.owns(auth.getName(),i.getContract().getRoom().getRoomId())).map(i->i.getTotalAmount()==null?BigDecimal.ZERO:i.getTotalAmount()).reduce(BigDecimal.ZERO,BigDecimal::add));
-    case "incidents/room" -> incidents.getByRoom(value(value));
-    case "incidents/status" -> incidents.getByStatus(value(value));
+    case "incidents/room" -> recordAccess.incidents(auth,incidents.getByRoom(value(value)));
+    case "incidents/status" -> recordAccess.incidents(auth,incidents.getByStatus(value(value)));
     case "incident-resolutions/incident" -> resolutions.getByIncident(value(value));
     case "incident-resolutions/employee" -> resolutions.getByEmployee(value(value));
     case "incident-resolutions/uncompleted" -> resolutions.getUncompleted();
@@ -42,10 +43,10 @@ public class QueryController {
      landlords.requireOwner(auth.getName(),room);
      yield readings.getByRoom(room);
     }
-    case "violations/room" -> violations.getByRoom(value(value));
+    case "violations/room" -> recordAccess.violations(auth,violations.getByRoom(value(value)));
     default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Không có chức năng tra cứu này");
    };
-   if(result instanceof java.util.List<?> list && RentalWorkflowService.admin(auth))return list.stream().filter(row->!(row instanceof com.ntd.csdl.entity.Contract c)||landlords.owns(auth.getName(),c.getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.Incident incident)||landlords.owns(auth.getName(),incident.getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.IncidentResolution resolution)||landlords.owns(auth.getName(),resolution.getIncident().getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.CleaningSupport cleaning)||landlords.owns(auth.getName(),cleaning.getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.Invoice i)||landlords.owns(auth.getName(),i.getContract().getRoom().getRoomId())).map(row->row instanceof com.ntd.csdl.entity.Contract contract?stays.enrich(contract):row).toList();
+   if(result instanceof java.util.List<?> list && RentalWorkflowService.admin(auth))return list.stream().filter(row->!(row instanceof com.ntd.csdl.entity.Contract c)||landlords.owns(auth.getName(),c.getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.IncidentResolution resolution)||landlords.owns(auth.getName(),resolution.getIncident().getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.CleaningSupport cleaning)||landlords.owns(auth.getName(),cleaning.getRoom().getRoomId())).filter(row->!(row instanceof com.ntd.csdl.entity.Invoice i)||landlords.owns(auth.getName(),i.getContract().getRoom().getRoomId())).map(row->row instanceof com.ntd.csdl.entity.Contract contract?stays.enrich(contract):row).toList();
    return result;
  }
 }

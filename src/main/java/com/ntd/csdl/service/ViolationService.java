@@ -106,11 +106,8 @@ public class ViolationService {
     public Violation getById(String id) {
 
         return violationRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Không tìm thấy vi phạm"
-                        )
-                );
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy bản ghi"));
     }
 
     // READ BY ROOM

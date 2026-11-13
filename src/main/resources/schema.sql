@@ -59,6 +59,14 @@ CREATE TABLE IF NOT EXISTS cleaning_support_requesters (
     FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS incident_reporters (
+    incident_id VARCHAR(20) PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    INDEX ix_incident_reporter (user_id),
+    FOREIGN KEY (incident_id) REFERENCES incidents(incident_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS contract_requests (
     request_id BIGINT NOT NULL AUTO_INCREMENT,
     user_id BIGINT NOT NULL,
