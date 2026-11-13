@@ -9,6 +9,10 @@ import com.ntd.csdl.repo.RoomRepository;
 import com.ntd.csdl.repo.ViolationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -20,8 +24,10 @@ public class ViolationService {
     private final ViolationRepository violationRepository;
     private final RoomRepository roomRepository;
     private final RuleRepository ruleRepository;
+    private final JdbcTemplate jdbc;
 
     // CREATE
+    @Transactional(isolation=org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public Violation create(ViolationDTO dto) {
 
         if (dto.getViolationId() == null ||
@@ -94,7 +100,9 @@ public class ViolationService {
             );
         }
 
-        return violationRepository.save(violation);
+        Violation saved = violationRepository.saveAndFlush(violation);
+        InvoiceFines.issue(jdbc,saved,false);
+        return saved;
     }
 
     // READ ALL
@@ -118,11 +126,13 @@ public class ViolationService {
     }
 
     // UPDATE
+    @Transactional(isolation=org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public Violation update(
             String id,
             ViolationDTO dto
     ) {
 
+        requireUnbilled(id);
         Violation existing = getById(id);
 
         Room room = roomRepository.findById(dto.getRoomId())
@@ -175,11 +185,15 @@ public class ViolationService {
             );
         }
 
-        return violationRepository.save(existing);
+        Violation saved = violationRepository.saveAndFlush(existing);
+        InvoiceFines.issue(jdbc,saved,true);
+        return saved;
     }
 
     // DELETE
+    @Transactional
     public void delete(String id) {
+        requireUnbilled(id);
 
         if (!violationRepository.existsById(id)) {
             throw new RuntimeException(
@@ -188,5 +202,23 @@ public class ViolationService {
         }
 
         violationRepository.deleteById(id);
+    }
+
+    @Transactional(isolation=org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
+    public String issueInvoice(String id) {
+        jdbc.queryForList("SELECT violation_id FROM violations WHERE violation_id=? FOR UPDATE",id);
+        var invoices = jdbc.queryForList("SELECT invoice_id FROM invoice_violation_charges WHERE violation_id=?",String.class,id);
+        if (!invoices.isEmpty()) return invoices.getFirst();
+        var violation = getById(id);
+        if (violation.getActualFine()==null || violation.getActualFine().signum()<=0)
+            throw new IllegalArgumentException("Vi phạm chưa có tiền phạt để lập hóa đơn");
+        InvoiceFines.issue(jdbc,violation,true);
+        return jdbc.queryForObject("SELECT invoice_id FROM invoice_violation_charges WHERE violation_id=?",String.class,id);
+    }
+
+    private void requireUnbilled(String id) {
+        jdbc.queryForList("SELECT violation_id FROM violations WHERE violation_id=? FOR UPDATE",id);
+        if (InvoiceFines.linked(jdbc,id))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Vi phạm đã được ghi vào hóa đơn");
     }
 }

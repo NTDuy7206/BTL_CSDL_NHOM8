@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Serv
   String result = bill(contractId, month, vipRent, nightlyRate);
   boolean vipFinal = vipRent != null && vipRent.signum() > 0;
   if (!"NEEDS_READING".equals(result) && !(vipFinal && "SKIPPED".equals(result))) return result;
-  if (!jdbc.queryForList("SELECT invoice_id FROM invoices WHERE contract_id=? AND year=? AND month=?",
+  if (!jdbc.queryForList("SELECT invoice_id FROM invoices WHERE contract_id=? AND year=? AND month=? AND "+InvoiceFines.MONTHLY_ONLY,
       contractId, month.getYear(), month.getMonthValue()).isEmpty()) return result;
 
   var stays = jdbc.queryForList("SELECT * FROM contract_stays WHERE contract_id=?", contractId);
@@ -73,7 +73,7 @@ import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Serv
   var stays=jdbc.queryForList("SELECT * FROM contract_stays WHERE contract_id=?",id);Map<String,Object> stay=stays.isEmpty()?Map.of():stays.getFirst();LocalDate start=StayService.date(stay.get("check_in"));if(start==null)start=StayService.date(c.get("start_date"));LocalDate checkout=StayService.date(stay.get("check_out")),end=checkout==null?StayService.date(c.get("end_date")):checkout.minusDays(1);
   if(nightlyRate!=null&&checkout==null&&end!=null)end=end.minusDays(1);
   if(start==null||end==null||start.isAfter(month.atEndOfMonth())||end.isBefore(month.atDay(1))||end.isBefore(start)){clear(id,month);return "SKIPPED";}
-  var old=jdbc.queryForList("SELECT * FROM invoices WHERE contract_id=? AND year=? AND month=? FOR UPDATE",id,month.getYear(),month.getMonthValue());
+  var old=jdbc.queryForList("SELECT * FROM invoices WHERE contract_id=? AND year=? AND month=? AND "+InvoiceFines.MONTHLY_ONLY+" FOR UPDATE",id,month.getYear(),month.getMonthValue());
   try{
    if(old.size()>1)throw new IllegalArgumentException("Có nhiều hóa đơn cùng kỳ; cần chủ nhà kiểm tra");
    var charges=InvoiceFines.pending(jdbc,id,(String)c.get("room_id"),month);

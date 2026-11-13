@@ -21,6 +21,8 @@ import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Serv
   return c;
  }
  public boolean invoiceDue(com.ntd.csdl.entity.Invoice invoice,LocalDate today){
+  invoice.setStandaloneFine(InvoiceFines.standalone(jdbc,invoice.getInvoiceId()));
+  if(invoice.isStandaloneFine())return true;
   var contract=invoice.getContract();
   if(nightlyRate(jdbc,contract.getContractId())!=null)
    return BillingCalendar.due(invoice.getYear(),invoice.getMonth(),today);
@@ -28,6 +30,7 @@ import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Serv
  }
  public com.ntd.csdl.entity.Invoice invoiceWithFines(com.ntd.csdl.entity.Invoice invoice){
   invoice.setViolationCharges(InvoiceFines.charges(jdbc,invoice.getInvoiceId()));
+  invoice.setStandaloneFine(InvoiceFines.standalone(jdbc,invoice.getInvoiceId()));
   return invoice;
  }
  @Transactional(isolation=org.springframework.transaction.annotation.Isolation.READ_COMMITTED) public Map<String,Object> record(String id,String username,boolean checkIn,LocalDate day,Integer electricity,Integer water){

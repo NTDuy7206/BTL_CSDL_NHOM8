@@ -25,6 +25,7 @@ class TenantPrivacyPaymentTests {
   jdbc.execute("CREATE TABLE user(id BIGINT PRIMARY KEY,username VARCHAR(100) UNIQUE)");jdbc.execute("CREATE TABLE tenant_accounts(user_id BIGINT PRIMARY KEY,tenant_id VARCHAR(20) UNIQUE)");jdbc.update("INSERT INTO user VALUES(1,'user1'),(2,'user2'),(3,'user3')");jdbc.update("INSERT INTO tenant_accounts VALUES(1,'T1'),(2,'T2')");
   var contracts=mock(ContractRepository.class);users=mock(UserRepository.class);invoices=mock(InvoiceRepository.class);reports=mock(PaymentReportRepository.class);landlords=mock(LandlordService.class);
   jdbc.execute("CREATE TABLE nightly_contract_rates(contract_id VARCHAR(20) PRIMARY KEY,nightly_rate DECIMAL(18,2))");
+  jdbc.execute("CREATE TABLE standalone_fine_invoices(invoice_id VARCHAR(20) PRIMARY KEY)");
   billingStays=new StayService(jdbc,landlords);
   rentals=new RentalWorkflowService(jdbc,mock(TenantRepository.class),contracts,mock(RoomRepository.class),users);
   Tenant t1=new Tenant();t1.setTenantId("T1");Tenant t2=new Tenant();t2.setTenantId("T2");

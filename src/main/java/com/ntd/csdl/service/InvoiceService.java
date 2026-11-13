@@ -24,7 +24,7 @@ public class InvoiceService {
     @org.springframework.transaction.annotation.Transactional
     public Invoice create(InvoiceDTO dto) {
         jdbc.queryForList("SELECT contract_id FROM contracts WHERE contract_id=? FOR UPDATE",dto.getContractId());
-        if(!jdbc.queryForList("SELECT invoice_id FROM invoices WHERE contract_id=? AND month=? AND year=?",dto.getContractId(),dto.getMonth(),dto.getYear()).isEmpty())throw new IllegalArgumentException("Hợp đồng đã có hóa đơn trong tháng này");
+        if(!jdbc.queryForList("SELECT invoice_id FROM invoices WHERE contract_id=? AND month=? AND year=? AND "+InvoiceFines.MONTHLY_ONLY,dto.getContractId(),dto.getMonth(),dto.getYear()).isEmpty())throw new IllegalArgumentException("Hợp đồng đã có hóa đơn trong tháng này");
 
         if(dto.getInvoiceId()==null||dto.getInvoiceId().isBlank())dto.setInvoiceId(RentalWorkflowService.id("HDON"));
         dto.setInvoiceId(dto.getInvoiceId().trim());
@@ -126,6 +126,7 @@ public class InvoiceService {
         jdbc.queryForList("SELECT contract_id FROM contracts WHERE contract_id=? FOR UPDATE",dto.getContractId());
         jdbc.queryForList("SELECT invoice_id FROM invoices WHERE invoice_id=? FOR UPDATE",id);
         Invoice existing = getById(id);
+        if(InvoiceFines.standalone(jdbc,id))throw new IllegalArgumentException("Hóa đơn phạt được lập từ vi phạm đã ghi nhận");
         if(!java.util.Objects.equals(existing.getContract().getContractId(),dto.getContractId())||!java.util.Objects.equals(existing.getMonth(),dto.getMonth())||!java.util.Objects.equals(existing.getYear(),dto.getYear()))throw new IllegalArgumentException("Không được đổi hợp đồng hoặc kỳ của hóa đơn đã lập");
         if(!jdbc.queryForList("SELECT payment_report_id FROM payment_reports WHERE invoice_id=? AND status IN ('PENDING','PAID')",id).isEmpty())throw new IllegalArgumentException("Hóa đơn đang đối soát hoặc đã thanh toán; không được sửa số tiền");
         if (valueOrZero(existing.getFineAmount()).compareTo(valueOrZero(dto.getFineAmount())) != 0
@@ -184,6 +185,7 @@ public class InvoiceService {
 
     // DELETE
     public void delete(String id) {
+        if(InvoiceFines.standalone(jdbc,id))throw new IllegalArgumentException("Hóa đơn phạt được lập từ vi phạm đã ghi nhận");
 
         if (!invoiceRepository.existsById(id)) {
             throw new RuntimeException(

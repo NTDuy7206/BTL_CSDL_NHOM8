@@ -9,7 +9,59 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public final class InvoiceFines {
     private InvoiceFines() {}
 
+    static final String MONTHLY_ONLY = """
+            NOT EXISTS (SELECT 1 FROM standalone_fine_invoices f WHERE f.invoice_id=invoices.invoice_id)
+            """;
+
     public record Charge(String violationId, String name, LocalDate date, BigDecimal amount) {}
+
+    static boolean standalone(JdbcTemplate jdbc, String invoiceId) {
+        return !jdbc.queryForList("SELECT invoice_id FROM standalone_fine_invoices WHERE invoice_id=?", invoiceId).isEmpty();
+    }
+
+    static boolean linked(JdbcTemplate jdbc, String violationId) {
+        return !jdbc.queryForList("SELECT invoice_id FROM invoice_violation_charges WHERE violation_id=?", violationId).isEmpty();
+    }
+
+    static void issue(JdbcTemplate jdbc, com.ntd.csdl.entity.Violation violation, boolean existingViolation) {
+        BigDecimal amount = violation.getActualFine();
+        if (amount == null || amount.signum() == 0) return;
+        if (amount.signum() < 0 || violation.getViolationDate() == null || violation.getViolationDate().isAfter(StayService.today())) {
+            throw new IllegalArgumentException("Kiểm tra số tiền phạt và ngày vi phạm");
+        }
+
+        String id = violation.getViolationId();
+        var candidates = jdbc.queryForList("""
+                SELECT (%s) FROM violations v WHERE v.violation_id=?
+                """.formatted(RentalRecordAccess.VIOLATION_CONTRACT), String.class, id);
+        if (candidates.isEmpty() || candidates.getFirst() == null) {
+            throw new IllegalArgumentException("Cần xác định đúng một hợp đồng tại ngày vi phạm để lập hóa đơn phạt");
+        }
+        String contractId = candidates.getFirst();
+        jdbc.queryForList("SELECT contract_id FROM contracts WHERE contract_id=? FOR UPDATE", contractId);
+        if (linked(jdbc,id)) throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT,"Vi phạm đã được ghi vào hóa đơn");
+        var date = violation.getViolationDate();
+        if (existingViolation && !jdbc.queryForList("""
+                SELECT invoice_id FROM invoices WHERE contract_id=? AND year=? AND month=?
+                  AND COALESCE(fine_amount,0)>0 AND %s
+                  AND NOT EXISTS (SELECT 1 FROM invoice_violation_charges c WHERE c.invoice_id=invoices.invoice_id)
+                """.formatted(MONTHLY_ONLY), contractId, date.getYear(), date.getMonthValue()).isEmpty())
+            throw new IllegalArgumentException("Hóa đơn tháng đã có tiền phạt chưa tách chi tiết. Cần đối soát trước khi lập hóa đơn phạt riêng");
+
+        String invoiceId = RentalWorkflowService.id("VP");
+        jdbc.update("""
+                INSERT INTO invoices(invoice_id,month,year,rent_amount,electricity_amount,water_amount,fine_amount,total_amount,contract_id)
+                VALUES (?,?,?,0,0,0,?,?,?)
+                """, invoiceId, date.getMonthValue(), date.getYear(), amount, amount, contractId);
+        jdbc.update("INSERT INTO standalone_fine_invoices(invoice_id) VALUES (?)",invoiceId);
+        save(jdbc,invoiceId,List.of(new Charge(id,violation.getViolationName(),date,amount)));
+        jdbc.update("""
+                INSERT INTO invoice_notifications(invoice_id,user_id,message,seen)
+                SELECT ?,t.user_id,?,FALSE FROM tenant_accounts t JOIN contracts c ON c.tenant_id=t.tenant_id
+                WHERE c.contract_id=?
+                """,invoiceId,"Hóa đơn tiền phạt mới: "+invoiceId,contractId);
+    }
 
     public static List<Charge> charges(JdbcTemplate jdbc, String invoiceId) {
         return jdbc.query("""

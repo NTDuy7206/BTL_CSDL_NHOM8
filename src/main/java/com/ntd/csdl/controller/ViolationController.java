@@ -61,6 +61,12 @@ public class ViolationController {
         );
     }
 
+    @PostMapping("/{id}/invoice")
+    public java.util.Map<String,String> issueInvoice(@PathVariable String id, Authentication auth) {
+        requireOwned(id,auth);
+        return java.util.Map.of("invoiceId",violationService.issueInvoice(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @PathVariable String id, Authentication auth) {

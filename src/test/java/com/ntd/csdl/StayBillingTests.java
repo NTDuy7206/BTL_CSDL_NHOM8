@@ -13,6 +13,7 @@ class StayBillingTests {
  "CREATE TABLE invoices(invoice_id VARCHAR(20) PRIMARY KEY,contract_id VARCHAR(20),year INT,month INT,rent_amount DECIMAL(18,2),electricity_amount DECIMAL(18,2),water_amount DECIMAL(18,2),fine_amount DECIMAL(18,2),total_amount DECIMAL(18,2))",
  "CREATE TABLE violations(violation_id VARCHAR(20) PRIMARY KEY,violation_name VARCHAR(100),violation_date DATE,room_id VARCHAR(20),actual_fine DECIMAL(18,2))",
  "CREATE TABLE invoice_violation_charges(violation_id VARCHAR(20) PRIMARY KEY,invoice_id VARCHAR(20),violation_name VARCHAR(100),violation_date DATE,amount DECIMAL(18,2))",
+ "CREATE TABLE standalone_fine_invoices(invoice_id VARCHAR(20) PRIMARY KEY)",
  "CREATE TABLE automatic_bills(contract_id VARCHAR(20),year INT,month INT,invoice_id VARCHAR(20),PRIMARY KEY(contract_id,year,month))",
  "CREATE TABLE billing_alerts(contract_id VARCHAR(20),year INT,month INT,message VARCHAR(500),PRIMARY KEY(contract_id,year,month))",
  "CREATE TABLE tenant_accounts(user_id BIGINT PRIMARY KEY,tenant_id VARCHAR(20) UNIQUE)",
@@ -67,6 +68,26 @@ class StayBillingTests {
 
  void violation(String id,int day,int fine){
   jdbc.update("INSERT INTO violations VALUES(?, 'Vi phạm nội quy', ?, 'R1', ?)",id,LocalDate.of(2026,1,day),fine);
+ }
+
+ @Test void fineInvoiceIsPayableImmediatelyAndDoesNotBlockMonthlyBilling(){
+  janFixture();
+  violation("V1",15,20000);
+  var violations=mock(com.ntd.csdl.repo.ViolationRepository.class);
+  when(violations.findById("V1")).thenReturn(Optional.of(com.ntd.csdl.entity.Violation.builder()
+      .violationId("V1").violationName("Vi phạm nội quy").violationDate(LocalDate.of(2026,1,15))
+      .actualFine(new BigDecimal("20000")).build()));
+  var service=new ViolationService(violations,mock(com.ntd.csdl.repo.RoomRepository.class),
+      mock(com.ntd.csdl.repo.RuleRepository.class),jdbc);
+  String id=tx.execute(t->service.issueInvoice("V1"));
+  assertEquals(id,tx.execute(t->service.issueInvoice("V1")));
+  var fine=com.ntd.csdl.entity.Invoice.builder().invoiceId(id).year(2026).month(1).build();
+  assertTrue(stays.invoiceDue(fine,LocalDate.of(2026,1,15)));
+  assertEquals(new BigDecimal("20000.00"),jdbc.queryForObject("SELECT total_amount FROM invoices WHERE invoice_id=?",BigDecimal.class,id));
+  assertEquals(1L,jdbc.queryForObject("SELECT user_id FROM invoice_notifications WHERE invoice_id=?",Long.class,id));
+  assertEquals("CREATED",bill("C1"));
+  assertEquals(2,count("invoices"));
+  assertEquals(new BigDecimal("0.00"),jdbc.queryForObject("SELECT fine_amount FROM invoices WHERE invoice_id<>?",BigDecimal.class,id));
  }
 
  @Test void violationFollowsTenantAtTurnoverAndIsAddedOnlyOnce(){

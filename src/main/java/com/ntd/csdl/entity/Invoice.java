@@ -15,6 +15,8 @@ public class Invoice {
 
     @Transient
     private java.util.List<com.ntd.csdl.service.InvoiceFines.Charge> violationCharges;
+    @Transient
+    private boolean standaloneFine;
 
     @Id
     @Column(name = "invoice_id", length = 20)
