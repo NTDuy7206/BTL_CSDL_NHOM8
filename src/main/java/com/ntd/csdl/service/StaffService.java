@@ -171,28 +171,59 @@ public class StaffService {
         }
     }
 
+    public record PendingWork(int incidents, int cleaning, int applications) {}
+
+    private static final String INCIDENT_DONE = """
+            UPPER(TRIM(COALESCE(i.status,''))) IN
+            ('COMPLETED','RESOLVED','DONE','ĐÃ XỬ LÝ','ĐÃ HOÀN THÀNH','HOÀN THÀNH','DA XU LY','DA HOAN THANH','HOAN THANH')
+            """;
+
+    public PendingWork pendingWork(String username, boolean admin) {
+        long account = landlords.accountId(username);
+        Long owner = admin ? Long.valueOf(account) : employeeLandlord(account);
+        if (owner == null) return new PendingWork(0, 0, 0);
+        int incidents = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM incidents i JOIN room_landlords r ON r.room_id=i.room_id
+                WHERE r.user_id=? AND NOT (%s)
+                """.formatted(INCIDENT_DONE), Integer.class, owner);
+        int cleaning = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM cleaning_supports c JOIN room_landlords r ON r.room_id=c.room_id
+                WHERE r.user_id=? AND COALESCE(c.is_completed,FALSE)=FALSE
+                """, Integer.class, owner);
+        int applications = admin ? jdbc.queryForObject(
+                "SELECT COUNT(*) FROM staff_applications WHERE landlord_id=? AND status='PENDING'", Integer.class, owner) : 0;
+        return new PendingWork(incidents, cleaning, applications);
+    }
+
+    private Long employeeLandlord(long account) {
+        return jdbc.queryForList("SELECT landlord_id FROM employee_accounts WHERE account_id=?", Long.class, account)
+                .stream().findFirst().orElse(null);
+    }
+
     public Map<String, Object> mine(String username) {
         long account = landlords.accountId(username);
-        var identity = jdbc.queryForList("""
-                SELECT e.employee_id AS employeeId,e.full_name AS fullName,e.base_salary AS baseSalary,e.seniority,
-                       %s AS multiplier,ROUND(e.base_salary*(%s),2) AS estimatedSalary
-                FROM employee_accounts a JOIN employees e ON e.employee_id=a.employee_id WHERE a.account_id=?
-                """.formatted(MULTIPLIER, MULTIPLIER), account);
+        LocalDate today = StayService.today();
+        var identity = salaryEstimates(today, account, "account_id");
         if (identity.isEmpty()) return Map.of("linked", false);
-        return Map.of("linked", true, "employee", identity.getFirst(), "payroll", payroll(account, "account_id"),
+        var employee = identity.getFirst();
+        employee.put("estimatedSalary", employee.get("amount"));
+        return Map.of("linked", true, "employee", employee, "payroll", payroll(account, "account_id"),
+                "payday", YearMonth.from(today).atEndOfMonth(),
                 "cleaning", jdbc.queryForList("""
                         SELECT c.support_id AS id,c.room_id AS roomId,c.support_date AS workDate,c.task_content AS content,c.is_completed AS completed
-                        FROM cleaning_supports c JOIN employee_accounts a ON a.employee_id=c.employee_id
-                        JOIN room_landlords r ON r.room_id=c.room_id AND r.user_id=a.landlord_id
+                        FROM cleaning_supports c JOIN room_landlords r ON r.room_id=c.room_id
+                        JOIN employee_accounts a ON a.landlord_id=r.user_id
                         WHERE a.account_id=? ORDER BY c.support_date DESC,c.support_id
                         """, account),
                 "incidents", jdbc.queryForList("""
-                        SELECT s.resolution_id AS id,i.room_id AS roomId,s.resolution_date AS workDate,
-                               i.incident_content AS content,s.result,s.is_completed AS completed
-                        FROM incident_resolutions s JOIN incidents i ON i.incident_id=s.incident_id
-                        JOIN employee_accounts a ON a.employee_id=s.employee_id
-                        JOIN room_landlords r ON r.room_id=i.room_id AND r.user_id=a.landlord_id
-                        WHERE a.account_id=? ORDER BY s.resolution_date DESC,s.resolution_id
+                        SELECT i.incident_id AS id,i.room_id AS roomId,i.report_date AS workDate,
+                               i.incident_content AS content,i.status,
+                               (SELECT s.result FROM incident_resolutions s WHERE s.incident_id=i.incident_id
+                                AND s.is_completed=TRUE AND s.result IS NOT NULL
+                                ORDER BY s.resolution_date DESC,s.resolution_id DESC LIMIT 1) AS result
+                        FROM incidents i JOIN room_landlords r ON r.room_id=i.room_id
+                        JOIN employee_accounts a ON a.landlord_id=r.user_id
+                        WHERE a.account_id=? ORDER BY i.report_date DESC,i.incident_id
                         """, account));
     }
 
@@ -201,16 +232,36 @@ public class StaffService {
         int count = jdbc.update("""
                 UPDATE cleaning_supports c SET is_completed=TRUE WHERE c.support_id=? AND COALESCE(c.is_completed,FALSE)=FALSE
                 AND EXISTS (SELECT 1 FROM employee_accounts a JOIN room_landlords r ON r.user_id=a.landlord_id
-                            WHERE a.employee_id=c.employee_id AND r.room_id=c.room_id AND a.account_id=?)
+                            WHERE r.room_id=c.room_id AND a.account_id=?)
                 """, id, landlords.accountId(username));
-        if (count != 1) throw error(HttpStatus.CONFLICT, "Công việc không còn chờ xử lý hoặc không được giao cho bạn");
+        if (count != 1) throw error(HttpStatus.CONFLICT, "Yêu cầu đã xử lý hoặc không thuộc chủ nhà của bạn");
+    }
+
+    @Transactional
+    public void finishReportedIncident(String username, String id, String result) {
+        validateResult(result);
+        var employees = jdbc.queryForList("""
+                SELECT a.employee_id FROM incidents i JOIN room_landlords r ON r.room_id=i.room_id
+                JOIN employee_accounts a ON a.landlord_id=r.user_id
+                WHERE i.incident_id=? AND a.account_id=? AND NOT (%s) FOR UPDATE
+                """.formatted(INCIDENT_DONE), String.class, id, landlords.accountId(username));
+        if (employees.isEmpty()) throw error(HttpStatus.CONFLICT, "Sự cố đã xử lý hoặc không thuộc chủ nhà của bạn");
+
+        LocalDate today = StayService.today();
+        jdbc.update("UPDATE incidents SET status='COMPLETED' WHERE incident_id=?", id);
+        jdbc.update("""
+                UPDATE incident_resolutions SET is_completed=TRUE,resolution_date=COALESCE(resolution_date,?)
+                WHERE incident_id=? AND COALESCE(is_completed,FALSE)=FALSE
+                """, today, id);
+        jdbc.update("""
+                INSERT INTO incident_resolutions(resolution_id,incident_id,employee_id,result,resolution_date,is_completed)
+                VALUES (?,?,?,?,?,TRUE)
+                """, RentalWorkflowService.id("XL"), id, employees.getFirst(), result.trim(), today);
     }
 
     @Transactional
     public void finishIncident(String username, String id, String result) {
-        if (result == null || result.isBlank() || result.length() > 500) {
-            throw error(HttpStatus.BAD_REQUEST, "Nhập kết quả xử lý từ 1 đến 500 ký tự");
-        }
+        validateResult(result);
         var incidents = jdbc.queryForList("""
                 SELECT i.incident_id FROM incidents i JOIN incident_resolutions s ON i.incident_id=s.incident_id
                 JOIN employee_accounts a ON a.employee_id=s.employee_id
@@ -227,14 +278,29 @@ public class StaffService {
                 """, incident, incident);
     }
 
+    private static void validateResult(String result) {
+        if (result == null || result.isBlank() || result.length() > 500) {
+            throw error(HttpStatus.BAD_REQUEST, "Nhập kết quả xử lý từ 1 đến 500 ký tự");
+        }
+    }
+
     public Map<String, Object> adminPayroll(String admin) {
         long owner = landlords.accountId(admin);
-        return Map.of("history", payroll(owner, "landlord_id"), "employees", jdbc.queryForList("""
-                SELECT e.employee_id AS employeeId,e.full_name AS fullName,e.position,e.base_salary AS baseSalary,
-                       e.seniority,%s AS multiplier,ROUND(e.base_salary*(%s),2) AS amount
-                FROM employee_accounts a JOIN employees e ON e.employee_id=a.employee_id
-                WHERE a.landlord_id=? ORDER BY e.full_name,e.employee_id
-                """.formatted(MULTIPLIER, MULTIPLIER), owner));
+        return Map.of("history", payroll(owner, "landlord_id"),
+                "employees", salaryEstimates(StayService.today(), owner, "landlord_id"));
+    }
+
+    private List<Map<String, Object>> salaryEstimates(LocalDate today, long id, String scope) {
+        return jdbc.queryForList("""
+                SELECT employee_id AS employeeId,full_name AS fullName,position,base_salary AS baseSalary,
+                       linked_on AS hiredOn,seniority,%s AS multiplier,
+                       ROUND(base_salary*(%s),2) AS amount
+                FROM (
+                    SELECT e.employee_id,e.full_name,e.position,e.base_salary,a.linked_on,%s AS seniority
+                    FROM employee_accounts a JOIN employees e ON e.employee_id=a.employee_id
+                    WHERE a.%s=?
+                ) staff ORDER BY full_name,employee_id
+                """.formatted(MULTIPLIER, MULTIPLIER, COMPLETED_YEARS, scope), today, today, today, id);
     }
 
     private List<Map<String, Object>> payroll(long id, String scope) {
@@ -246,8 +312,13 @@ public class StaffService {
                 """.formatted(scope), id);
     }
 
-    private static final String MULTIPLIER = "CASE WHEN e.seniority IS NULL OR e.seniority<0 THEN NULL "
-            + "WHEN e.seniority>10 THEN 1.50 WHEN e.seniority>5 THEN 1.30 WHEN e.seniority>3 THEN 1.10 ELSE 1.00 END";
+    private static final String COMPLETED_YEARS = """
+            YEAR(?) - YEAR(a.linked_on) -
+            CASE WHEN MONTH(?) * 100 + DAYOFMONTH(?) < MONTH(a.linked_on) * 100 + DAYOFMONTH(a.linked_on)
+                 THEN 1 ELSE 0 END
+            """;
+    private static final String MULTIPLIER = "CASE WHEN seniority IS NULL OR seniority<0 THEN NULL "
+            + "WHEN seniority>10 THEN 1.50 WHEN seniority>5 THEN 1.30 WHEN seniority>3 THEN 1.10 ELSE 1.00 END";
 
     @Scheduled(initialDelay = 10000, fixedDelay = 60000)
     public void preparePayroll() {
@@ -259,14 +330,18 @@ public class StaffService {
         if (first == null) return;
         for (YearMonth month = YearMonth.from(first); !month.atEndOfMonth().isAfter(today); month = month.plusMonths(1)) {
             LocalDate period = month.atDay(1);
+            LocalDate payday = month.atEndOfMonth();
             jdbc.update("""
                     INSERT INTO employee_payroll(employee_id,period,base_salary,seniority,multiplier)
-                    SELECT e.employee_id,?,e.base_salary,e.seniority,%s
-                    FROM employee_accounts a JOIN employees e ON e.employee_id=a.employee_id
-                    WHERE a.linked_on<=? AND e.base_salary>0 AND e.seniority>=0
-                    AND NOT EXISTS (SELECT 1 FROM employee_payroll p WHERE p.employee_id=e.employee_id AND p.period=?)
+                    SELECT employee_id,?,base_salary,seniority,%s
+                    FROM (
+                        SELECT e.employee_id,e.base_salary,%s AS seniority
+                        FROM employee_accounts a JOIN employees e ON e.employee_id=a.employee_id
+                        WHERE a.linked_on<=? AND e.base_salary>0
+                        AND NOT EXISTS (SELECT 1 FROM employee_payroll p WHERE p.employee_id=e.employee_id AND p.period=?)
+                    ) staff
                     ON DUPLICATE KEY UPDATE paid_on=employee_payroll.paid_on
-                    """.formatted(MULTIPLIER), period, month.atEndOfMonth(), period);
+                    """.formatted(MULTIPLIER, COMPLETED_YEARS), period, payday, payday, payday, payday, period);
         }
     }
 

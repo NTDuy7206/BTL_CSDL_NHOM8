@@ -19,6 +19,12 @@ public class StaffController {
     public record Application(long landlordId, String message, String jobCode) {}
     public record Decision(String status, String jobCode) {}
 
+    @GetMapping("/pending-work")
+    public StaffService.PendingWork pendingWork(Authentication auth) {
+        return staff.pendingWork(auth.getName(),
+                auth.getAuthorities().stream().anyMatch(role -> role.getAuthority().equals("ROLE_ADMIN")));
+    }
+
     @GetMapping("/me/applications")
     public Map<String, Object> myApplications(Authentication auth) { return staff.applicationPage(auth.getName()); }
 
@@ -56,6 +62,12 @@ public class StaffController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void finishIncident(Authentication auth, @PathVariable String id, @RequestBody Result body) {
         staff.finishIncident(auth.getName(), id, body.result());
+    }
+
+    @PutMapping("/me/reported-incidents/{id}/complete")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void finishReportedIncident(Authentication auth, @PathVariable String id, @RequestBody Result body) {
+        staff.finishReportedIncident(auth.getName(), id, body.result());
     }
 
     @GetMapping("/payroll")

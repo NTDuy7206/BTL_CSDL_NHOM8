@@ -55,7 +55,7 @@ class StaffServiceTests {
     }
 
     @Test
-    void employeeCanOnlyFinishWorkAssignedInTheirLandlordsRooms() {
+    void employeeCanFinishSharedWorkOnlyInTheirLandlordsRooms() {
         var jdbc = new JdbcTemplate(new DriverManagerDataSource(
                 "jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", ""));
         jdbc.execute("CREATE TABLE employee_accounts(employee_id VARCHAR(20), landlord_id BIGINT, account_id BIGINT)");
@@ -63,25 +63,37 @@ class StaffServiceTests {
         jdbc.execute("CREATE TABLE cleaning_supports(support_id VARCHAR(20), room_id VARCHAR(20), employee_id VARCHAR(20), is_completed BOOLEAN)");
         jdbc.execute("CREATE TABLE incidents(incident_id VARCHAR(20), room_id VARCHAR(20), status VARCHAR(20))");
         jdbc.execute("CREATE TABLE incident_resolutions(resolution_id VARCHAR(20), incident_id VARCHAR(20), employee_id VARCHAR(20), is_completed BOOLEAN, result VARCHAR(500), resolution_date DATE)");
+        jdbc.execute("CREATE TABLE staff_applications(landlord_id BIGINT, status VARCHAR(20))");
         jdbc.update("INSERT INTO employee_accounts VALUES ('E1',1,10),('E2',1,20)");
         jdbc.update("INSERT INTO room_landlords VALUES ('R1',1),('R2',2)");
-        jdbc.update("INSERT INTO cleaning_supports VALUES ('C1','R1','E1',FALSE),('C2','R1','E2',FALSE),('C3','R2','E1',FALSE)");
-        jdbc.update("INSERT INTO incidents VALUES ('I1','R1','PENDING')");
+        jdbc.update("INSERT INTO cleaning_supports VALUES ('C1','R1','E1',FALSE),('C2','R1',NULL,FALSE),('C3','R2','E1',FALSE)");
+        jdbc.update("INSERT INTO incidents VALUES ('I1','R1','PENDING'),('I2','R1','PENDING'),('I3','R2','PENDING')");
         jdbc.update("INSERT INTO incident_resolutions VALUES ('S1','I1','E1',FALSE,NULL,NULL),('S2','I1','E2',FALSE,NULL,NULL)");
+        jdbc.update("INSERT INTO staff_applications VALUES (1,'PENDING'),(1,'APPROVED'),(2,'PENDING')");
         var landlords = mock(LandlordService.class);
         when(landlords.accountId("staff1")).thenReturn(10L);
         when(landlords.accountId("staff2")).thenReturn(20L);
+        when(landlords.accountId("owner")).thenReturn(1L);
+        when(landlords.accountId("unlinked")).thenReturn(30L);
         var staff = new StaffService(jdbc, landlords);
 
-        assertThrows(ResponseStatusException.class, () -> staff.finishCleaning("staff1", "C2"));
+        assertEquals(new StaffService.PendingWork(2, 2, 1), staff.pendingWork("owner", true));
+        assertEquals(new StaffService.PendingWork(2, 2, 0), staff.pendingWork("staff1", false));
+        assertEquals(new StaffService.PendingWork(0, 0, 0), staff.pendingWork("unlinked", false));
+        staff.finishCleaning("staff1", "C2");
         assertThrows(ResponseStatusException.class, () -> staff.finishCleaning("staff1", "C3"));
         staff.finishCleaning("staff1", "C1");
         assertThrows(ResponseStatusException.class, () -> staff.finishCleaning("staff1", "C1"));
         assertThrows(ResponseStatusException.class, () -> staff.finishIncident("staff2", "S1", "Đã sửa"));
         staff.finishIncident("staff1", "S1", "Đã sửa bước một");
-        assertEquals("PENDING", jdbc.queryForObject("SELECT status FROM incidents", String.class));
+        assertEquals("PENDING", jdbc.queryForObject("SELECT status FROM incidents WHERE incident_id='I1'", String.class));
         staff.finishIncident("staff2", "S2", "Đã kiểm tra lại");
-        assertEquals("COMPLETED", jdbc.queryForObject("SELECT status FROM incidents", String.class));
+        assertEquals("COMPLETED", jdbc.queryForObject("SELECT status FROM incidents WHERE incident_id='I1'", String.class));
+        assertThrows(ResponseStatusException.class, () -> staff.finishReportedIncident("staff1", "I3", "Đã sửa"));
+        staff.finishReportedIncident("staff1", "I2", "Đã sửa");
+        assertThrows(ResponseStatusException.class, () -> staff.finishReportedIncident("staff2", "I2", "Đã kiểm tra"));
+        assertEquals("E1", jdbc.queryForObject("SELECT employee_id FROM incident_resolutions WHERE incident_id='I2'", String.class));
+        assertEquals(new StaffService.PendingWork(0, 0, 1), staff.pendingWork("owner", true));
     }
 
     @Test
@@ -98,26 +110,33 @@ class StaffServiceTests {
         var month = YearMonth.from(StayService.today()).minusMonths(1);
         var start = month.atDay(1);
         for (int years : List.of(3, 4, 5, 6, 10, 11)) {
-            jdbc.update("INSERT INTO employees VALUES (?,?,?,?,?)", "E" + years, "Nhân viên " + years, "Test", 10_000_000, years);
-            jdbc.update("INSERT INTO employee_accounts VALUES (?,?,?,?)", "E" + years, 1, 100 + years, start);
+            jdbc.update("INSERT INTO employees VALUES (?,?,?,?,?)", "E" + years, "Nhân viên " + years, "Test", 10_000_000, 99);
+            jdbc.update("INSERT INTO employee_accounts VALUES (?,?,?,?)", "E" + years, 1, 100 + years, month.atEndOfMonth().minusYears(years));
         }
+        jdbc.update("INSERT INTO employees VALUES (?,?,?,?,?)", "E_NEXT", "Nhân viên mới", "Test", 10_000_000, 99);
+        jdbc.update("INSERT INTO employee_accounts VALUES (?,?,?,?)", "E_NEXT", 1, 200, start.plusMonths(1).minusYears(4));
         staff.preparePayroll(month.atEndOfMonth().minusDays(1));
-        assertTrue(history(staff, "owner").isEmpty());
+        assertEquals(0, payrollCount(jdbc, start));
         staff.preparePayroll(month.atEndOfMonth());
         staff.preparePayroll(month.atEndOfMonth());
-        assertEquals(6, history(staff, "owner").size());
+        assertEquals(7, payrollCount(jdbc, start));
         assertTrue(history(staff, "other").isEmpty());
         var rates = Map.of(3,"1.00",4,"1.10",5,"1.10",6,"1.30",10,"1.30",11,"1.50");
-        for (var row : history(staff, "owner")) {
+        for (var row : jdbc.queryForList("SELECT seniority,multiplier FROM employee_payroll WHERE period=? AND employee_id<>'E_NEXT'", start)) {
             assertEquals(new BigDecimal(rates.get(row.get("seniority"))), row.get("multiplier"));
         }
+        assertEquals(3, jdbc.queryForObject("SELECT seniority FROM employee_payroll WHERE period=? AND employee_id='E_NEXT'", Integer.class, start));
         assertThrows(ResponseStatusException.class, () -> staff.pay("other", "E11", start));
         assertThrows(ResponseStatusException.class, () -> staff.pay("owner", "E11", LocalDate.now().plusMonths(2).withDayOfMonth(1)));
         staff.pay("owner", "E11", start);
         assertThrows(ResponseStatusException.class, () -> staff.pay("owner", "E11", start));
         jdbc.update("UPDATE employees SET base_salary=20000000 WHERE employee_id='E11'");
         staff.preparePayroll(month.atEndOfMonth());
-        assertEquals(new BigDecimal("10000000.00"), jdbc.queryForObject("SELECT base_salary FROM employee_payroll WHERE employee_id='E11'", BigDecimal.class));
+        assertEquals(new BigDecimal("10000000.00"), jdbc.queryForObject("SELECT base_salary FROM employee_payroll WHERE employee_id='E11' AND period=?", BigDecimal.class, start));
+    }
+
+    private int payrollCount(JdbcTemplate jdbc, LocalDate period) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM employee_payroll WHERE period=?", Integer.class, period);
     }
     @SuppressWarnings("unchecked")
     private List<Map<String,Object>> history(StaffService staff, String admin) {
