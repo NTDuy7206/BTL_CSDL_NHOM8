@@ -42,7 +42,7 @@ public class InvoiceController {
                 throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND, "Hóa đơn chưa đến hạn");
             }
         }
-        return ResponseEntity.ok(invoice);
+        return ResponseEntity.ok(stays.invoiceWithFines(invoice));
     }
 
     private String ownedId(String id,String name){landlords.requireOwner(name,invoiceService.getById(id).getContract().getRoom().getRoomId());return id;}

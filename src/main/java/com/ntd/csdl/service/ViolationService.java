@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -62,7 +61,7 @@ public class ViolationService {
         violation.setViolationDate(
                 dto.getViolationDate() != null
                         ? dto.getViolationDate()
-                        : LocalDate.now()
+                        : StayService.today()
         );
         violation.setDetailedDescription(
                 dto.getDetailedDescription()

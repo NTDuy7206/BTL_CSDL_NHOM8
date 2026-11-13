@@ -34,14 +34,17 @@ import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Serv
   if (start == null || end == null) return result;
   BigDecimal rent = vipRent != null ? vipRent : nightlyRate != null
       ? BillingMath.nightlyRentForPeriod(nightlyRate, start, end, month) : BillingMath.rent(monthlyRent, start, end, month);
-  if (rent.signum() <= 0) return result;
+  var charges = InvoiceFines.pending(jdbc, contractId, (String)contract.get("room_id"), month);
+  BigDecimal fine = InvoiceFines.total(charges);
+  if (rent.add(fine).signum() <= 0) return result;
 
   // Leave the period open for meter data until a payment report is submitted.
   String invoiceId = RentalWorkflowService.id("TD");
   jdbc.update("""
       INSERT INTO invoices(invoice_id,month,year,rent_amount,electricity_amount,water_amount,fine_amount,total_amount,contract_id)
-      VALUES (?,?,?,?,NULL,NULL,0,?,?)
-      """, invoiceId, month.getMonthValue(), month.getYear(), rent, rent, contractId);
+      VALUES (?,?,?,?,NULL,NULL,?,?,?)
+      """, invoiceId, month.getMonthValue(), month.getYear(), rent, fine, rent.add(fine), contractId);
+  InvoiceFines.save(jdbc, invoiceId, charges);
   notifyTenant(contract.get("tenant_id"), month, invoiceId);
   return "CREATED";
  }
@@ -66,15 +69,19 @@ import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Serv
 
  private String bill(String id,YearMonth month,BigDecimal vipRent,BigDecimal nightlyRate){
   var rows=jdbc.queryForList("SELECT c.*,r.base_price FROM contracts c JOIN rooms r ON r.room_id=c.room_id WHERE c.contract_id=? FOR UPDATE",id);if(rows.isEmpty())return "SKIPPED";var c=rows.getFirst();
-  if(!jdbc.queryForList("SELECT invoice_id FROM automatic_bills WHERE contract_id=? AND year=? AND month=?",id,month.getYear(),month.getMonthValue()).isEmpty())return "EXISTS";
+  boolean issued=!jdbc.queryForList("SELECT invoice_id FROM automatic_bills WHERE contract_id=? AND year=? AND month=?",id,month.getYear(),month.getMonthValue()).isEmpty();
   var stays=jdbc.queryForList("SELECT * FROM contract_stays WHERE contract_id=?",id);Map<String,Object> stay=stays.isEmpty()?Map.of():stays.getFirst();LocalDate start=StayService.date(stay.get("check_in"));if(start==null)start=StayService.date(c.get("start_date"));LocalDate checkout=StayService.date(stay.get("check_out")),end=checkout==null?StayService.date(c.get("end_date")):checkout.minusDays(1);
   if(nightlyRate!=null&&checkout==null&&end!=null)end=end.minusDays(1);
   if(start==null||end==null||start.isAfter(month.atEndOfMonth())||end.isBefore(month.atDay(1))||end.isBefore(start)){clear(id,month);return "SKIPPED";}
   var old=jdbc.queryForList("SELECT * FROM invoices WHERE contract_id=? AND year=? AND month=? FOR UPDATE",id,month.getYear(),month.getMonthValue());
   try{
    if(old.size()>1)throw new IllegalArgumentException("Có nhiều hóa đơn cùng kỳ; cần chủ nhà kiểm tra");
+   var charges=InvoiceFines.pending(jdbc,id,(String)c.get("room_id"),month);
    if(!old.isEmpty()){
     var invoice=old.getFirst();String existing=(String)invoice.get("invoice_id");
+    boolean finesAdded=InvoiceFines.append(jdbc,existing,money(invoice.get("fine_amount")),charges);
+    if(finesAdded)invoice.put("fine_amount",Optional.ofNullable(money(invoice.get("fine_amount"))).orElse(BigDecimal.ZERO).add(InvoiceFines.total(charges)));
+    if(issued)return finesAdded?"UPDATED":"EXISTS";
     // A manually prepared or paid invoice is authoritative. Do not generate another invoice or alter it.
     if(!jdbc.queryForList("SELECT payment_report_id FROM payment_reports WHERE invoice_id=? AND status IN ('PENDING','PAID')",existing).isEmpty()||Optional.ofNullable(money(invoice.get("electricity_amount"))).orElse(BigDecimal.ZERO).signum()!=0||Optional.ofNullable(money(invoice.get("water_amount"))).orElse(BigDecimal.ZERO).signum()!=0){mark(id,month,existing);if(invoice.get("electricity_amount")!=null||invoice.get("water_amount")!=null)clear(id,month);return "MANUAL";}
    }
@@ -96,8 +103,9 @@ import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Serv
    if(es<number(r.get("electricity_start_index"))||ee>number(r.get("electricity_end_index"))||ws<number(r.get("water_start_index"))||we>number(r.get("water_end_index")))throw new IllegalArgumentException("Chỉ số nhận/trả phòng nằm ngoài chỉ số tháng");
    }
    BigDecimal rent=vipRent!=null?vipRent:!old.isEmpty()&&old.getFirst().get("rent_amount")!=null?money(old.getFirst().get("rent_amount")):nightlyRate!=null?BillingMath.nightlyRentForPeriod(nightlyRate,start,end.plusDays(1),month):BillingMath.rent(money(stay.get("monthly_rent")),start,end,month),fine=BigDecimal.ZERO;String invoiceId;
-   if(vipRent!=null&&old.isEmpty()&&rent.add(electricity).add(water).signum()==0){clear(id,month);return "SKIPPED";}
-   if(old.isEmpty()){invoiceId=RentalWorkflowService.id("TD");jdbc.update("INSERT INTO invoices(invoice_id,month,year,rent_amount,electricity_amount,water_amount,fine_amount,total_amount,contract_id) VALUES (?,?,?,?,?,?,?,?,?)",invoiceId,month.getMonthValue(),month.getYear(),rent,electricity,water,fine,rent.add(electricity).add(water),id);}
+   if(old.isEmpty())fine=InvoiceFines.total(charges);
+   if(vipRent!=null&&old.isEmpty()&&rent.add(electricity).add(water).add(fine).signum()==0){clear(id,month);return "SKIPPED";}
+   if(old.isEmpty()){invoiceId=RentalWorkflowService.id("TD");jdbc.update("INSERT INTO invoices(invoice_id,month,year,rent_amount,electricity_amount,water_amount,fine_amount,total_amount,contract_id) VALUES (?,?,?,?,?,?,?,?,?)",invoiceId,month.getMonthValue(),month.getYear(),rent,electricity,water,fine,rent.add(electricity).add(water).add(fine),id);InvoiceFines.save(jdbc,invoiceId,charges);}
    else{var oldInvoice=old.getFirst();invoiceId=(String)oldInvoice.get("invoice_id");if(oldInvoice.get("rent_amount")!=null)rent=money(oldInvoice.get("rent_amount"));fine=Optional.ofNullable(money(oldInvoice.get("fine_amount"))).orElse(BigDecimal.ZERO);jdbc.update("UPDATE invoices SET rent_amount=?,electricity_amount=?,water_amount=?,total_amount=? WHERE invoice_id=?",rent,electricity,water,rent.add(electricity).add(water).add(fine),invoiceId);}
    mark(id,month,invoiceId);clear(id,month);
    notifyTenant(c.get("tenant_id"), month, invoiceId);

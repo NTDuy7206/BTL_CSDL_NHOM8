@@ -128,6 +128,9 @@ public class InvoiceService {
         Invoice existing = getById(id);
         if(!java.util.Objects.equals(existing.getContract().getContractId(),dto.getContractId())||!java.util.Objects.equals(existing.getMonth(),dto.getMonth())||!java.util.Objects.equals(existing.getYear(),dto.getYear()))throw new IllegalArgumentException("Không được đổi hợp đồng hoặc kỳ của hóa đơn đã lập");
         if(!jdbc.queryForList("SELECT payment_report_id FROM payment_reports WHERE invoice_id=? AND status IN ('PENDING','PAID')",id).isEmpty())throw new IllegalArgumentException("Hóa đơn đang đối soát hoặc đã thanh toán; không được sửa số tiền");
+        if (valueOrZero(existing.getFineAmount()).compareTo(valueOrZero(dto.getFineAmount())) != 0
+                && !InvoiceFines.charges(jdbc,id).isEmpty())
+            throw new IllegalArgumentException("Tiền phạt đã được ghi theo từng vi phạm trong hóa đơn");
 
         Contract contract = contractRepository
                 .findById(dto.getContractId())

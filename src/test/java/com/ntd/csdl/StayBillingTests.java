@@ -11,6 +11,8 @@ class StayBillingTests {
  "CREATE TABLE simulated_meter_periods(room_id VARCHAR(20),reading_year INT,reading_month INT,reading_id VARCHAR(20),simulated_from DATE,PRIMARY KEY(room_id,reading_year,reading_month))",
  "CREATE TABLE utility_readings(reading_id VARCHAR(20) PRIMARY KEY,room_id VARCHAR(20),year INT,month INT,electricity_start_index INT,electricity_end_index INT,water_start_index INT,water_end_index INT,electricity_price DECIMAL(18,2),water_price DECIMAL(18,2))",
  "CREATE TABLE invoices(invoice_id VARCHAR(20) PRIMARY KEY,contract_id VARCHAR(20),year INT,month INT,rent_amount DECIMAL(18,2),electricity_amount DECIMAL(18,2),water_amount DECIMAL(18,2),fine_amount DECIMAL(18,2),total_amount DECIMAL(18,2))",
+ "CREATE TABLE violations(violation_id VARCHAR(20) PRIMARY KEY,violation_name VARCHAR(100),violation_date DATE,room_id VARCHAR(20),actual_fine DECIMAL(18,2))",
+ "CREATE TABLE invoice_violation_charges(violation_id VARCHAR(20) PRIMARY KEY,invoice_id VARCHAR(20),violation_name VARCHAR(100),violation_date DATE,amount DECIMAL(18,2))",
  "CREATE TABLE automatic_bills(contract_id VARCHAR(20),year INT,month INT,invoice_id VARCHAR(20),PRIMARY KEY(contract_id,year,month))",
  "CREATE TABLE billing_alerts(contract_id VARCHAR(20),year INT,month INT,message VARCHAR(500),PRIMARY KEY(contract_id,year,month))",
  "CREATE TABLE tenant_accounts(user_id BIGINT PRIMARY KEY,tenant_id VARCHAR(20) UNIQUE)",
@@ -61,7 +63,37 @@ class StayBillingTests {
  }
  @Test void turnoverUsesSeparateMeterSnapshotsAndProratesBothTenants(){janFixture();jdbc.update("UPDATE contract_stays SET check_out='2026-01-16',check_out_electric=350,check_out_water=15");contract("C2","T2",LocalDate.of(2026,1,16),LocalDate.of(2026,1,31));jdbc.update("INSERT INTO contract_stays VALUES('C2','2026-01-16',null,350,15,null,null,3100000)");bill("C1");bill("C2");assertEquals(new BigDecimal("1500000.00"),jdbc.queryForObject("SELECT rent_amount FROM invoices WHERE contract_id='C1'",BigDecimal.class));assertEquals(new BigDecimal("1600000.00"),jdbc.queryForObject("SELECT rent_amount FROM invoices WHERE contract_id='C2'",BigDecimal.class));assertEquals(new BigDecimal("350000.00"),jdbc.queryForObject("SELECT SUM(electricity_amount) FROM invoices",BigDecimal.class));assertEquals(2,count("invoice_notifications"));}
  @Test void incompleteTurnoverMetersAreFlagged(){janFixture();jdbc.update("UPDATE contract_stays SET check_out='2026-01-16'");assertEquals("NEEDS_READING",bill("C1"));assertEquals(0,count("invoices"));}
- @Test void paidInvoiceIsNeverChanged(){janFixture();jdbc.update("INSERT INTO invoices VALUES('OLD','C1',2026,1,3100000,0,0,0,3100000)");jdbc.update("INSERT INTO payment_reports VALUES(1,'OLD','PAID')");assertEquals("MANUAL",bill("C1"));assertEquals(new BigDecimal("3100000.00"),jdbc.queryForObject("SELECT total_amount FROM invoices",BigDecimal.class));assertEquals(1,count("invoices"));}
+ @Test void paidInvoiceIsNeverChanged(){janFixture();jdbc.update("INSERT INTO invoices VALUES('OLD','C1',2026,1,3100000,0,0,0,3100000)");jdbc.update("INSERT INTO payment_reports VALUES(1,'OLD','PAID')");violation("V1",15,20000);assertEquals("MANUAL",bill("C1"));assertEquals(new BigDecimal("3100000.00"),jdbc.queryForObject("SELECT total_amount FROM invoices",BigDecimal.class));assertEquals(1,count("invoices"));assertEquals(0,count("invoice_violation_charges"));}
+
+ void violation(String id,int day,int fine){
+  jdbc.update("INSERT INTO violations VALUES(?, 'Vi phạm nội quy', ?, 'R1', ?)",id,LocalDate.of(2026,1,day),fine);
+ }
+
+ @Test void violationFollowsTenantAtTurnoverAndIsAddedOnlyOnce(){
+  janFixture();
+  jdbc.update("UPDATE contract_stays SET check_out='2026-01-16',check_out_electric=350,check_out_water=15");
+  contract("C2","T2",LocalDate.of(2026,1,16),LocalDate.of(2026,1,31));
+  jdbc.update("INSERT INTO contract_stays VALUES('C2','2026-01-16',null,350,15,null,null,3100000)");
+  violation("V1",15,20000);
+  violation("V2",16,30000);
+  assertEquals("CREATED",bill("C1"));
+  assertEquals("CREATED",bill("C2"));
+  assertEquals(new BigDecimal("1770000.00"),jdbc.queryForObject("SELECT total_amount FROM invoices WHERE contract_id='C1'",BigDecimal.class));
+  assertEquals(new BigDecimal("1880000.00"),jdbc.queryForObject("SELECT total_amount FROM invoices WHERE contract_id='C2'",BigDecimal.class));
+  violation("V3",17,5000);
+  assertEquals("UPDATED",bill("C2"));
+  assertEquals("EXISTS",bill("C2"));
+  assertEquals(new BigDecimal("1885000.00"),jdbc.queryForObject("SELECT total_amount FROM invoices WHERE contract_id='C2'",BigDecimal.class));
+  assertEquals(3,count("invoice_violation_charges"));
+ }
+
+ @Test void ambiguousOccupancyDoesNotChargeEitherTenant(){
+  janFixture();
+  contract("C2","T2",LocalDate.of(2026,1,15),LocalDate.of(2026,1,31));
+  violation("V1",16,20000);
+  assertEquals("CREATED",bill("C1"));
+  assertEquals(0,count("invoice_violation_charges"));
+ }
  @Test void twoWorkersCreateOnlyOneInvoice()throws Exception{janFixture();var a=CompletableFuture.supplyAsync(()->bill("C1"));var b=CompletableFuture.supplyAsync(()->bill("C1"));var results=List.of(a.get(10,TimeUnit.SECONDS),b.get(10,TimeUnit.SECONDS));assertTrue(results.contains("CREATED"));assertTrue(results.contains("EXISTS"));assertEquals(1,count("invoices"));}
  @Test void checkoutReleasesRoomImmediatelyAndPreservesContractDates(){LocalDate now=StayService.today();contract("C1","T1",now.minusDays(10),now.plusMonths(3));jdbc.update("INSERT INTO contract_stays VALUES('C1',?,null,100,10,null,null,3000000)",now.minusDays(10));tx.executeWithoutResult(t->stays.record("C1","owner",false,now,150,15));assertEquals("AVAILABLE",jdbc.queryForObject("SELECT status FROM rooms",String.class));assertEquals(now.plusMonths(3),jdbc.queryForObject("SELECT end_date FROM contracts",java.sql.Date.class).toLocalDate());}
  @Test void expiryReleasesRoomButKeepsAnActiveLeaseOccupied(){LocalDate now=StayService.today();contract("C1","T1",now.minusMonths(2),now.minusDays(1));tx.executeWithoutResult(t->stays.refreshAll());assertEquals("AVAILABLE",jdbc.queryForObject("SELECT status FROM rooms",String.class));contract("C2","T2",now,now.plusMonths(2));tx.executeWithoutResult(t->stays.refreshAll());assertEquals("OCCUPIED",jdbc.queryForObject("SELECT status FROM rooms",String.class));}

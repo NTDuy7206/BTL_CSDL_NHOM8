@@ -34,7 +34,7 @@ export const modules = [
   },
   {
     key: 'invoices', title: 'Hóa đơn', singular: 'hóa đơn', icon: 'invoice', path: '/api/invoices', id: 'invoiceId',
-    columns: ['invoiceId', 'month', 'year', 'rentAmount', 'electricityAmount', 'waterAmount', 'totalAmount', 'contractId'],
+    columns: ['invoiceId', 'month', 'year', 'rentAmount', 'electricityAmount', 'waterAmount', 'fineAmount', 'totalAmount', 'contractId'],
     fields: [
       ['invoiceId', 'Mã hóa đơn', 'text'], ['month', 'Tháng', 'number'], ['year', 'Năm', 'number'], ['rentAmount', 'Tiền thuê', 'number'],
       ['electricityAmount', 'Tiền điện', 'number'], ['waterAmount', 'Tiền nước', 'number'], ['fineAmount', 'Tiền phạt', 'number'],

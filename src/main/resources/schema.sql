@@ -150,6 +150,11 @@ CREATE TABLE IF NOT EXISTS contract_stays (
  FOREIGN KEY(contract_id) REFERENCES contracts(contract_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE IF NOT EXISTS billing_start (id INT PRIMARY KEY,start_month DATE NOT NULL) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS invoice_violation_charges (
+ violation_id VARCHAR(20) PRIMARY KEY, invoice_id VARCHAR(20) NOT NULL,
+ violation_name VARCHAR(100), violation_date DATE NOT NULL, amount DECIMAL(18,2) NOT NULL,
+ FOREIGN KEY(invoice_id) REFERENCES invoices(invoice_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE IF NOT EXISTS nightly_request_rates (
  request_id BIGINT PRIMARY KEY, nightly_rate DECIMAL(18,2) NOT NULL,
  FOREIGN KEY(request_id) REFERENCES contract_requests(request_id) ON DELETE CASCADE

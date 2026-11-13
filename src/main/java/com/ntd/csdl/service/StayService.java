@@ -26,6 +26,10 @@ import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Serv
    return BillingCalendar.due(invoice.getYear(),invoice.getMonth(),today);
   return BillingCalendar.rentalDue(invoice,today);
  }
+ public com.ntd.csdl.entity.Invoice invoiceWithFines(com.ntd.csdl.entity.Invoice invoice){
+  invoice.setViolationCharges(InvoiceFines.charges(jdbc,invoice.getInvoiceId()));
+  return invoice;
+ }
  @Transactional(isolation=org.springframework.transaction.annotation.Isolation.READ_COMMITTED) public Map<String,Object> record(String id,String username,boolean checkIn,LocalDate day,Integer electricity,Integer water){
   if(day==null||day.isAfter(today())||electricity==null||water==null||electricity<0||water<0)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Nhập ngày thực tế không sau hôm nay và chỉ số công tơ không âm");
   var rows=jdbc.queryForList("SELECT * FROM contracts WHERE contract_id=? FOR UPDATE",id);if(rows.isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy hợp đồng");var c=rows.getFirst();String room=(String)c.get("room_id");landlords.requireOwner(username,room);jdbc.queryForList("SELECT room_id FROM rooms WHERE room_id=? FOR UPDATE",room);var s=stay(id);

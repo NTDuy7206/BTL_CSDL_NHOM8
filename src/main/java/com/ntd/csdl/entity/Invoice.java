@@ -13,6 +13,9 @@ import java.math.BigDecimal;
 @Builder
 public class Invoice {
 
+    @Transient
+    private java.util.List<com.ntd.csdl.service.InvoiceFines.Charge> violationCharges;
+
     @Id
     @Column(name = "invoice_id", length = 20)
     private String invoiceId;

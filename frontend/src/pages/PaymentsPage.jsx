@@ -58,6 +58,15 @@ export default function PaymentsPage({ request, role, notify,initialInvoiceId=''
   const settledInvoiceIds = new Set(reports.filter(row => row.status === 'PENDING' || row.status === 'PAID').map(row => row.invoiceId))
   const payableInvoices = invoices.filter(invoice => !settledInvoiceIds.has(invoice.invoiceId))
   const selectedInvoice = invoices.find(invoice => invoice.invoiceId === invoiceId)
+  const [fineDetails,setFineDetails]=useState(null)
+  useEffect(()=>{
+    if(!isTenant||!invoiceId)return
+    let active=true
+    request('/api/invoices/'+encodeURIComponent(invoiceId)).then(invoice=>{
+      if(active)setFineDetails({invoiceId,charges:invoice.violationCharges||[]})
+    }).catch(()=>{})
+    return()=>{active=false}
+  },[invoiceId,isTenant,request])
 
   async function submit(event) {
     event.preventDefault(); setBusy(true); setError('')
@@ -83,7 +92,7 @@ export default function PaymentsPage({ request, role, notify,initialInvoiceId=''
   return <div className="page-stack">
     <div className="page-intro"><div className="page-intro-icon"><Icon name="invoice" size={21}/></div><div><h2>Thanh toán</h2></div><span className="intro-spacer"/><button className="icon-button refresh-button" onClick={load} title="Tải lại"><Icon name="refresh"/></button></div>
     {isTenant&&payableInvoices.length>0&&<section className="content-card workflow-card"><div className="workflow-heading"><span className="workflow-icon"><Icon name="invoice"/></span><div><h2>Thanh toán hóa đơn giả lập</h2></div></div>
-      <form className="workflow-form" onSubmit={submit}><label className="form-field"><span>Hóa đơn cần thanh toán</span><select required value={invoiceId} onChange={event=>setInvoiceId(event.target.value)}><option value="">Chọn hóa đơn</option>{payableInvoices.map(invoice=><option key={invoice.invoiceId} value={invoice.invoiceId}>{invoice.invoiceId} · Tháng {invoice.month}/{invoice.year} · {money(invoice.totalAmount)}</option>)}</select></label>{selectedInvoice&&<div className="payment-amount"><span>Số tiền hóa đơn</span><b>{money(selectedInvoice.totalAmount)}</b>{selectedInvoice.electricityAmount==null&&selectedInvoice.waterAmount==null&&<small>Kỳ này chưa ghi tiền điện nước.</small>}</div>}<button className="button button-primary" disabled={busy || !invoiceId}><Icon name="check" size={16}/>{busy?'Đang gửi…':'Thanh toán giả lập'}</button></form>
+      <form className="workflow-form" onSubmit={submit}><label className="form-field"><span>Hóa đơn cần thanh toán</span><select required value={invoiceId} onChange={event=>setInvoiceId(event.target.value)}><option value="">Chọn hóa đơn</option>{payableInvoices.map(invoice=><option key={invoice.invoiceId} value={invoice.invoiceId}>{invoice.invoiceId} · Tháng {invoice.month}/{invoice.year} · {money(invoice.totalAmount)}</option>)}</select></label>{selectedInvoice&&<div className="payment-amount"><span>Số tiền hóa đơn</span><b>{money(selectedInvoice.totalAmount)}</b>{Number(selectedInvoice.fineAmount)>0&&<span>Tiền phạt: {money(selectedInvoice.fineAmount)}</span>}{fineDetails?.invoiceId===invoiceId&&fineDetails.charges.map(charge=><span key={charge.violationId}>{charge.date} · {charge.name||charge.violationId} · {money(charge.amount)}</span>)}{selectedInvoice.electricityAmount==null&&selectedInvoice.waterAmount==null&&<small>Kỳ này chưa ghi tiền điện nước.</small>}</div>}<button className="button button-primary" disabled={busy || !invoiceId}><Icon name="check" size={16}/>{busy?'Đang gửi…':'Thanh toán giả lập'}</button></form>
     </section>}
     {error&&<div className="alert alert-error"><Icon name="incident" size={16}/>{error}</div>}
     <section className="content-card workflow-card"><div className="card-heading"><div><h2>{isTenant?'Lịch sử báo thanh toán':'Xác nhận thanh toán của khách thuê'}</h2><p>{scopedReports.length} báo cáo thanh toán</p></div><span className="module-count">{pendingCount} đang chờ</span></div>
