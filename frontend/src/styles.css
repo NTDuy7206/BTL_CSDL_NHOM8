@@ -209,3 +209,16 @@
 .deposit-payment{padding:18px;border:1px solid #dbe4f5;border-radius:12px;background:#f5f8ff;margin:14px 0}.deposit-payment dl{display:grid;grid-template-columns:minmax(110px,1fr) 2fr;gap:10px}.deposit-payment dd{margin:0;overflow-wrap:anywhere}.deposit-qr{display:block;max-width:300px;width:100%;height:auto;margin:16px 0}.bank-webhook-url{display:block;overflow-wrap:anywhere;background:#eef2fa;padding:12px}
 
 .bank-qr-preview .room-photo img{object-fit:contain;background:#fff}
+.record-dialog .field-grid select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #36425a;
+}
+
+.record-dialog .field-grid select:focus {
+  border-color: #8096ed;
+}

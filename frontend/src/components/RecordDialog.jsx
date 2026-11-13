@@ -6,7 +6,7 @@ export default function RecordDialog({ module, record, onClose, onSave, request 
   const editing = Boolean(record)
   const [values, setValues] = useState({})
   const [references,setReferences]=useState({})
-  useEffect(()=>{if(!request)return;let active=true;const targets={contractId:['contracts','contractId'],roomId:['rooms','roomId'],tenantId:['tenants','tenantId'],employeeId:['staff/directory','employeeId'],ruleId:['rules','ruleId'],incidentId:['incidents','incidentId']};for(const [field,[path,id]] of Object.entries(targets)){if(field===module.id||!module.fields.some(([key])=>key===field))continue;request('/api/'+path).then(rows=>{if(active&&Array.isArray(rows))setReferences(current=>({...current,[field]:rows.filter(row=>field!=='employeeId'||row.username||row[id]===getValue(record,field)).map(row=>({value:row[id],label:[row[id],row.fullName,row.room?.roomId,row.tenant?.fullName,row.violationName].filter(Boolean).join(' · ')}))}))}).catch(()=>{})}return()=>{active=false}},[module,request,record])
+  useEffect(()=>{if(!request)return;let active=true;const targets={contractId:['contracts','contractId'],roomId:['rooms','roomId'],tenantId:['tenants','tenantId'],employeeId:['staff/directory','employeeId'],ruleId:['rules','ruleId'],incidentId:['incidents','incidentId']};for(const [field,[path,id]] of Object.entries(targets)){if(field===module.id||!module.fields.some(([key])=>key===field))continue;request('/api/'+path).then(rows=>{if(active&&Array.isArray(rows))setReferences(current=>({...current,[field]:rows.filter(row=>field!=='employeeId'||row.username||row[id]===getValue(record,field)).map(row=>({value:row[id],label:[row[id],row.fullName,row.room?.roomId,row.tenant?.fullName,row.violationName].filter(Boolean).join(' · '),prescribedFine:row.prescribedFine}))}))}).catch(()=>{})}return()=>{active=false}},[module,request,record])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   useEffect(() => {
@@ -14,7 +14,15 @@ export default function RecordDialog({ module, record, onClose, onSave, request 
     module.fields.forEach(([key,,type]) => { initial[key] = type === 'checkbox' ? Boolean(getValue(record,key)) : !record&&key===module.id?('R'+crypto.randomUUID().replaceAll('-','').slice(0,16)):getValue(record,key) ?? '' })
     setValues(initial)
   }, [module,record])
-  function update(key,value){setValues(current=>({...current,[key]:value}))}
+  function update(key,value){
+    setValues(current=>{
+      const next={...current,[key]:value}
+      if(module.key==='violations'&&key==='ruleId'&&value!==current.ruleId){
+        next.actualFine=references.ruleId?.find(rule=>String(rule.value)===value)?.prescribedFine??''
+      }
+      return next
+    })
+  }
   async function submit(event){
     event.preventDefault();setError('');setBusy(true)
     const payload={}
