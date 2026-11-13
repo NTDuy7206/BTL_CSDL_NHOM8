@@ -1,0 +1,152 @@
+.theme-toggle {
+  flex-shrink: 0;
+  min-height: 38px;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid #6585f4;
+  outline-offset: 3px;
+}
+
+.auth-topline .theme-toggle { letter-spacing: normal; }
+
+@media (max-width: 520px) {
+  .topbar .theme-toggle { width: 38px; padding-inline: 0; justify-content: center; }
+  .topbar .theme-toggle span { display: none; }
+  .topbar-right { gap: 6px; }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --night-bg: #101725;
+  --night-panel: #192334;
+  --night-raised: #222e43;
+  --night-border: #35435a;
+  --night-text: #eef3ff;
+  --night-muted: #afbdd3;
+  --night-link: #aabfff;
+  color: var(--night-text);
+  background: var(--night-bg);
+}
+
+[data-theme="dark"] :is(.app-frame, .app-main, .auth-page, .auth-side, .pending-approval-page) {
+  background: var(--night-bg);
+}
+
+[data-theme="dark"] :is(.sidebar, .auth-art) {
+  background: linear-gradient(155deg, #1a2847, #111b30 72%);
+}
+
+[data-theme="dark"] :is(.topbar, .content-card, .data-card, .stat-card, .record-dialog, .dialog-footer,
+  .auth-card, .pending-approval-card, .room-card, .module-tile, .page-intro-icon) {
+  color: var(--night-text);
+  background: var(--night-panel);
+  border-color: var(--night-border);
+}
+
+[data-theme="dark"] :is(.today-chip, .payment-amount, .payment-review-card, .finance-cards > div,
+  .rental-preview, .query-summary, .scope-notice, .deposit-payment, .bank-webhook-url, .form-hint,
+  .payment-disclaimer, .auth-mode-switch, .room-list-icon, .room-photo, .progress-track, .system-tip) {
+  color: var(--night-muted);
+  background: var(--night-raised);
+  border-color: var(--night-border);
+}
+
+[data-theme="dark"] .room-photo-placeholder {
+  color: var(--night-muted);
+  background: linear-gradient(135deg, #253550, #1d293d);
+}
+
+[data-theme="dark"] :is(.form-field, .keyword-search > label, .dialog-head h2, .page-intro h2,
+  .section-heading h2, .card-heading h2, .data-toolbar h2, .table-state h3, .stat-value, .tile-text b,
+  .connection-number, .connection-summary b, .room-list-main b, .auth-card h2, .auth-mobile-brand,
+  .profile-editor-identity h2, .workflow-heading h2, .workflow-main b, .payment-table td b,
+  .payment-amount b, .rental-preview h3, .rental-preview dd, .pending-approval-card h1,
+  .pending-approval-card > p b) {
+  color: var(--night-text);
+}
+
+[data-theme="dark"] :is(.breadcrumb, .breadcrumb b, .breadcrumb span, .card-heading p, .data-toolbar p,
+  .table-state, .table-footer, .table-footer b, .muted, .stat-label, .tile-text small, .tile-chevron,
+  .connection-summary span, .system-foot, .system-foot span:last-child, .app-footer, .room-list-main span,
+  .room-list-price, .room-list-more, .room-empty-state, .room-card p, .room-detail-info dt, .workflow-main > span,
+  .workflow-main p, .workflow-help, .workflow-empty, .rental-preview dt, .rental-form .form-field small,
+  .finance-cards p, .finance-cards span, .auth-topline, .auth-copyright, .muted-eyebrow, .auth-mode-switch button,
+  .profile-editor-identity p, .profile-editor-identity small, .profile-form-footer > span, .pending-approval-card > p) {
+  color: var(--night-muted);
+}
+
+[data-theme="dark"] :is(a:not(.nav-link):not(.room-card), .text-action, .room-card strong, .room-card-open,
+  .room-detail-price, .query-summary strong, .finance-cards strong, .payment-review-card > strong,
+  .utility-calculation > summary, .data-table .primary-cell, .page-intro-icon) {
+  color: var(--night-link);
+}
+
+[data-theme="dark"] :is(.button-secondary, .refresh-button, .room-back-button, .search-control,
+  .keyword-search-controls .search-control, .input-icon, .record-dialog input:not([type="checkbox"]),
+  .record-dialog select, .record-dialog textarea, .workflow-form input, .workflow-form textarea,
+  .workflow-form select, .rental-form input, .rental-form textarea, .rental-form select,
+  .profile-form-grid input, .query-input input, .query-input select, .legacy-payment-recipient select,
+  .form-field > input:not([type="checkbox"]), .form-field > select, .form-field > textarea,
+  .auth-mode-switch button.active) {
+  color: var(--night-text);
+  background: var(--night-raised);
+  border-color: var(--night-border);
+}
+
+[data-theme="dark"] :is(.search-control input, .input-icon input) {
+  color: var(--night-text);
+  background: transparent;
+}
+
+[data-theme="dark"] :is(input, textarea)::placeholder { color: #9aaac3; }
+[data-theme="dark"] .icon-button { color: var(--night-muted); }
+
+[data-theme="dark"] :is(.button-secondary:hover, .icon-button:hover, .room-back-button:hover,
+  .module-tile:hover, .data-table tbody tr:hover) {
+  color: var(--night-text);
+  background: #2a3953;
+  border-color: #536685;
+}
+
+[data-theme="dark"] :is(input, select, textarea, button, a):focus-visible {
+  outline: 2px solid #9ab2ff;
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] :is(.data-table th, .data-scroll-frame thead th, .payment-table th) {
+  color: var(--night-muted);
+  background: var(--night-raised);
+  border-color: var(--night-border);
+}
+
+[data-theme="dark"] :is(.data-table td, .payment-table td) { color: var(--night-text); }
+[data-theme="dark"] :is(.data-table td, .payment-table td, .data-toolbar, .table-footer, .app-footer,
+  .room-list-item, .room-group-action, .room-empty-state, .workflow-row, .workflow-empty, .dialog-head,
+  .profile-form-footer, .inventory-choices, .registration-rooms fieldset, .rental-preview th,
+  .rental-preview td, .rental-request-details > div) { border-color: var(--night-border); }
+[data-theme="dark"] .profile-divider { background: var(--night-border); }
+
+[data-theme="dark"] :is(.stat-icon, .tile-icon, .workflow-icon, .auth-card-mark, .pending-approval-mark, .module-count) {
+  color: var(--night-link);
+  background: #2b3a5e;
+}
+
+[data-theme="dark"] :is(.status-pill, .room-state, .badge-gray) { color: var(--night-muted); background: var(--night-raised); }
+[data-theme="dark"] :is(.status-pending, .pending-approval-note) { color: #ffdd99; background: #45351e; }
+[data-theme="dark"] :is(.status-approved, .status-paid, .room-state.room-ready, .badge-green, .room-count-vacant) {
+  color: #92e2ba;
+  background: #1b3c35;
+}
+[data-theme="dark"] :is(.status-rejected, .room-state.room-occupied, .alert-error, .error-state) {
+  color: #ffb8bf;
+  background: #492730;
+  border-color: #774652;
+}
+[data-theme="dark"] .room-count-rented { color: #dac9ff; background: #372c50; }
+[data-theme="dark"] .room-card.room-ready { border-color: #387657; }
+[data-theme="dark"] .room-card.room-occupied { border-color: #985462; }
+[data-theme="dark"] .list-error { color: #ffb8bf; }
+[data-theme="dark"] .query-done { color: #92e2ba !important; }

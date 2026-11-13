@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f5f7fb" />
+    <script>
+      try {
+        if (localStorage.getItem('homebaseTheme') === 'dark') {
+          document.documentElement.dataset.theme = 'dark'
+          document.querySelector('meta[name="theme-color"]').content = '#101725'
+        }
+      } catch {}
+    </script>
     <meta name="description" content="Giao diện quản lý tòa nhà và phòng cho thuê" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Building Desk · Quản lý tòa nhà</title>

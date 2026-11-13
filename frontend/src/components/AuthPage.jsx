@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Icon from './Icon.jsx'
 
-export default function AuthPage({ onLogin, onRegister }) {
+export default function AuthPage({ onLogin, onRegister, themeControl }) {
   const [mode, setMode] = useState('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -33,7 +33,7 @@ export default function AuthPage({ onLogin, onRegister }) {
         <div className="art-footer"><span>HOMEBASE</span><span>·</span><span>NHÓM 8 · BÀI TẬP LỚN CƠ SỞ DỮ LIỆU</span></div>
       </div>
     </section>
-    <section className="auth-side"><div className="auth-topline"><span className="auth-mobile-brand"><Icon name="building" size={18}/> HomeBase</span><span>HỖ TRỢ <b>NHÓM 8</b></span></div><div className="auth-card">
+    <section className="auth-side"><div className="auth-topline"><span className="auth-mobile-brand"><Icon name="building" size={18}/> HomeBase</span>{themeControl}</div><div className="auth-card">
       <div className="auth-card-mark"><Icon name="home" size={19}/></div>
       <div className="auth-mode-switch" role="group" aria-label="Chọn đăng nhập hoặc đăng ký">
         <button type="button" aria-pressed={!isRegister} className={!isRegister?'active':''} onClick={()=>{setMode('login');setError('')}}>Đăng nhập</button>
