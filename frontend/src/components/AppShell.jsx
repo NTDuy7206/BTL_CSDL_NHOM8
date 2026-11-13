@@ -21,7 +21,6 @@ export function Sidebar({ page, user, profile, onNavigate, onLogout, open, onClo
         {role==='ADMIN'&&<NavLink target="profits" page={page} onNavigate={onNavigate} label="Lợi nhuận"><Icon name="meter"/><span>Lợi nhuận</span></NavLink>}
       </div>}
       {role==='ADMIN'&&<div className="nav-section"><div className="nav-heading">QUẢN TRỊ</div><NavLink target="accounts" page={page} onNavigate={onNavigate} label="Tài khoản"><Icon name="users"/><span>Tài khoản</span></NavLink></div>}
-      {role==='ADMIN'&&<NavLink target="staff-admin" page={page} onNavigate={onNavigate} label="Liên kết nhân viên"><Icon name="employee"/><span>Liên kết nhân viên</span></NavLink>}
       {(role==='ADMIN'||role==='EMPLOYEE')&&<NavLink target="staff-applications" page={page} onNavigate={onNavigate} label={role==='ADMIN'?'Đơn xin việc':'Xin việc'}><Icon name="contract"/><span>{role==='ADMIN'?'Đơn xin việc':'Xin việc'}</span></NavLink>}
       {(role==='ADMIN'||role==='EMPLOYEE')&&<NavLink target="staff-payroll" page={page} onNavigate={onNavigate} label={role==='ADMIN'?'Bảng lương':'Lương của tôi'}><Icon name="invoice"/><span>{role==='ADMIN'?'Bảng lương':'Lương của tôi'}</span></NavLink>}
       {role!=='EMPLOYEE'&&<div className="nav-section"><div className="nav-heading">QUẢN LÝ TÒA NHÀ</div>

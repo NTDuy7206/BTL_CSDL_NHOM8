@@ -44,6 +44,12 @@ CREATE TABLE IF NOT EXISTS staff_applications (
     FOREIGN KEY (landlord_id) REFERENCES `user`(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS staff_application_jobs (
+    application_id BIGINT PRIMARY KEY,
+    job_code VARCHAR(16) NOT NULL,
+    FOREIGN KEY (application_id) REFERENCES staff_applications(application_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS cleaning_support_requesters (
     support_id VARCHAR(20) PRIMARY KEY,
     user_id BIGINT NOT NULL,

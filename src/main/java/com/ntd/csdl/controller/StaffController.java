@@ -15,10 +15,9 @@ import org.springframework.web.bind.annotation.*;
 public class StaffController {
     private final StaffService staff;
 
-    public record Link(String username) {}
     public record Result(String result) {}
-    public record Application(long landlordId, String message) {}
-    public record Decision(String status, String employeeId) {}
+    public record Application(long landlordId, String message, String jobCode) {}
+    public record Decision(String status, String jobCode) {}
 
     @GetMapping("/me/applications")
     public Map<String, Object> myApplications(Authentication auth) { return staff.applicationPage(auth.getName()); }
@@ -26,12 +25,12 @@ public class StaffController {
     @PostMapping("/me/applications")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void apply(Authentication auth, @RequestBody Application body) {
-        staff.apply(auth.getName(), body.landlordId(), body.message());
+        staff.apply(auth.getName(), body.landlordId(), body.message(), body.jobCode());
     }
 
     @GetMapping("/applications")
     public Map<String, Object> applications(Authentication auth) {
-        return Map.of("applications", staff.applications(auth.getName(), false), "profiles", staff.directory(auth.getName()));
+        return Map.of("applications", staff.applications(auth.getName(), false), "jobs", staff.jobs());
     }
 
     @PutMapping("/applications/{id}")
@@ -40,17 +39,11 @@ public class StaffController {
         if (!"APPROVED".equals(body.status()) && !"REJECTED".equals(body.status())) {
             throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Chọn duyệt hoặc từ chối đơn");
         }
-        staff.decide(auth.getName(), id, "APPROVED".equals(body.status()), body.employeeId());
+        staff.decide(auth.getName(), id, "APPROVED".equals(body.status()), body.jobCode());
     }
 
     @GetMapping("/directory")
     public List<Map<String, Object>> directory(Authentication auth) { return staff.directory(auth.getName()); }
-
-    @PutMapping("/directory/{id}/account")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void link(Authentication auth, @PathVariable String id, @RequestBody Link body) {
-        staff.link(auth.getName(), id, body.username());
-    }
 
     @GetMapping("/me")
     public Map<String, Object> mine(Authentication auth) { return staff.mine(auth.getName()); }
@@ -66,7 +59,7 @@ public class StaffController {
     }
 
     @GetMapping("/payroll")
-    public List<Map<String, Object>> payroll(Authentication auth) { return staff.payroll(auth.getName()); }
+    public Map<String, Object> payroll(Authentication auth) { return staff.adminPayroll(auth.getName()); }
 
     @PutMapping("/payroll/{id}/{period}/paid")
     @ResponseStatus(HttpStatus.NO_CONTENT)

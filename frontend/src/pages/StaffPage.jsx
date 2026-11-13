@@ -38,11 +38,22 @@ function WorkList({kind,rows,submit,busy}) {
   </section>
 }
 
+function StaffSalaries({rows}) {
+  return <section className="content-card workflow-card"><h2>Lương dự kiến của nhân viên</h2>
+    {rows.length ? <div className="payment-table-wrap"><table className="payment-table">
+      <thead><tr><th>Nhân viên</th><th>Công việc</th><th>Lương cơ bản</th><th>Thâm niên</th><th>Lương dự kiến</th></tr></thead>
+      <tbody>{rows.map(row=><tr key={row.employeeId}><td>{row.fullName || row.employeeId}</td><td>{row.position || '—'}</td>
+        <td>{row.baseSalary>0?money(row.baseSalary):'—'}</td><td>{row.seniority==null?'—':`${row.seniority} năm`}</td>
+        <td>{row.baseSalary>0&&row.amount!=null?money(row.amount):'Chưa cấu hình'}</td></tr>)}</tbody>
+    </table></div> : <p>Chưa có nhân viên.</p>}
+  </section>
+}
+
 export default function StaffPage({mode,request,notify,onNavigate}) {
-  const [data,setData]=useState(null), [employeeId,setEmployee]=useState(''), [username,setUsername]=useState('')
+  const [data,setData]=useState(null)
   const [busy,setBusy]=useState(false), [error,setError]=useState('')
   const load=useCallback(async()=>{
-    try{setData(await request(endpoint+(mode==='directory'?'/directory':mode==='admin-payroll'?'/payroll':'/me')))}
+    try{setData(await request(endpoint+(mode==='admin-payroll'?'/payroll':'/me')))}
     catch(err){setError(err.message)}
   },[mode,request])
   useEffect(()=>{load()},[load])
@@ -52,25 +63,14 @@ export default function StaffPage({mode,request,notify,onNavigate}) {
     setBusy(true);setError('')
     try{
       await request(path,{method:'PUT',...(payload?{body:JSON.stringify(payload)}:{})})
-      notify(success);setUsername('');await load()
+      notify(success);await load()
     }catch(err){setError(err.message)}finally{setBusy(false)}
   }
 
   return <div className="page-stack">
     {error&&<div className="alert alert-error" role="alert">{error}</div>}
     {data==null&&!error&&<p>Đang tải…</p>}
-    {mode==='directory'&&data&&<section className="content-card workflow-card"><h2>Liên kết tài khoản nhân viên</h2>
-      <p>Nhân viên đăng ký tài khoản trước. Chọn hồ sơ đã lập trong mục Nhân viên, rồi nhập tên đăng nhập của họ.</p>
-      <form className="workflow-form" onSubmit={event=>{event.preventDefault();submit(`${endpoint}/directory/${encodeURIComponent(employeeId)}/account`,{username},'Đã liên kết tài khoản nhân viên.')}}>
-        <label className="form-field"><span>Hồ sơ nhân viên</span><select required value={employeeId} onChange={e=>setEmployee(e.target.value)}>
-          <option value="">Chọn hồ sơ</option>{data.filter(row=>!row.username).map(row=><option key={row.employeeId} value={row.employeeId}>{row.employeeId} · {row.fullName}</option>)}
-        </select></label>
-        <label className="form-field"><span>Tên đăng nhập</span><input required value={username} onChange={e=>setUsername(e.target.value)}/></label>
-        <button className="button button-primary" disabled={busy||!employeeId}>Liên kết</button>
-      </form>
-      <div className="workflow-list">{data.filter(row=>row.username).map(row=><p key={row.employeeId}>{row.employeeId} · {row.fullName} · {row.username}</p>)}</div>
-    </section>}
-    {mode==='admin-payroll'&&data&&<Payroll rows={data} admin submit={submit} busy={busy}/>}
+    {mode==='admin-payroll'&&data&&<><StaffSalaries rows={data.employees}/><Payroll rows={data.history} admin submit={submit} busy={busy}/></>}
     {data?.linked===false&&<section className="content-card workflow-card"><h2>Chưa liên kết với chủ nhà</h2><button className="button button-primary" onClick={()=>onNavigate('staff-applications')}>Xin việc</button></section>}
     {data?.linked&&mode==='employee-payroll'&&<>
       <section className="content-card workflow-card"><h2>Lương dự kiến</h2>

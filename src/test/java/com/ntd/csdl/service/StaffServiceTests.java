@@ -16,36 +16,35 @@ import org.springframework.web.server.ResponseStatusException;
 
 class StaffServiceTests {
     @Test
-    void approvalLinksOnlyTheChosenLandlordsProfileAndClosesOtherApplications() {
+    void approvalCreatesProfileWithTheSelectedSalaryAndClosesOtherApplications() {
         var ds = new DriverManagerDataSource("jdbc:h2:mem:" + UUID.randomUUID()
                 + ";MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", "");
         var jdbc = new JdbcTemplate(ds);
         var tx = new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(ds));
         jdbc.execute("CREATE TABLE `user`(id BIGINT PRIMARY KEY, role INT, username VARCHAR(30))");
         jdbc.execute("CREATE TABLE user_profiles(user_id BIGINT, display_name VARCHAR(30))");
-        jdbc.execute("CREATE TABLE employees(employee_id VARCHAR(20) PRIMARY KEY)");
+        jdbc.execute("CREATE TABLE employees(employee_id VARCHAR(20) PRIMARY KEY, full_name VARCHAR(50), position VARCHAR(50), base_salary DECIMAL(18,2), seniority INT)");
         jdbc.execute("CREATE TABLE employee_accounts(employee_id VARCHAR(20) PRIMARY KEY, landlord_id BIGINT, account_id BIGINT UNIQUE, linked_on DATE)");
         jdbc.execute("CREATE TABLE staff_applications(application_id BIGINT AUTO_INCREMENT PRIMARY KEY, applicant_id BIGINT, landlord_id BIGINT, status VARCHAR(12) DEFAULT 'PENDING', message VARCHAR(500), submitted_on DATE)");
+        jdbc.execute("CREATE TABLE staff_application_jobs(application_id BIGINT PRIMARY KEY, job_code VARCHAR(16))");
         jdbc.update("INSERT INTO `user` VALUES (1,1,'owner'),(2,1,'other'),(3,2,'staff')");
-        jdbc.update("INSERT INTO employees VALUES ('E1'),('E2')");
-        jdbc.update("INSERT INTO employee_accounts(employee_id,landlord_id) VALUES ('E1',1),('E2',2)");
         var landlords = mock(LandlordService.class);
         when(landlords.accountId("owner")).thenReturn(1L);
         when(landlords.accountId("other")).thenReturn(2L);
         when(landlords.accountId("staff")).thenReturn(3L);
         var service = new StaffService(jdbc, landlords);
-        tx.executeWithoutResult(s -> service.apply("staff", 1, "Xin việc"));
-        assertThrows(ResponseStatusException.class, () -> tx.executeWithoutResult(s -> service.apply("staff", 1, null)));
-        tx.executeWithoutResult(s -> service.apply("staff", 2, null));
+        tx.executeWithoutResult(s -> service.apply("staff", 1, "Xin việc", "GUARD"));
+        assertThrows(ResponseStatusException.class, () -> tx.executeWithoutResult(s -> service.apply("staff", 1, null, "CLEANER")));
+        tx.executeWithoutResult(s -> service.apply("staff", 2, null, "MANAGER"));
         assertEquals(2, service.applications("staff", true).size());
         assertEquals(1, service.applications("owner", false).size());
         assertThrows(ResponseStatusException.class, () -> tx.executeWithoutResult(s -> service.decide("other", 1, true, "E2")));
-        assertThrows(ResponseStatusException.class, () -> tx.executeWithoutResult(s -> service.decide("owner", 1, true, "E2")));
         assertEquals("PENDING", service.applications("owner", false).getFirst().get("status"));
-        tx.executeWithoutResult(s -> service.decide("owner", 1, true, "E1"));
-        assertEquals(3L, jdbc.queryForObject("SELECT account_id FROM employee_accounts WHERE employee_id='E1'", Long.class));
+        tx.executeWithoutResult(s -> service.decide("owner", 1, true, "MANAGER"));
+        assertEquals(3L, jdbc.queryForObject("SELECT account_id FROM employee_accounts WHERE landlord_id=1", Long.class));
+        assertEquals(new BigDecimal("6000000.00"), jdbc.queryForObject("SELECT base_salary FROM employees", BigDecimal.class));
         assertEquals(List.of("APPROVED", "CLOSED"), jdbc.queryForList("SELECT status FROM staff_applications ORDER BY application_id", String.class));
-        assertThrows(ResponseStatusException.class, () -> tx.executeWithoutResult(s -> service.apply("staff", 2, null)));
+        assertThrows(ResponseStatusException.class, () -> tx.executeWithoutResult(s -> service.apply("staff", 2, null, "MANAGER")));
     }
 
     @Test
@@ -82,7 +81,7 @@ class StaffServiceTests {
     void payrollUsesStrictThresholdsAndCannotBePaidTwiceOrByAnotherLandlord() {
         var jdbc = new JdbcTemplate(new DriverManagerDataSource(
                 "jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", ""));
-        jdbc.execute("CREATE TABLE employees(employee_id VARCHAR(20) PRIMARY KEY, full_name VARCHAR(50), base_salary DECIMAL(18,2), seniority INT)");
+        jdbc.execute("CREATE TABLE employees(employee_id VARCHAR(20) PRIMARY KEY, full_name VARCHAR(50), position VARCHAR(50), base_salary DECIMAL(18,2), seniority INT)");
         jdbc.execute("CREATE TABLE employee_accounts(employee_id VARCHAR(20) PRIMARY KEY, landlord_id BIGINT, account_id BIGINT, linked_on DATE)");
         jdbc.execute("CREATE TABLE employee_payroll(employee_id VARCHAR(20), period DATE, base_salary DECIMAL(18,2), seniority INT, multiplier DECIMAL(3,2), paid_on DATE, PRIMARY KEY(employee_id,period))");
         var landlords = mock(LandlordService.class);
@@ -92,17 +91,17 @@ class StaffServiceTests {
         var month = YearMonth.from(StayService.today()).minusMonths(1);
         var start = month.atDay(1);
         for (int years : List.of(3, 4, 5, 6, 10, 11)) {
-            jdbc.update("INSERT INTO employees VALUES (?,?,?,?)", "E" + years, "Nhân viên " + years, 10_000_000, years);
+            jdbc.update("INSERT INTO employees VALUES (?,?,?,?,?)", "E" + years, "Nhân viên " + years, "Test", 10_000_000, years);
             jdbc.update("INSERT INTO employee_accounts VALUES (?,?,?,?)", "E" + years, 1, 100 + years, start);
         }
         staff.preparePayroll(month.atEndOfMonth().minusDays(1));
-        assertTrue(staff.payroll("owner").isEmpty());
+        assertTrue(history(staff, "owner").isEmpty());
         staff.preparePayroll(month.atEndOfMonth());
         staff.preparePayroll(month.atEndOfMonth());
-        assertEquals(6, staff.payroll("owner").size());
-        assertTrue(staff.payroll("other").isEmpty());
+        assertEquals(6, history(staff, "owner").size());
+        assertTrue(history(staff, "other").isEmpty());
         var rates = Map.of(3,"1.00",4,"1.10",5,"1.10",6,"1.30",10,"1.30",11,"1.50");
-        for (var row : staff.payroll("owner")) {
+        for (var row : history(staff, "owner")) {
             assertEquals(new BigDecimal(rates.get(row.get("seniority"))), row.get("multiplier"));
         }
         assertThrows(ResponseStatusException.class, () -> staff.pay("other", "E11", start));
@@ -112,5 +111,9 @@ class StaffServiceTests {
         jdbc.update("UPDATE employees SET base_salary=20000000 WHERE employee_id='E11'");
         staff.preparePayroll(month.atEndOfMonth());
         assertEquals(new BigDecimal("10000000.00"), jdbc.queryForObject("SELECT base_salary FROM employee_payroll WHERE employee_id='E11'", BigDecimal.class));
+    }
+    @SuppressWarnings("unchecked")
+    private List<Map<String,Object>> history(StaffService staff, String admin) {
+        return (List<Map<String,Object>>) staff.adminPayroll(admin).get("history");
     }
 }
