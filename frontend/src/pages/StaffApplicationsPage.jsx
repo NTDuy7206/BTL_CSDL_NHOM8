@@ -59,8 +59,7 @@ export default function StaffApplicationsPage({admin,request,notify,onNavigate})
     <section className="content-card workflow-card">
       <div className="card-heading"><h2>{admin?'Đơn xin việc':'Đơn đã gửi'}</h2><button className="button button-secondary" onClick={load} disabled={busy}>Tải lại</button></div>
       {!data&&!error&&<p>Đang tải…</p>}
-      {data?.applications.length===0&&<p>Chưa có đơn xin việc.</p>}
-      {data?.linked&&<p>Bạn đã liên kết với chủ nhà. <button className="button button-secondary" onClick={()=>onNavigate('dashboard')}>Xem công việc</button></p>}
+      {data?.linked&&<p><button className="button button-secondary" onClick={()=>onNavigate('dashboard')}>Xem công việc</button></p>}
       <div className="workflow-list">{data?.applications.map(row=>{const job=jobs.find(item=>item.code===row.jobCode);return <article className="workflow-row" key={row.id}>
         <div className="workflow-main"><b>{row.displayName}</b>{row.displayName!==row.username&&<span>@{row.username}</span>}<time dateTime={row.submittedAt || row.submittedOn}>{submissionTime(row)}</time>{job&&<span>{job.label} · {money(job.baseSalary)}/tháng</span>}{row.message&&<p>{row.message}</p>}</div>
         <span className={`status-pill status-${row.status.toLowerCase()}`}>{statuses[row.status]}</span>

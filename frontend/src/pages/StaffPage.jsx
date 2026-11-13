@@ -22,7 +22,7 @@ function Payroll({rows,admin,submit,busy}) {
           }
         }}>Ghi nhận đã trả</button> : 'Chưa thanh toán'}</td>
       </tr>)}</tbody>
-    </table></div> : <p>Chưa có kỳ lương đến hạn. Kỳ lương được tạo vào ngày cuối tháng.</p>}
+    </table></div> : <p>Chưa có kỳ lương đến hạn.</p>}
   </section>
 }
 
@@ -37,7 +37,6 @@ function WorkList({kind,rows,submit,busy}) {
       <button className={`button ${showCompleted?'button-secondary':'button-primary'}`} onClick={()=>setShowCompleted(false)}>Chờ xử lý ({pending.length})</button>
       <button className={`button ${showCompleted?'button-primary':'button-secondary'}`} onClick={()=>setShowCompleted(true)}>Đã xong ({rows.length-pending.length})</button>
     </div>
-    {!visible.length&&<p>{showCompleted?'Chưa có công việc hoàn thành.':'Không có công việc chờ xử lý.'}</p>}
     <div className="workflow-list">{visible.map(row=><article className="workflow-row" key={row.id}>
       <div className="workflow-main"><b>Phòng {row.roomId} · {row.id}</b><p>{row.content}</p>{row.result&&<p>{row.result}</p>}
         {!showCompleted&&kind==='incidents'&&<label className="form-field"><span>Kết quả xử lý</span>
