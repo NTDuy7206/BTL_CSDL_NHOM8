@@ -21,12 +21,13 @@ public class InvoiceController {
     private final com.ntd.csdl.repo.ContractRepository contracts;
     private final com.ntd.csdl.service.RentalWorkflowService rentals;
     private final com.ntd.csdl.repo.InvoiceRepository invoices;
+    private final com.ntd.csdl.service.StayService stays;
 
     @GetMapping
     public ResponseEntity<List<Invoice>> getAll(org.springframework.security.core.Authentication auth) {
         String tenantId=rentals.tenantId(auth.getName());
         return ResponseEntity.ok(
-                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? invoiceService.getAll().stream().filter(i->landlords.owns(auth.getName(),i.getContract().getRoom().getRoomId())).toList() : (tenantId==null ? List.of() : invoices.findByContractTenantTenantId(tenantId).stream().filter(i -> com.ntd.csdl.service.BillingCalendar.rentalDue(i, com.ntd.csdl.service.StayService.today())).toList())
+                com.ntd.csdl.service.RentalWorkflowService.admin(auth) ? invoiceService.getAll().stream().filter(i->landlords.owns(auth.getName(),i.getContract().getRoom().getRoomId())).toList() : (tenantId==null ? List.of() : invoices.findByContractTenantTenantId(tenantId).stream().filter(i -> stays.invoiceDue(i, com.ntd.csdl.service.StayService.today())).toList())
         );
     }
 
@@ -37,7 +38,7 @@ public class InvoiceController {
         if(com.ntd.csdl.service.RentalWorkflowService.admin(auth))landlords.requireOwner(auth.getName(),invoice.getContract().getRoom().getRoomId());
         else {
             rentals.requireOwner(auth.getName(),invoice.getContract());
-            if (!com.ntd.csdl.service.BillingCalendar.rentalDue(invoice, com.ntd.csdl.service.StayService.today())) {
+            if (!stays.invoiceDue(invoice, com.ntd.csdl.service.StayService.today())) {
                 throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND, "Hóa đơn chưa đến hạn");
             }
         }

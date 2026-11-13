@@ -36,8 +36,8 @@ class VipRentalTests {
         when(landlords.accountId("alice")).thenReturn(1L);
         var vip = new VipRentalService(jdbc, landlords);
         var month = YearMonth.from(StayService.today()).plusMonths(1);
-        var start = month.atDay(1);
-        var end = month.plusMonths(1).atEndOfMonth();
+        var start = month.atEndOfMonth();
+        var end = start.plusDays(2);
         assertThrows(ResponseStatusException.class, () -> vip.quote("V2", start, end));
         var quote = vip.quote("V1", start, end);
         assertEquals(new BigDecimal("10000000.00"), quote.totalRent());
@@ -45,12 +45,12 @@ class VipRentalTests {
         assertThrows(ResponseStatusException.class, () -> vip.simulate("alice", "V1", start, end, BigDecimal.ONE));
         var token = vip.simulate("alice", "V1", start, end, quote.depositAmount());
         assertEquals(token, vip.simulate("alice", "V1", start, end, quote.depositAmount()));
-        assertThrows(ResponseStatusException.class, () -> vip.attach(null, 1, "V1", start, end, 10));
-        assertThrows(ResponseStatusException.class, () -> vip.attach(token, 2, "V1", start, end, 10));
-        assertThrows(ResponseStatusException.class, () -> vip.attach(token, 1, "V1", start, end.minusDays(1), 10));
-        vip.attach(token, 1, "V1", start, end, 10);
+        assertThrows(ResponseStatusException.class, () -> vip.attach(null, 1, "V1", start, end, 10, quote.monthlyRent()));
+        assertThrows(ResponseStatusException.class, () -> vip.attach(token, 2, "V1", start, end, 10, quote.monthlyRent()));
+        assertThrows(ResponseStatusException.class, () -> vip.attach(token, 1, "V1", start, end.minusDays(1), 10, quote.monthlyRent()));
+        vip.attach(token, 1, "V1", start, end, 10, quote.monthlyRent());
         jdbc.update("UPDATE rooms SET base_price=6000000 WHERE room_id='V1'");
         assertEquals(quote, vip.forRequest(10));
-        assertThrows(ResponseStatusException.class, () -> vip.attach(token, 1, "V1", start, end, 11));
+        assertThrows(ResponseStatusException.class, () -> vip.attach(token, 1, "V1", start, end, 11, quote.monthlyRent()));
     }
 }

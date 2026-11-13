@@ -15,6 +15,8 @@ import java.time.LocalDate;
 public class Contract {
 
     @Transient private BigDecimal agreedRent;
+    @Transient private BigDecimal nightlyRate;
+    @Transient private BigDecimal totalRent;
     @Transient private LocalDate actualCheckIn;
     @Transient private LocalDate actualCheckOut;
 

@@ -62,7 +62,7 @@ public class RentalWorkflowService {
     }
     public void requireRoom(String username,String roomId) {
         LocalDate now=StayService.today();String tenant=tenantId(username);
-        Integer active=jdbc.queryForObject("SELECT COUNT(*) FROM contracts c LEFT JOIN contract_stays s ON s.contract_id=c.contract_id WHERE c.tenant_id=? AND c.room_id=? AND "+StayService.activeSql(),Integer.class,tenant,roomId,now,now,now);
+        Integer active=jdbc.queryForObject("SELECT COUNT(*) FROM contracts c LEFT JOIN contract_stays s ON s.contract_id=c.contract_id WHERE c.tenant_id=? AND c.room_id=? AND "+StayService.activeSql(),Integer.class,tenant,roomId,now,now,now,now);
         if(active==null||active==0)throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Bạn chỉ có thể gửi yêu cầu cho phòng đang thuê");
     }
     // Called inside the same transaction as the request or the final contract.
@@ -98,21 +98,27 @@ public class RentalWorkflowService {
         return tenant;
     }
     public Contract book(Tenant tenant,String roomId,LocalDate start,LocalDate end,BigDecimal deposit) {
-        return book(tenant,roomId,start,end,deposit,null);
+        return book(tenant,roomId,start,end,deposit,null,null);
     }
 
-    public Contract book(Tenant tenant,String roomId,LocalDate start,LocalDate end,BigDecimal deposit,BigDecimal quotedMonthlyRent) {
+    public Contract book(Tenant tenant,String roomId,LocalDate start,LocalDate end,BigDecimal deposit,BigDecimal quotedMonthlyRent,BigDecimal nightlyRate) {
         dates(start,end);
         Room room=rooms.lockById(roomId).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy phòng"));
         // A request may have loaded the Room earlier into Hibernate's first-level cache.
         // Read its current locked status, not that potentially stale managed entity.
         String currentStatus=jdbc.queryForObject("SELECT status FROM rooms WHERE room_id=? FOR UPDATE",String.class,roomId);
         if(!available(currentStatus)) throw new ResponseStatusException(HttpStatus.CONFLICT,"Phòng không còn trống");
-        boolean overlap=jdbc.queryForObject("SELECT COUNT(*) FROM contracts c LEFT JOIN contract_stays s ON s.contract_id=c.contract_id WHERE c.room_id=? AND COALESCE(s.check_in,c.start_date)<=? AND ((s.check_out IS NULL AND c.end_date>=?) OR s.check_out>?)",Integer.class,roomId,end,start,start)>0;
+        LocalDate lastNight = nightlyRate == null ? end : end.minusDays(1);
+        boolean overlap=jdbc.queryForObject("SELECT COUNT(*) FROM contracts c LEFT JOIN contract_stays s ON s.contract_id=c.contract_id WHERE c.room_id=? AND COALESCE(s.check_in,c.start_date)<=? AND "+StayService.occupiesThroughSql(),Integer.class,roomId,lastNight,start,start,start)>0;
         if(overlap) throw new ResponseStatusException(HttpStatus.CONFLICT,"Phòng đã có hợp đồng trong thời gian này");
         Contract contract=Contract.builder().contractId(id("HD")).tenant(tenant).room(room).startDate(start).endDate(end).deposit(deposit).build();
         contract=contracts.saveAndFlush(contract);
-        jdbc.update("INSERT INTO contract_stays(contract_id,monthly_rent) VALUES (?,?)",contract.getContractId(),quotedMonthlyRent==null?room.getBasePrice():quotedMonthlyRent);
+        if (nightlyRate == null) {
+            jdbc.update("INSERT INTO contract_stays(contract_id,monthly_rent) VALUES (?,?)",contract.getContractId(),quotedMonthlyRent==null?room.getBasePrice():quotedMonthlyRent);
+        } else {
+            jdbc.update("INSERT INTO contract_stays(contract_id) VALUES (?)", contract.getContractId());
+            jdbc.update("INSERT INTO nightly_contract_rates(contract_id,nightly_rate) VALUES (?,?)", contract.getContractId(), nightlyRate);
+        }
         room.setStatus("OCCUPIED");rooms.save(room);
         return contract;
     }

@@ -16,8 +16,10 @@ public class UtilityReadingService {
 
     private final UtilityReadingRepository utilityReadingRepository;
     private final RoomRepository roomRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     // CREATE
+    @org.springframework.transaction.annotation.Transactional
     public UtilityReading create(UtilityReadingDTO dto) {
 
         if (dto.getReadingId() == null ||
@@ -40,6 +42,7 @@ public class UtilityReadingService {
                                 "Không tìm thấy phòng"
                         )
                 );
+        requireUniquePeriod(dto, null);
 
         UtilityReading reading = new UtilityReading();
 
@@ -90,12 +93,21 @@ public class UtilityReadingService {
     }
 
     // UPDATE
+    @org.springframework.transaction.annotation.Transactional
     public UtilityReading update(
             String id,
             UtilityReadingDTO dto
     ) {
 
         UtilityReading existing = getById(id);
+        requireUniquePeriod(dto,id);
+        if (!jdbc.queryForList("SELECT reading_id FROM simulated_meter_periods WHERE reading_id=?", id).isEmpty()
+                && (!java.util.Objects.equals(existing.getRoom().getRoomId(),dto.getRoomId())
+                || !java.util.Objects.equals(existing.getYear(),dto.getYear())
+                || !java.util.Objects.equals(existing.getMonth(),dto.getMonth()))) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "Không thể đổi phòng hoặc kỳ của chỉ số mô phỏng");
+        }
 
         Room room = roomRepository.findById(dto.getRoomId())
                 .orElseThrow(() ->
@@ -128,6 +140,14 @@ public class UtilityReadingService {
         existing.setRoom(room);
 
         return utilityReadingRepository.save(existing);
+    }
+
+    private void requireUniquePeriod(UtilityReadingDTO dto,String id) {
+        jdbc.queryForList("SELECT room_id FROM rooms WHERE room_id=? FOR UPDATE", dto.getRoomId());
+        boolean duplicate=jdbc.queryForList("SELECT reading_id FROM utility_readings WHERE room_id=? AND year=? AND month=?",
+                String.class,dto.getRoomId(),dto.getYear(),dto.getMonth()).stream().anyMatch(existing->!existing.equals(id));
+        if (duplicate) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                "Phòng đã có chỉ số điện nước của tháng này");
     }
 
     // DELETE

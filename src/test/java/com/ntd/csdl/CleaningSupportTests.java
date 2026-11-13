@@ -25,6 +25,7 @@ class CleaningSupportTests {
         var jdbc = new JdbcTemplate(source);
         jdbc.execute("CREATE TABLE user(id BIGINT PRIMARY KEY, username VARCHAR(30))");
         jdbc.execute("CREATE TABLE tenant_accounts(user_id BIGINT, tenant_id VARCHAR(20))");
+        jdbc.execute("CREATE TABLE nightly_contract_rates(contract_id VARCHAR(20) PRIMARY KEY,nightly_rate DECIMAL(18,2))");
         jdbc.execute("CREATE TABLE contracts(contract_id VARCHAR(20), tenant_id VARCHAR(20), room_id VARCHAR(20), start_date DATE, end_date DATE)");
         jdbc.execute("CREATE TABLE contract_stays(contract_id VARCHAR(20), check_in DATE, check_out DATE)");
         jdbc.execute("CREATE TABLE cleaning_supports(support_id VARCHAR(20) PRIMARY KEY, support_date DATE, task_content VARCHAR(500), is_completed BOOLEAN, room_id VARCHAR(20), employee_id VARCHAR(20))");

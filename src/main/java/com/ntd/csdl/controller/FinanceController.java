@@ -9,10 +9,12 @@ import java.math.BigDecimal;
 public class FinanceController {
  private final FinanceService service;
  public record Utility(int year,int month,String utilityType,BigDecimal amount,LocalDate paidOn,String provider,String reference){}
+ public record UtilitySimulation(int year,int month,String utilityType){}
  public record Expense(BigDecimal amount,LocalDate paidOn,String description,String reference){}
  public record ReceiptDate(LocalDate receivedOn){}
  @GetMapping("/utilities") public Object utilities(Authentication auth,@RequestParam int year,@RequestParam int month){return service.utilities(auth.getName(),year,month);}
  @PostMapping("/utilities") public void utility(Authentication auth,@RequestBody Utility d){service.payUtility(auth.getName(),d.year(),d.month(),d.utilityType(),d.amount(),d.paidOn(),d.provider(),d.reference());}
+ @PostMapping("/utilities/simulate") public void simulateUtility(Authentication auth,@RequestBody UtilitySimulation d){service.simulateUtility(auth.getName(),d.year(),d.month(),d.utilityType());}
  @GetMapping("/expenses") public Object expenses(Authentication auth){return service.expenses(auth.getName());}
  @PostMapping("/expenses") public void expense(Authentication auth,@RequestBody Expense d){service.expense(auth.getName(),d.amount(),d.paidOn(),d.description(),d.reference());}
  @GetMapping("/unallocated-receipts") public Object unallocated(Authentication auth){return service.unallocated(auth.getName());}

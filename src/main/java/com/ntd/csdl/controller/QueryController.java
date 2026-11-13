@@ -37,7 +37,11 @@ public class QueryController {
     case "cleaning-supports/room" -> cleaning.getByRoom(value(value));
     case "cleaning-supports/employee" -> cleaning.getByEmployee(value(value));
     case "cleaning-supports/uncompleted" -> cleaning.getUncompleted();
-    case "utility-readings/room" -> readings.getByRoom(value(value));
+    case "utility-readings/room" -> {
+     String room=value(value);
+     landlords.requireOwner(auth.getName(),room);
+     yield readings.getByRoom(room);
+    }
     case "violations/room" -> violations.getByRoom(value(value));
     default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Không có chức năng tra cứu này");
    };

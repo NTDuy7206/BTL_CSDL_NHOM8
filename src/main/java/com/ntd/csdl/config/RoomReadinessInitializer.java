@@ -18,6 +18,7 @@ public class RoomReadinessInitializer {
         migration.apply();
         migration.applyDemoRates();
         int repriced = migration.applyListedRates();
+        migration.convertListedRatesToNightly();
         if (repriced > 0) {
             System.getLogger(getClass().getName()).log(System.Logger.Level.INFO, "Đã cập nhật giá niêm yết của {0} phòng", repriced);
         }

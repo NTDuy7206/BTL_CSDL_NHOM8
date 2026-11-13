@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.security.core.Authentication;
+import com.ntd.csdl.service.LandlordService;
 
 @RestController
 @RequestMapping("/api/utility-readings")
@@ -17,26 +19,29 @@ import java.util.List;
 public class UtilityReadingController {
 
     private final UtilityReadingService utilityReadingService;
+    private final LandlordService landlords;
 
     @GetMapping
-    public ResponseEntity<List<UtilityReading>> getAll() {
+    public ResponseEntity<List<UtilityReading>> getAll(Authentication auth) {
         return ResponseEntity.ok(
-                utilityReadingService.getAll()
+                utilityReadingService.getAll().stream().filter(reading ->
+                    reading.getRoom()!=null && landlords.owns(auth.getName(),reading.getRoom().getRoomId())).toList()
         );
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<UtilityReading> getById(
-            @PathVariable String id) {
+            @PathVariable String id, Authentication auth) {
 
         return ResponseEntity.ok(
-                utilityReadingService.getById(id)
+                owned(id,auth)
         );
     }
 
     @PostMapping
     public ResponseEntity<UtilityReading> create(
-            @Valid @RequestBody UtilityReadingDTO dto) {
+            @Valid @RequestBody UtilityReadingDTO dto, Authentication auth) {
+        landlords.requireOwner(auth.getName(), dto.getRoomId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -46,7 +51,9 @@ public class UtilityReadingController {
     @PutMapping("/{id}")
     public ResponseEntity<UtilityReading> update(
             @PathVariable String id,
-            @Valid @RequestBody UtilityReadingDTO dto) {
+            @Valid @RequestBody UtilityReadingDTO dto, Authentication auth) {
+        owned(id,auth);
+        landlords.requireOwner(auth.getName(), dto.getRoomId());
 
         return ResponseEntity.ok(
                 utilityReadingService.update(id, dto)
@@ -55,10 +62,17 @@ public class UtilityReadingController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
-            @PathVariable String id) {
+            @PathVariable String id, Authentication auth) {
+        owned(id,auth);
 
         utilityReadingService.delete(id);
 
         return ResponseEntity.noContent().build();
+    }
+
+    private UtilityReading owned(String id, Authentication auth) {
+        var reading=utilityReadingService.getById(id);
+        landlords.requireOwner(auth.getName(),reading.getRoom()==null?null:reading.getRoom().getRoomId());
+        return reading;
     }
 }

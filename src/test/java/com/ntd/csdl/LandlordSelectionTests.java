@@ -25,6 +25,7 @@ class LandlordSelectionTests {
   jdbc.execute("CREATE TABLE contract_stays(contract_id VARCHAR(20),check_in DATE,check_out DATE)");
   jdbc.execute("CREATE TABLE tenant_landlord_selection(user_id BIGINT PRIMARY KEY REFERENCES user(id),landlord_id BIGINT REFERENCES landlord_properties(user_id))");
   jdbc.execute("CREATE TABLE tenant_landlords(tenant_id VARCHAR(20),user_id BIGINT,PRIMARY KEY(tenant_id,user_id))");
+  jdbc.execute("CREATE TABLE nightly_contract_rates(contract_id VARCHAR(20) PRIMARY KEY,nightly_rate DECIMAL(18,2))");
   jdbc.execute("CREATE TABLE contracts(contract_id VARCHAR(20),tenant_id VARCHAR(20),room_id VARCHAR(20),start_date DATE,end_date DATE)");
   jdbc.update("INSERT INTO user VALUES(1,'A',1),(2,'B',1),(3,'user1',0),(4,'user2',0)");
   UserRepository users=mock(UserRepository.class);for(int i=1;i<=4;i++){User u=new User();u.setId((long)i);u.setUsername(i==1?"A":i==2?"B":"user"+(i-2));u.setRole(i<=2?UserEnum.ADMIN:UserEnum.USER);when(users.findByUsername(u.getUsername())).thenReturn(Optional.of(u));if(i==1)a=u;if(i==2)b=u;}

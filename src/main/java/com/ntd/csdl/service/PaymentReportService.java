@@ -27,6 +27,7 @@ public class PaymentReportService {
     private final LandlordService landlords;
     private final FinanceService finance;
     private final PaymentRoutingService routing;
+    private final StayService stays;
     private PaymentReportResponseDTO response(PaymentReport report){var dto=new PaymentReportResponseDTO(report);routing.describe(report,dto);return dto;}
 
     @Transactional(readOnly = true)
@@ -38,7 +39,7 @@ public class PaymentReportService {
     }
 
     @Transactional(readOnly=true)
-    public List<Invoice> payableInvoices(String username){String tenant=rentals.tenantId(username);if(tenant==null)return List.of();return invoiceRepository.findByContractTenantTenantId(tenant).stream().filter(i->BillingCalendar.rentalDue(i,StayService.today())).filter(i->!reportRepository.existsByPayerUsernameAndInvoiceInvoiceIdAndStatusIn(username,i.getInvoiceId(),List.of(PaymentReportStatus.PENDING,PaymentReportStatus.PAID))).toList();}
+    public List<Invoice> payableInvoices(String username){String tenant=rentals.tenantId(username);if(tenant==null)return List.of();return invoiceRepository.findByContractTenantTenantId(tenant).stream().filter(i->stays.invoiceDue(i,StayService.today())).filter(i->!reportRepository.existsByPayerUsernameAndInvoiceInvoiceIdAndStatusIn(username,i.getInvoiceId(),List.of(PaymentReportStatus.PENDING,PaymentReportStatus.PAID))).toList();}
 
     @Transactional
     public PaymentReportResponseDTO create(String username, PaymentReportCreateDTO dto) {
@@ -56,7 +57,7 @@ public class PaymentReportService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hóa đơn"));
         rentals.requireOwner(username, invoice.getContract());
         landlords.requireAssigned(invoice.getContract().getRoom().getRoomId());
-        if (!BillingCalendar.rentalDue(invoice, StayService.today())) {
+        if (!stays.invoiceDue(invoice, StayService.today())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Hóa đơn chưa đến hạn thanh toán");
         }
         BigDecimal amount = invoice.getTotalAmount();

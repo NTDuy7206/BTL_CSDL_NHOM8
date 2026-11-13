@@ -7,6 +7,8 @@ class StayBillingTests {
  "CREATE TABLE rooms(room_id VARCHAR(20) PRIMARY KEY,status VARCHAR(50),base_price DECIMAL(18,2))",
  "CREATE TABLE contracts(contract_id VARCHAR(20) PRIMARY KEY,room_id VARCHAR(20),tenant_id VARCHAR(20),start_date DATE,end_date DATE)",
  "CREATE TABLE contract_stays(contract_id VARCHAR(20) PRIMARY KEY,check_in DATE,check_out DATE,check_in_electric INT,check_in_water INT,check_out_electric INT,check_out_water INT,monthly_rent DECIMAL(18,2))",
+ "CREATE TABLE nightly_contract_rates(contract_id VARCHAR(20) PRIMARY KEY,nightly_rate DECIMAL(18,2))",
+ "CREATE TABLE simulated_meter_periods(room_id VARCHAR(20),reading_year INT,reading_month INT,reading_id VARCHAR(20),simulated_from DATE,PRIMARY KEY(room_id,reading_year,reading_month))",
  "CREATE TABLE utility_readings(reading_id VARCHAR(20) PRIMARY KEY,room_id VARCHAR(20),year INT,month INT,electricity_start_index INT,electricity_end_index INT,water_start_index INT,water_end_index INT,electricity_price DECIMAL(18,2),water_price DECIMAL(18,2))",
  "CREATE TABLE invoices(invoice_id VARCHAR(20) PRIMARY KEY,contract_id VARCHAR(20),year INT,month INT,rent_amount DECIMAL(18,2),electricity_amount DECIMAL(18,2),water_amount DECIMAL(18,2),fine_amount DECIMAL(18,2),total_amount DECIMAL(18,2))",
  "CREATE TABLE automatic_bills(contract_id VARCHAR(20),year INT,month INT,invoice_id VARCHAR(20),PRIMARY KEY(contract_id,year,month))",
@@ -74,4 +76,25 @@ class StayBillingTests {
 
  @Test void expiryHandlesVietnameseStatusAndKeepsMaintenance(){LocalDate now=StayService.today();contract("C1","T1",now.minusMonths(1),now.minusDays(1));jdbc.update("UPDATE rooms SET status='Đã thuê'");tx.executeWithoutResult(t->stays.refreshAll());assertEquals("AVAILABLE",jdbc.queryForObject("SELECT status FROM rooms",String.class));jdbc.update("UPDATE rooms SET status='MAINTENANCE'");tx.executeWithoutResult(t->stays.refreshAll());assertEquals("MAINTENANCE",jdbc.queryForObject("SELECT status FROM rooms",String.class));}
  @Test void missingEndDateDoesNotSilentlyVacateOccupiedRoom(){contract("C1","T1",StayService.today().minusDays(1),null);tx.executeWithoutResult(t->stays.refreshAll());assertEquals("OCCUPIED",jdbc.queryForObject("SELECT status FROM rooms",String.class));}
+
+ @Test void nightlyStayAndSimulatedMetersAreBilledAtMonthEnd() {
+  var month=YearMonth.of(2026,1);
+  contract("C1","T1",month.atDay(12),month.atDay(15));
+  jdbc.update("INSERT INTO nightly_contract_rates VALUES ('C1',250000)");
+  jdbc.update("INSERT INTO rooms VALUES ('EMPTY','AVAILABLE',250000)");
+  var meters=new MeterSimulationService(jdbc);
+  for(String room:meters.rooms())tx.executeWithoutResult(t->meters.update(room,month.atDay(13)));
+  assertEquals(6,jdbc.queryForObject("SELECT electricity_end_index FROM utility_readings WHERE room_id='R1'",Integer.class));
+  for(String room:meters.rooms())tx.executeWithoutResult(t->meters.update(room,month.atEndOfMonth()));
+  tx.executeWithoutResult(t->meters.update("R1",month.atEndOfMonth()));
+  assertEquals(2,count("utility_readings"));
+  assertEquals(9,jdbc.queryForObject("SELECT electricity_end_index FROM utility_readings WHERE room_id='R1'",Integer.class));
+  assertEquals(3,jdbc.queryForObject("SELECT water_end_index FROM utility_readings WHERE room_id='R1'",Integer.class));
+  assertEquals(0,jdbc.queryForObject("SELECT electricity_end_index FROM utility_readings WHERE room_id='EMPTY'",Integer.class));
+  assertEquals("NOT_DUE",tx.execute(t->bills.billDue("C1",month,month.atDay(15))));
+  assertEquals("CREATED",tx.execute(t->bills.billDue("C1",month,month.atEndOfMonth())));
+  assertEquals(new BigDecimal("826500.00"),jdbc.queryForObject("SELECT total_amount FROM invoices",BigDecimal.class));
+  tx.executeWithoutResult(t->meters.update("R1",month.plusMonths(1).atDay(1)));
+  assertEquals(9,jdbc.queryForObject("SELECT electricity_start_index FROM utility_readings WHERE room_id='R1' AND month=2",Integer.class));
+ }
 }

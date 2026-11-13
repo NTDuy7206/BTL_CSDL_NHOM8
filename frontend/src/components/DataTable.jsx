@@ -9,7 +9,8 @@ function display(record, key) {
   if (value === false) return <span className="badge badge-gray">Chưa xong</span>
   if (value == null || value === '') return <span className="muted">—</span>
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return new Intl.DateTimeFormat('vi-VN').format(new Date(`${value.slice(0,10)}T00:00:00`))
-  if(key==='agreedRent')return Number(value).toLocaleString('vi-VN')+' ₫/tháng'
+  if(key==='agreedRent')return Number(value).toLocaleString('vi-VN')+(record.nightlyRate==null?' ₫/tháng':' ₫/đêm')
+  if(key==='totalRent')return Number(value).toLocaleString('vi-VN')+' ₫'
   if(['electricityUsage','waterUsage'].includes(key))return String(value)+(key==='electricityUsage'?' kWh':' m³')
   if (key==='area')return String(value)+' m²'
   if (/^electricity(Start|End)Index$/.test(key))return String(value)+' kWh'

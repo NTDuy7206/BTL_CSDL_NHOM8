@@ -6,7 +6,7 @@ export function roomStatusGroup(value){
  if(['chua thue','trong','available','vacant','empty'].some(w=>status.includes(w)))return 'vacant';
  if(['dang thue','da thue','cho thue','occupied','rented','leased','dang su dung','co khach'].some(w=>status.includes(w)))return 'rented';return null;
 }
-export function activeContract(c,today){return Boolean(c.room&&(c.actualCheckIn||c.startDate)&&(c.actualCheckOut||c.endDate)&&(c.actualCheckIn||c.startDate)<=today&&(c.actualCheckOut?c.actualCheckOut>today:c.endDate>=today))}
+export function activeContract(c,today){return Boolean(c.room&&(c.actualCheckIn||c.startDate)&&(c.actualCheckOut||c.endDate)&&(c.actualCheckIn||c.startDate)<=today&&(c.actualCheckOut?c.actualCheckOut>today:(c.nightlyRate==null?c.endDate>=today:c.endDate>today)))}
 export function roomGroups(rooms,contracts,role,today){
  const byRoom=new Map(rooms.map(r=>[r.roomId,r]));
  const active=contracts.filter(c=>activeContract(c,today)&&byRoom.has(c.room.roomId));

@@ -11,7 +11,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -32,10 +31,7 @@ public class VipRentalService {
     }
 
     static Quote calculate(BigDecimal rate, LocalDate start, LocalDate end) {
-        BigDecimal total = BigDecimal.ZERO;
-        for (YearMonth period = YearMonth.from(start); !period.isAfter(YearMonth.from(end)); period = period.plusMonths(1)) {
-            total = total.add(BillingMath.rent(rate, start, end, period));
-        }
+        BigDecimal total = BillingMath.nightlyRent(rate, start, end);
         return new Quote(rate, total, total.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP));
     }
 
@@ -63,8 +59,8 @@ public class VipRentalService {
         }
         var existing = jdbc.queryForList("""
                 SELECT deposit_id FROM vip_rental_deposits
-                WHERE user_id=? AND room_id=? AND start_date=? AND end_date=? AND monthly_rent=? AND request_id IS NULL
-                """, String.class, accountId, roomId, start, end, quote.monthlyRent());
+                WHERE user_id=? AND room_id=? AND start_date=? AND end_date=? AND monthly_rent=? AND total_rent=? AND request_id IS NULL
+                """, String.class, accountId, roomId, start, end, quote.monthlyRent(), quote.totalRent());
         if (!existing.isEmpty()) return existing.getFirst();
 
         String id = UUID.randomUUID().toString();
@@ -76,11 +72,13 @@ public class VipRentalService {
         return id;
     }
 
-    public void attach(String token, long userId, String roomId, LocalDate start, LocalDate end, long requestId) {
+    public void attach(String token, long userId, String roomId, LocalDate start, LocalDate end, long requestId, BigDecimal rate) {
+        Quote quote = calculate(rate, start, end);
         if (token == null || token.length() != 36 || jdbc.update("""
                 UPDATE vip_rental_deposits SET request_id=?
                 WHERE deposit_id=? AND user_id=? AND room_id=? AND start_date=? AND end_date=? AND request_id IS NULL
-                """, requestId, token, userId, roomId, start, end) != 1) {
+                AND monthly_rent=? AND total_rent=?
+                """, requestId, token, userId, roomId, start, end, rate, quote.totalRent()) != 1) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Phòng VIP cần đặt cọc 50% cho đúng phòng và thời hạn trước khi gửi yêu cầu");
         }
     }

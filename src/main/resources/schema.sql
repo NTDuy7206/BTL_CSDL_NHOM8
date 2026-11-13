@@ -150,6 +150,25 @@ CREATE TABLE IF NOT EXISTS contract_stays (
  FOREIGN KEY(contract_id) REFERENCES contracts(contract_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE IF NOT EXISTS billing_start (id INT PRIMARY KEY,start_month DATE NOT NULL) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS nightly_request_rates (
+ request_id BIGINT PRIMARY KEY, nightly_rate DECIMAL(18,2) NOT NULL,
+ FOREIGN KEY(request_id) REFERENCES contract_requests(request_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS legacy_room_monthly_rates (
+ room_id VARCHAR(20) PRIMARY KEY, monthly_rate DECIMAL(18,2) NOT NULL,
+ FOREIGN KEY(room_id) REFERENCES rooms(room_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS nightly_contract_rates (
+ contract_id VARCHAR(20) PRIMARY KEY, nightly_rate DECIMAL(18,2) NOT NULL,
+ FOREIGN KEY(contract_id) REFERENCES contracts(contract_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE IF NOT EXISTS simulated_meter_periods (
+ room_id VARCHAR(20) NOT NULL, reading_year INT NOT NULL, reading_month INT NOT NULL,
+ reading_id VARCHAR(20) NOT NULL UNIQUE, simulated_from DATE NOT NULL,
+ PRIMARY KEY(room_id,reading_year,reading_month),
+ FOREIGN KEY(room_id) REFERENCES rooms(room_id) ON DELETE CASCADE,
+ FOREIGN KEY(reading_id) REFERENCES utility_readings(reading_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 CREATE TABLE IF NOT EXISTS automatic_bills (
  contract_id VARCHAR(20) NOT NULL,year INT NOT NULL,month INT NOT NULL,invoice_id VARCHAR(20) NOT NULL,
  PRIMARY KEY(contract_id,year,month),FOREIGN KEY(contract_id) REFERENCES contracts(contract_id),FOREIGN KEY(invoice_id) REFERENCES invoices(invoice_id)

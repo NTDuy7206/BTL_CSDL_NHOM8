@@ -61,6 +61,13 @@ public class FinanceService {
       """, year, month, owner, year, month));
   return result;
  }
+ @Transactional public void simulateUtility(String username,int year,int month,String type){
+  String key=switch(type==null?"":type){case "ELECTRICITY" -> "electricity";case "WATER" -> "water";default -> throw bad("Chọn điện hoặc nước");};
+  var data=utilities(username,year,month);
+  var billed=(Map<?,?>)data.get("billed");
+  BigDecimal amount=new BigDecimal(billed.get(key).toString());
+  payUtility(username,year,month,type,amount,StayService.today(),"Mô phỏng","GIẢ LẬP "+year+"-"+month+" "+type);
+ }
  @Transactional public void payUtility(String username,int year,int month,String type,BigDecimal amount,LocalDate date,String provider,String reference){
   period(year,month);BillingCalendar.requireDue(year,month,StayService.today());day(date);if(date.isBefore(YearMonth.of(year,month).atEndOfMonth()))throw bad("Ngày thực trả không được trước ngày cuối kỳ");money(amount);text(provider,120,"Đơn vị cung cấp");text(reference,200,"Mã chứng từ");
   if(!Set.of("ELECTRICITY","WATER").contains(type==null?"":type))throw bad("Chọn điện hoặc nước");
@@ -86,7 +93,7 @@ public class FinanceService {
   Long owner=landlords.accountId(username);var balances=new TreeMap<String,Balance>();
   for(LocalDate d=from;!d.isAfter(to);d=d.plusDays(1))balances.putIfAbsent(bucket(d,group),new Balance());
   var total=new Balance();
-  var events=jdbc.queryForList("SELECT received_on AS event_day,amount AS income,0 AS utility,0 AS other FROM finance_receipts WHERE landlord_id=? AND received_on BETWEEN ? AND ? UNION ALL SELECT paid_on,0,amount,0 FROM utility_disbursements WHERE landlord_id=? AND paid_on BETWEEN ? AND ? UNION ALL SELECT paid_on,0,0,amount FROM landlord_expenses WHERE landlord_id=? AND paid_on BETWEEN ? AND ?",owner,from,to,owner,from,to,owner,from,to);
+  var events=jdbc.queryForList("SELECT received_on AS event_day,amount AS income,0 AS utility,0 AS other FROM finance_receipts WHERE landlord_id=? AND received_on BETWEEN ? AND ? UNION ALL SELECT paid_on,0,amount,0 FROM utility_disbursements WHERE landlord_id=? AND paid_on BETWEEN ? AND ? AND (provider IS NULL OR provider<>'Mô phỏng') UNION ALL SELECT paid_on,0,0,amount FROM landlord_expenses WHERE landlord_id=? AND paid_on BETWEEN ? AND ?",owner,from,to,owner,from,to,owner,from,to);
   for(var event:events){var balance=balances.get(bucket(LocalDate.parse(event.get("event_day").toString()),group));BigDecimal income=new BigDecimal(event.get("income").toString()),utility=new BigDecimal(event.get("utility").toString()),other=new BigDecimal(event.get("other").toString());balance.income=balance.income.add(income);balance.utility=balance.utility.add(utility);balance.other=balance.other.add(other);total.income=total.income.add(income);total.utility=total.utility.add(utility);total.other=total.other.add(other);}
   return Map.of("from",from,"to",to,"group",group,"totals",total.map("total"),"rows",balances.entrySet().stream().map(e->e.getValue().map(e.getKey())).toList());
  }

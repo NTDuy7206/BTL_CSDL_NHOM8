@@ -17,6 +17,20 @@ public class RoomReadinessMigration {
     private static final int OLD_DEFAULT_RATE = 2_000_000;
 
     @Transactional
+    public void convertListedRatesToNightly() {
+        String seed = "nightly-room-rates-v1";
+        jdbc.update("INSERT INTO demo_seed_history(seed_key,completed) VALUES (?,false) ON DUPLICATE KEY UPDATE seed_key=seed_key", seed);
+        if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT completed FROM demo_seed_history WHERE seed_key=? FOR UPDATE", Boolean.class, seed))) return;
+        jdbc.queryForList("SELECT room_id FROM rooms ORDER BY room_id FOR UPDATE");
+        jdbc.update("""
+                INSERT INTO legacy_room_monthly_rates(room_id,monthly_rate)
+                SELECT room_id,base_price FROM rooms WHERE base_price>0
+                """);
+        jdbc.update("UPDATE rooms SET base_price=ROUND(base_price/30,2) WHERE base_price>0");
+        jdbc.update("UPDATE demo_seed_history SET completed=true WHERE seed_key=?", seed);
+    }
+
+    @Transactional
     public int applyListedRates() {
         String seed = "listed-room-default-rates-v1";
         jdbc.update("INSERT INTO demo_seed_history(seed_key,completed) VALUES (?,false) ON DUPLICATE KEY UPDATE seed_key=seed_key", seed);

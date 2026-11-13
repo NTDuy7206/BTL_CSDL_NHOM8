@@ -11,6 +11,8 @@ public class ContractRequestResponseDTO {
     @lombok.Setter private com.ntd.csdl.entity.Tenant tenant;
     @lombok.Setter private LocalDate requestedEndDate;
     @lombok.Setter private String contractId;
+    @lombok.Setter private java.math.BigDecimal nightlyRate;
+    @lombok.Setter private java.math.BigDecimal totalRent;
     @lombok.Setter private com.ntd.csdl.service.VipRentalService.Quote vipPayment;
     private final Long requestId;
     private final String username;

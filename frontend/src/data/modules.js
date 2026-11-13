@@ -21,12 +21,12 @@ export const modules = [
     columns: ['roomId', 'landlordName', 'floor', 'area', 'roomType', 'status', 'basePrice'],
     fields: [
       ['roomId', 'Mã phòng', 'text'], ['floor', 'Tầng', 'number'], ['area', 'Diện tích (m²)', 'number'],
-      ['roomType', 'Loại phòng', 'text'], ['status', 'Tình trạng', 'text'], ['basePrice', 'Giá thuê cơ bản', 'number'],
+      ['roomType', 'Loại phòng', 'text'], ['status', 'Tình trạng', 'text'], ['basePrice', 'Giá thuê (₫/đêm)', 'number'],
     ],
   },
   {
     key: 'contracts', title: 'Hợp đồng', singular: 'hợp đồng', icon: 'contract', path: '/api/contracts', id: 'contractId',
-    columns: ['contractId', 'tenantName', 'tenantBirth', 'tenantPhone', 'roomId', 'startDate', 'endDate', 'actualCheckIn', 'actualCheckOut', 'agreedRent', 'deposit'],
+    columns: ['contractId', 'tenantName', 'tenantBirth', 'tenantPhone', 'roomId', 'startDate', 'endDate', 'actualCheckIn', 'actualCheckOut', 'agreedRent', 'totalRent', 'deposit'],
     fields: [
       ['contractId', 'Mã hợp đồng', 'text'], ['startDate', 'Ngày bắt đầu', 'date'], ['endDate', 'Ngày kết thúc', 'date'],
       ['deposit', 'Tiền cọc', 'number'], ['roomId', 'Mã phòng', 'text'], ['tenantId', 'Mã khách thuê', 'text'],
@@ -98,7 +98,7 @@ export const relationMap = {
 
 export const labels = {
   landlordName: 'Chủ nhà',
-  actualCheckIn:'Nhận phòng thực tế',actualCheckOut:'Trả phòng thực tế',agreedRent:'Giá thuê thỏa thuận (₫/tháng)',
+  totalRent:'Tổng tiền phòng',actualCheckIn:'Nhận phòng thực tế',actualCheckOut:'Trả phòng thực tế',agreedRent:'Giá thuê thỏa thuận',
   tenantName: 'Khách thuê', tenantBirth: 'Ngày sinh', tenantPhone: 'Điện thoại',
   tenantId: 'Mã khách thuê', employeeId: 'Mã nhân viên', roomId: 'Mã phòng', contractId: 'Mã hợp đồng', invoiceId: 'Mã hóa đơn',
   readingId: 'Mã chỉ số', incidentId: 'Mã sự cố', resolutionId: 'Mã xử lý', supportId: 'Mã hỗ trợ', ruleId: 'Mã nội quy', violationId: 'Mã vi phạm',

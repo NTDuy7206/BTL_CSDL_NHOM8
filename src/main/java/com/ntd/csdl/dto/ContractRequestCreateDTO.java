@@ -24,4 +24,6 @@ public class ContractRequestCreateDTO {
 
     @Size(max = 36)
     private String vipDepositId;
+    @jakarta.validation.constraints.DecimalMin(value = "0", inclusive = false)
+    private java.math.BigDecimal expectedNightlyRate;
 }
