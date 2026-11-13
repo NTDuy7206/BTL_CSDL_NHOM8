@@ -3,6 +3,8 @@ package com.ntd.csdl.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.YearMonth;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @RequiredArgsConstructor
 public class StaffService {
+    private static final ZoneId VIETNAM = ZoneId.of("Asia/Ho_Chi_Minh");
     private final JdbcTemplate jdbc;
     private final LandlordService landlords;
 
@@ -66,15 +69,24 @@ public class StaffService {
                 "applications", applications(username, true));
     }
 
-    public List<Map<String, Object>> applications(String username, boolean applicant) {
-        return jdbc.queryForList("""
-                SELECT a.application_id AS id, a.status, a.message, a.submitted_on AS submittedOn,
+    public record ApplicationRow(long id, String status, String message, String submittedOn, String submittedAt,
+                                 String username, String displayName, String jobCode) {}
+
+    public List<ApplicationRow> applications(String username, boolean applicant) {
+        return jdbc.query("""
+                SELECT a.application_id AS id, a.status, a.message, a.submitted_on AS submittedOn, a.submitted_at AS submittedAt,
                        u.username, COALESCE(NULLIF(p.display_name,''),u.username) AS displayName,j.job_code AS jobCode
                 FROM staff_applications a JOIN `user` u ON u.id=a.%s LEFT JOIN user_profiles p ON p.user_id=u.id
                 LEFT JOIN staff_application_jobs j ON j.application_id=a.application_id
                 WHERE a.%s=? ORDER BY CASE WHEN a.status='PENDING' THEN 0 ELSE 1 END, a.application_id DESC
                 """.formatted(applicant ? "landlord_id" : "applicant_id", applicant ? "applicant_id" : "landlord_id"),
-                landlords.accountId(username));
+                (rs, index) -> {
+                    var submittedAt = rs.getObject("submittedAt", LocalDateTime.class);
+                    return new ApplicationRow(rs.getLong("id"), rs.getString("status"), rs.getString("message"),
+                            rs.getObject("submittedOn", LocalDate.class).toString(),
+                            submittedAt == null ? null : submittedAt.toString(), rs.getString("username"),
+                            rs.getString("displayName"), rs.getString("jobCode"));
+                }, landlords.accountId(username));
     }
 
     @Transactional
@@ -90,12 +102,14 @@ public class StaffService {
         if (!jdbc.queryForList("SELECT application_id FROM staff_applications WHERE applicant_id=? AND landlord_id=? AND status='PENDING'",
                 account, owner).isEmpty()) throw error(HttpStatus.CONFLICT, "Bạn đã gửi đơn cho chủ nhà này");
         var key = new org.springframework.jdbc.support.GeneratedKeyHolder();
+        var submittedAt = LocalDateTime.now(VIETNAM).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         jdbc.update(connection -> {
-            var statement = connection.prepareStatement("INSERT INTO staff_applications(applicant_id,landlord_id,message,submitted_on) VALUES (?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+            var statement = connection.prepareStatement("INSERT INTO staff_applications(applicant_id,landlord_id,message,submitted_on,submitted_at) VALUES (?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
             statement.setLong(1, account);
             statement.setLong(2, owner);
             statement.setString(3, message == null ? null : message.trim());
-            statement.setObject(4, StayService.today());
+            statement.setObject(4, submittedAt.toLocalDate());
+            statement.setObject(5, submittedAt);
             return statement;
         }, key);
         jdbc.update("INSERT INTO staff_application_jobs(application_id,job_code) VALUES (?,?)", key.getKey().longValue(), job.code());

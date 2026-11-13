@@ -3,6 +3,13 @@ import {money} from '../data/finance.js'
 
 const statuses = {PENDING:'Chờ duyệt',APPROVED:'Đã chấp nhận',REJECTED:'Đã từ chối',CLOSED:'Đã đóng vì đã liên kết với chủ nhà'}
 
+function submissionTime(row) {
+  const [date,time] = (row.submittedAt || row.submittedOn).split('T')
+  const [year,month,day] = date.split('-')
+  const localDate = `${day}/${month}/${year}`
+  return row.submittedAt ? `${localDate} · ${time.slice(0,5)}` : localDate
+}
+
 export default function StaffApplicationsPage({admin,request,notify,onNavigate}) {
   const endpoint = admin ? '/api/staff/applications' : '/api/staff/me/applications'
   const [data,setData] = useState(null)
@@ -55,7 +62,7 @@ export default function StaffApplicationsPage({admin,request,notify,onNavigate})
       {data?.applications.length===0&&<p>Chưa có đơn xin việc.</p>}
       {data?.linked&&<p>Bạn đã liên kết với chủ nhà. <button className="button button-secondary" onClick={()=>onNavigate('dashboard')}>Xem công việc</button></p>}
       <div className="workflow-list">{data?.applications.map(row=>{const job=jobs.find(item=>item.code===row.jobCode);return <article className="workflow-row" key={row.id}>
-        <div className="workflow-main"><b>{row.displayName}</b>{row.displayName!==row.username&&<span>@{row.username}</span>}<span>{row.submittedOn}</span>{job&&<span>{job.label} · {money(job.baseSalary)}/tháng</span>}{row.message&&<p>{row.message}</p>}</div>
+        <div className="workflow-main"><b>{row.displayName}</b>{row.displayName!==row.username&&<span>@{row.username}</span>}<time dateTime={row.submittedAt || row.submittedOn}>{submissionTime(row)}</time>{job&&<span>{job.label} · {money(job.baseSalary)}/tháng</span>}{row.message&&<p>{row.message}</p>}</div>
         <span className={`status-pill status-${row.status.toLowerCase()}`}>{statuses[row.status]}</span>
         {admin&&row.status==='PENDING'&&<div className="workflow-buttons">
           {!job&&<label className="form-field"><span>Công việc cho đơn cũ</span><select value={legacyJobs[row.id]||''} onChange={event=>setLegacyJobs(current=>({...current,[row.id]:event.target.value}))}>

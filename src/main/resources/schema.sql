@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS staff_applications (
     status VARCHAR(12) NOT NULL DEFAULT 'PENDING',
     message VARCHAR(500),
     submitted_on DATE NOT NULL,
+    submitted_at DATETIME(6) NULL,
     INDEX ix_staff_applications_landlord (landlord_id,status),
     INDEX ix_staff_applications_applicant (applicant_id,status),
     FOREIGN KEY (applicant_id) REFERENCES `user`(id),

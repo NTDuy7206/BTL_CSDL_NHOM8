@@ -25,7 +25,7 @@ class StaffServiceTests {
         jdbc.execute("CREATE TABLE user_profiles(user_id BIGINT, display_name VARCHAR(30))");
         jdbc.execute("CREATE TABLE employees(employee_id VARCHAR(20) PRIMARY KEY, full_name VARCHAR(50), position VARCHAR(50), base_salary DECIMAL(18,2), seniority INT)");
         jdbc.execute("CREATE TABLE employee_accounts(employee_id VARCHAR(20) PRIMARY KEY, landlord_id BIGINT, account_id BIGINT UNIQUE, linked_on DATE)");
-        jdbc.execute("CREATE TABLE staff_applications(application_id BIGINT AUTO_INCREMENT PRIMARY KEY, applicant_id BIGINT, landlord_id BIGINT, status VARCHAR(12) DEFAULT 'PENDING', message VARCHAR(500), submitted_on DATE)");
+        jdbc.execute("CREATE TABLE staff_applications(application_id BIGINT AUTO_INCREMENT PRIMARY KEY, applicant_id BIGINT, landlord_id BIGINT, status VARCHAR(12) DEFAULT 'PENDING', message VARCHAR(500), submitted_on DATE, submitted_at DATETIME(6))");
         jdbc.execute("CREATE TABLE staff_application_jobs(application_id BIGINT PRIMARY KEY, job_code VARCHAR(16))");
         jdbc.update("INSERT INTO `user` VALUES (1,1,'owner'),(2,1,'other'),(3,2,'staff')");
         var landlords = mock(LandlordService.class);
@@ -39,7 +39,14 @@ class StaffServiceTests {
         assertEquals(2, service.applications("staff", true).size());
         assertEquals(1, service.applications("owner", false).size());
         assertThrows(ResponseStatusException.class, () -> tx.executeWithoutResult(s -> service.decide("other", 1, true, "E2")));
-        assertEquals("PENDING", service.applications("owner", false).getFirst().get("status"));
+        var application = service.applications("owner", false).getFirst();
+        assertEquals("PENDING", application.status());
+        assertEquals(application.submittedOn(), service.applications("staff", true).getLast().submittedOn());
+        assertEquals(application.submittedAt(), service.applications("staff", true).getLast().submittedAt());
+        var vnNow = java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        assertTrue(java.time.Duration.between(java.time.LocalDateTime.parse(application.submittedAt()), vnNow).abs().toSeconds() < 60);
+        jdbc.update("UPDATE staff_applications SET submitted_at=NULL WHERE application_id=2");
+        assertNull(service.applications("other", false).getFirst().submittedAt());
         tx.executeWithoutResult(s -> service.decide("owner", 1, true, "MANAGER"));
         assertEquals(3L, jdbc.queryForObject("SELECT account_id FROM employee_accounts WHERE landlord_id=1", Long.class));
         assertEquals(new BigDecimal("6000000.00"), jdbc.queryForObject("SELECT base_salary FROM employees", BigDecimal.class));
